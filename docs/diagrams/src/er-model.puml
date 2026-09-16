@@ -1,0 +1,73 @@
+@startuml er-model
+title GeoLogic — модель данных MVP
+hide circle
+skinparam linetype ortho
+entity users {
+ * id : bigint <<PK>>
+ --
+ * max_user_id : bigint <<UNIQUE>>
+ * max_chat_id : bigint
+ * created_at : timestamptz
+}
+entity tracked_locations {
+ * id : bigint <<PK>>
+ --
+ * user_id : bigint <<FK>>
+ * business_type_id : bigint <<FK>>
+ * address : text
+ * location : geometry(Point,4326)
+ * created_at : timestamptz
+}
+entity infra_types {
+ * id : bigint <<PK>>
+ --
+ * slug : text <<UNIQUE>>
+ * name : text
+ * weight : float
+ * max_radius : integer
+}
+entity infra_objects {
+ * id : bigint <<PK>>
+ --
+ * type_id : bigint <<FK>>
+ * location : geometry(Point,4326)
+ * address : text
+ name : text
+}
+entity business_types {
+ * id : bigint <<PK>>
+ --
+ * infra_type_id : bigint <<FK,UNIQUE>>
+}
+entity events {
+ * id : bigint <<PK>>
+ --
+ * provider, external_id : text <<UNIQUE pair>>
+ * location : geometry(Point,4326)
+ * date : timestamptz
+ info : text
+ notified_at : timestamptz
+}
+entity competitor_cache {
+ * tracked_location_id : bigint <<PK,FK>>
+ * external_id : text <<PK>>
+ --
+ * type_id : bigint <<FK>>
+ * name, address : text
+ * location : geometry(Point,4326)
+ * opened_at : date
+ notified_at : timestamptz
+ * expires_at : timestamptz
+}
+users ||--o{ tracked_locations
+infra_types ||--o{ infra_objects
+infra_types ||--o| business_types
+business_types ||--o{ tracked_locations
+tracked_locations ||--o{ competitor_cache : DELETE CASCADE
+infra_types ||--o{ competitor_cache
+note bottom of events
+ notified_at после публикации для всех точек.
+ timestamps постоянных справочников
+ описаны в data-model.md.
+end note
+@enduml

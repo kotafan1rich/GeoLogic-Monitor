@@ -1,0 +1,556 @@
+openapi: 3.1.0
+info:
+  title: GeoLogic Monitor API
+  version: 0.2.0
+  description: >
+    Контракт хакатонного MVP, только Санкт-Петербург. API пока не реализован.
+    Пользовательские методы доступны только bot-сервису с его Bearer token
+    и проверенным X-Max-User-Id. Внутренние методы требуют отдельного ingestion token.
+servers:
+  - url: http://localhost:8080
+    description: Планируемый локальный API
+security:
+  - BotToken: []
+    MaxUserId: []
+paths:
+  /api/v1/users/me:
+    put:
+      operationId: upsertCurrentUser
+      summary: Зарегистрировать пользователя или обновить его личный чат
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [max_chat_id]
+              properties:
+                max_chat_id:
+                  type: integer
+                  format: int64
+            example: {max_chat_id: 123456}
+      responses:
+        '200':
+          description: Пользователь создан или обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/geocoding/suggestions:
+    get:
+      operationId: suggestAddresses
+      summary: Найти варианты адреса в Санкт-Петербурге
+      description: >
+        Конкретный геокодер TBD. Адаптер ограничивает поиск Санкт-Петербургом.
+        Пустой результат возвращается как пустой массив.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 500}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 5, default: 5}
+      responses:
+        '200':
+          description: Варианты для выбора адреса
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/tracked-locations:
+    post:
+      operationId: createTrackedLocation
+      summary: Добавить точку и автоматически начать мониторинг
+      description: >
+        Bot передаёт выбранный результат геокодинга без изменений.
+        Пользователь определяется по X-Max-User-Id и должен быть зарегистрирован.
+        Повторный POST не является идемпотентным.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [business_type_id, address, lat, lon]
+              properties:
+                business_type_id: {type: integer, format: int64, minimum: 1}
+                address: {type: string, minLength: 1}
+                lat: {type: number, minimum: -90, maximum: 90}
+                lon: {type: number, minimum: -180, maximum: 180}
+            example:
+              business_type_id: 1
+              address: Санкт-Петербург, Невский проспект, 28
+              lat: 59.9358
+              lon: 30.3259
+      responses:
+        '201':
+          description: Точка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackedLocation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      operationId: listMyTrackedLocations
+      summary: Список точек текущего пользователя без пагинации
+      responses:
+        '200':
+          description: Точки, пустой массив при отсутствии
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrackedLocation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/tracked-locations/{id}:
+    delete:
+      operationId: deleteTrackedLocation
+      summary: Удалить свою точку
+      description: Чужая и отсутствующая точка возвращают одинаковый 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '204':
+          description: Точка и её кэш конкурентов удалены
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /internal/v1/tracked-locations:
+    get:
+      operationId: listMonitoringLocations
+      summary: Все точки с адресатами для ingestion
+      security:
+        - IngestionToken: []
+      responses:
+        '200':
+          description: Снимок точек на момент запроса
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/TrackedLocation'
+                    - type: object
+                      required: [max_chat_id]
+                      properties:
+                        max_chat_id: {type: integer, format: int64}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/business-types:
+    get:
+      operationId: listBusinessTypes
+      summary: Типы бизнеса для кнопок бота, имя из infra_type.name
+      responses:
+        '200':
+          description: Загруженный справочник
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /internal/v1/infra-types:
+    put:
+      operationId: upsertInfraType
+      summary: Upsert по slug; weight и max_radius используются в рейтинге
+      security: [{IngestionToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfraTypeInput'
+      responses:
+        '200':
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfraType'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /internal/v1/infra:
+    put:
+      operationId: upsertInfraObject
+      summary: Upsert по стабильному id загрузчика; type_id должен существовать
+      security: [{IngestionToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfraObject'
+      responses:
+        '200':
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfraObject'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /internal/v1/business-types:
+    put:
+      operationId: upsertBusinessType
+      summary: Upsert по infra_type_id; ссылка должна существовать
+      security: [{IngestionToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessTypeInput'
+      responses:
+        '200':
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessType'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /internal/v1/events:
+    put:
+      operationId: upsertEvent
+      summary: Upsert по provider/external_id; notified_at сохраняется
+      security: [{IngestionToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventInput'
+      responses:
+        '200':
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      operationId: listUnnotifiedEvents
+      summary: Ещё не обработанные события заданного дня в Europe/Moscow
+      security: [{IngestionToken: []}]
+      parameters:
+        - name: day
+          in: query
+          required: true
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: События с notified_at=null
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /internal/v1/tracked-locations/{id}/rating-context:
+    get:
+      operationId: getRatingContext
+      summary: Исходные данные окружения для расчёта ingestion
+      description: >
+        Инфраструктура предварительно отбирается по прямому расстоянию в пределах
+        max_radius своего типа; ingestion уточняет маршруты OSRM.
+        Все InfraType возвращаются, включая типы без объектов, для сопоставления кэша.
+        Кэш 2ГИС добавляет ingestion, API его в постоянные объекты не включает.
+      security: [{IngestionToken: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: Снимок окружения точки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingContext'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /internal/v1/events/{id}/notified:
+    put:
+      operationId: markEventNotified
+      summary: Отметить публикацию для всех подходящих точек
+      description: Сервер устанавливает notified_at один раз; повтор не меняет время.
+      security: [{IngestionToken: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '204':
+          description: Отметка установлена или уже существовала
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      operationId: health
+      summary: Проверка HTTP-процесса
+      description: Не проверяет доступность внешних провайдеров.
+      security: []
+      responses:
+        '200':
+          description: Процесс работает
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, const: ok}
+components:
+  securitySchemes:
+    BotToken:
+      type: http
+      scheme: bearer
+      description: BOT_SERVICE_TOKEN, доступен только bot-сервису
+    MaxUserId:
+      type: apiKey
+      in: header
+      name: X-Max-User-Id
+      description: Положительный int64 из проверенного обновления MAX; сам по себе не авторизует.
+    IngestionToken:
+      type: http
+      scheme: bearer
+      description: INGESTION_SERVICE_TOKEN, не даёт доступа к пользовательским маршрутам
+  schemas:
+    BusinessType:
+      type: object
+      required: [id, infra_type_id, infra_type]
+      properties:
+        id: {type: integer, format: int64, minimum: 1}
+        infra_type_id: {type: integer, format: int64, minimum: 1}
+        infra_type:
+          $ref: '#/components/schemas/InfraType'
+    InfraType:
+      type: object
+      required: [id, slug, name, weight, max_radius]
+      properties:
+        id: {type: integer, format: int64, minimum: 1}
+        slug: {type: string, minLength: 1}
+        name: {type: string, minLength: 1}
+        weight: {type: number, exclusiveMinimum: 0}
+        max_radius: {type: integer, minimum: 1, maximum: 65535}
+    InfraObject:
+      example: {id: 101, type_id: 1, lat: 59.9358, lon: 30.3259, address: Санкт-Петербург, name: Тестовый объект}
+      allOf:
+        - $ref: '#/components/schemas/Address'
+        - type: object
+          required: [id, type_id]
+          properties:
+            id: {type: integer, format: int64, minimum: 1}
+            type_id: {type: integer, format: int64, minimum: 1}
+            name: {type: [string, 'null']}
+    Event:
+      type: object
+      required: [id, provider, external_id, lat, lon, date, info, notified_at]
+      properties:
+        id: {type: integer, format: int64, minimum: 1}
+        provider: {type: string, minLength: 1}
+        external_id: {type: string, minLength: 1}
+        lat: {type: number, minimum: -90, maximum: 90}
+        lon: {type: number, minimum: -180, maximum: 180}
+        date: {type: string, format: date-time}
+        info: {type: [string, 'null']}
+        notified_at: {type: [string, 'null'], format: date-time}
+    InfraTypeInput:
+      type: object
+      description: Значения примера тестовые, реальные веса и радиусы ещё предстоит согласовать.
+      example: {slug: coffee_shop, name: Кофейня, weight: 2, max_radius: 1000}
+      required: [slug, name, weight, max_radius]
+      properties:
+        slug: {type: string, minLength: 1}
+        name: {type: string, minLength: 1}
+        weight: {type: number, exclusiveMinimum: 0}
+        max_radius: {type: integer, minimum: 1, maximum: 65535}
+    BusinessTypeInput:
+      type: object
+      example: {infra_type_id: 1}
+      required: [infra_type_id]
+      properties:
+        infra_type_id: {type: integer, format: int64, minimum: 1}
+    EventInput:
+      type: object
+      example:
+        provider: fixture
+        external_id: concert-1
+        lat: 59.936
+        lon: 30.326
+        date: '2026-09-17T16:00:00Z'
+        info: Концерт завтра в 19:00
+      required: [provider, external_id, lat, lon, date]
+      properties:
+        provider: {type: string, minLength: 1}
+        external_id: {type: string, minLength: 1}
+        lat: {type: number, minimum: -90, maximum: 90}
+        lon: {type: number, minimum: -180, maximum: 180}
+        date: {type: string, format: date-time}
+        info: {type: [string, 'null']}
+    RatingContext:
+      type: object
+      required: [tracked_location, business_type, infra_types, infra_objects]
+      properties:
+        tracked_location:
+          $ref: '#/components/schemas/TrackedLocation'
+        business_type:
+          $ref: '#/components/schemas/BusinessType'
+        infra_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/InfraType'
+        infra_objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/InfraObject'
+    Address:
+      type: object
+      required: [address, lat, lon]
+      properties:
+        address: {type: string, minLength: 1}
+        lat: {type: number, minimum: -90, maximum: 90}
+        lon: {type: number, minimum: -180, maximum: 180}
+    User:
+      type: object
+      required: [id, max_user_id, max_chat_id, created_at]
+      properties:
+        id: {type: integer, format: int64, minimum: 1}
+        max_user_id: {type: integer, format: int64, minimum: 1}
+        max_chat_id: {type: integer, format: int64}
+        created_at: {type: string, format: date-time}
+    TrackedLocation:
+      allOf:
+        - $ref: '#/components/schemas/Address'
+        - type: object
+          required: [id, business_type_id, created_at]
+          properties:
+            id: {type: integer, format: int64, minimum: 1}
+            business_type_id: {type: integer, format: int64, minimum: 1}
+            created_at: {type: string, format: date-time}
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [validation_error, unauthorized, not_found, provider_unavailable, internal_error]
+        message: {type: string}
+      example: {code: validation_error, message: address is required}
+  responses:
+    BadRequest:
+      description: Некорректные параметры или данные
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Отсутствует или неверен service token либо обязательный MAX user ID
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Пользователь или принадлежащая ему точка не найдены
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Внутренняя ошибка без раскрытия деталей БД
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -1,0 +1,24 @@
+@startuml c4-components
+title GeoLogic — компоненты API
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+rectangle "cmd/server" as main
+rectangle "app/di.go" as di
+rectangle "net/http / router\nBotToken / IngestionToken" as server
+rectangle "handler\nusers / locations / geocoding\ninfra / business types / events" as handler
+rectangle "service\nинтерфейсы и бизнес-правила" as service
+rectangle "repository\nPostgreSQL / Geocoder\nлокальные model" as repo
+rectangle "domain\nUser / TrackedLocation / GeoPoint\nInfraType / InfraObject\nBusinessType / Event" as domain
+database PostgreSQL as db
+rectangle Geocoder as geo
+main --> di
+di --> server
+server --> handler
+handler --> service
+service --> repo : интерфейсы
+service ..> domain
+repo ..> domain
+repo --> db : pgx / SQL
+repo --> geo
+@enduml

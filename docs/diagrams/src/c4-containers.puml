@@ -1,0 +1,31 @@
+@startuml c4-containers
+title GeoLogic — три модуля MVP
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+actor "Предприниматель" as user
+rectangle "MAX" as max
+package "GeoLogic" {
+ rectangle "bot\nLong Polling + Kafka consumer" as bot
+ rectangle "api\nnet/http" as api
+ rectangle "ingestion\nзагрузка + мониторинг + рейтинг" as worker
+ database "PostgreSQL + PostGIS" as db
+ queue "Kafka\nnotifications" as kafka
+ rectangle "OSRM\nOSM / foot.lua" as osrm
+}
+rectangle "Geocoder" as geo
+rectangle "Источники инфраструктуры / Events" as sources
+rectangle "2ГИС" as gis
+user <--> max
+bot --> max : polling / ответы / оповещения
+bot --> api : пользовательский HTTP API
+worker --> api : загрузка / контекст / отметки
+api --> db : постоянные данные
+api --> geo
+worker --> db : только competitor_cache
+worker --> sources
+worker --> gis : открытия за вчера
+worker --> osrm
+worker --> kafka : produce
+kafka --> bot : group bot-notifications
+@enduml

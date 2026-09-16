@@ -1,0 +1,37 @@
+@startuml monitoring-sequence
+title GeoLogic — загрузка, рейтинг и уведомления
+participant ingestion as W
+participant API as A
+database PostgreSQL as DB
+participant "Источники / 2ГИС" as P
+participant OSRM as R
+queue Kafka as K
+participant "bot\npolling + consumer" as B
+participant MAX as M
+W -> P : инфраструктура / типы / события
+P --> W : нормализуемые данные
+W -> A : PUT internal: типы, инфраструктура, события
+A -> DB : upsert постоянных данных
+W -> DB : очистить просроченный кэш 2ГИС
+W -> A : точки, rating-context, события завтра
+A --> W : справочники, объекты, адресаты
+W -> P : конкуренты за вчера
+P --> W : новые конкуренты
+W -> DB : временный кэш 24 часа
+loop каждая точка
+ W -> R : маршруты к объектам окружения
+ R --> W : метры / секунды
+ W -> W : агрегировать признаки и вычислить рейтинг
+ W -> K : сигнал + location_rating + причины
+end
+W -> A : отметить событие после публикации всем точкам
+A -> DB : notified_at
+K -> B : notifications
+B -> M : оповещение
+M --> B : принято
+B -> K : commit offset
+note over W,K
+ Нет общей транзакции БД/Kafka.
+ При сбоях возможны пропуски и дубли.
+end note
+@enduml
