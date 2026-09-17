@@ -3,7 +3,6 @@ package dto
 import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/business_type/model"
-	basemodel "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/model"
 )
 
 func ToDomain(businessType model.BusinessType) *domain.BusinessType {
@@ -22,9 +21,7 @@ func ToDomain(businessType model.BusinessType) *domain.BusinessType {
 
 func ToModel(businessType domain.BusinessType) *model.BusinessType {
 	return &model.BusinessType{
-		Base: basemodel.Base{
-			ID: businessType.ID,
-		},
+		ID:          businessType.ID,
 		InfraTypeID: businessType.InfraTypeID,
 	}
 }
