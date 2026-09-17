@@ -8,6 +8,8 @@ import (
 
 type TrackedLocation struct {
 	model.Base
-	UserID   uuid.UUID
-	Location model.GeoPoint
+	UserID         uuid.UUID
+	BusinessTypeID uuid.UUID
+	Address        string
+	Location       model.GeoPoint
 }

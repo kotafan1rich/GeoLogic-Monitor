@@ -10,36 +10,33 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/pgerrors"
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_locations/dto"
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_locations/model"
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_locations/query"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_location/dto"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_location/model"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_location/query"
 )
 
-type TrackedLocationRepository interface {
-	Create(ctx context.Context, location *domain.TrackedLocation) (*domain.TrackedLocation, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error)
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.TrackedLocation, error)
-	Delete(ctx context.Context, id uuid.UUID) error
-}
-
-type locationRepository struct {
+type repository struct {
 	db database.DBTX
 }
 
-func NewRepository(db database.DBTX) TrackedLocationRepository {
-	return &locationRepository{db: db}
+func NewRepository(db database.DBTX) *repository {
+	return &repository{db: db}
 }
 
-func (r *locationRepository) Create(ctx context.Context, location *domain.TrackedLocation) (*domain.TrackedLocation, error) {
+func (r *repository) Create(ctx context.Context, location *domain.TrackedLocation) (*domain.TrackedLocation, error) {
 	locationModel := dto.ToModel(*location)
 	err := r.db.QueryRow(
 		ctx,
 		query.Create,
 		locationModel.UserID,
+		locationModel.BusinessTypeID,
+		locationModel.Address,
 		locationModel.Location,
 	).Scan(
 		&locationModel.ID,
 		&locationModel.UserID,
+		&locationModel.BusinessTypeID,
+		&locationModel.Address,
 		&locationModel.Location,
 		&locationModel.CreatedAt,
 		&locationModel.UpdatedAt,
@@ -54,7 +51,7 @@ func (r *locationRepository) Create(ctx context.Context, location *domain.Tracke
 	return dto.ToDomain(*locationModel), nil
 }
 
-func (r *locationRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error) {
+func (r *repository) GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error) {
 	locationModel := model.TrackedLocation{}
 	err := r.db.QueryRow(
 		ctx,
@@ -63,6 +60,8 @@ func (r *locationRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	).Scan(
 		&locationModel.ID,
 		&locationModel.UserID,
+		&locationModel.BusinessTypeID,
+		&locationModel.Address,
 		&locationModel.Location,
 		&locationModel.CreatedAt,
 		&locationModel.UpdatedAt,
@@ -77,7 +76,7 @@ func (r *locationRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	return dto.ToDomain(locationModel), nil
 }
 
-func (r *locationRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.TrackedLocation, error) {
+func (r *repository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.TrackedLocation, error) {
 	rows, err := r.db.Query(
 		ctx,
 		query.GetByUserID,
@@ -94,6 +93,8 @@ func (r *locationRepository) GetByUserID(ctx context.Context, userID uuid.UUID) 
 		if err := rows.Scan(
 			&locationModel.ID,
 			&locationModel.UserID,
+			&locationModel.BusinessTypeID,
+			&locationModel.Address,
 			&locationModel.Location,
 			&locationModel.CreatedAt,
 			&locationModel.UpdatedAt,
@@ -111,7 +112,7 @@ func (r *locationRepository) GetByUserID(ctx context.Context, userID uuid.UUID) 
 	return locations, nil
 }
 
-func (r *locationRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *repository) Delete(ctx context.Context, id uuid.UUID) error {
 	var deletedID uuid.UUID
 	err := r.db.QueryRow(
 		ctx,

@@ -57,7 +57,6 @@ func (a *App) migrate(_ context.Context) error {
 	if err != nil {
 		log.Error(
 			"error to connect to database",
-			"dsn", a.cfg.Database.DSN(),
 			"err", err,
 		)
 		return err

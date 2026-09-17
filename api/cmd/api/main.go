@@ -19,6 +19,7 @@ func main() {
 	app, err := app.New(ctx, cfg)
 	if err != nil {
 		slog.Error("creating app error", "err", err)
+		os.Exit(1)
 	}
 
 	if err := app.Run(); err != nil {
