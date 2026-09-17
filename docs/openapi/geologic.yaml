@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: GeoLogic Monitor API
-  version: 0.3.0
+  version: 0.4.0
   description: >
     Контракт хакатонного MVP, только Санкт-Петербург. API пока не реализован.
     Пользовательские методы доступны только bot-сервису с его Bearer token
@@ -98,12 +98,12 @@ paths:
               additionalProperties: false
               required: [business_type_id, address, lat, lon]
               properties:
-                business_type_id: {type: integer, format: int64, minimum: 1}
+                business_type_id: {type: string, format: uuid}
                 address: {type: string, minLength: 1}
                 lat: {type: number, minimum: -90, maximum: 90}
                 lon: {type: number, minimum: -180, maximum: 180}
             example:
-              business_type_id: 1
+              business_type_id: 22222222-2222-4222-8222-222222222222
               address: Санкт-Петербург, Невский проспект, 28
               lat: 59.9358
               lon: 30.3259
@@ -151,7 +151,7 @@ paths:
         - name: id
           in: path
           required: true
-          schema: {type: integer, format: int64, minimum: 1}
+          schema: {type: string, format: uuid}
       responses:
         '204':
           description: Точка удалена; независимый кэш ingestion истечёт по TTL
@@ -263,7 +263,7 @@ paths:
         - name: id
           in: path
           required: true
-          schema: {type: integer, format: int64, minimum: 1}
+          schema: {type: string, format: uuid}
       responses:
         '200':
           description: Объект инфраструктуры
@@ -406,7 +406,7 @@ paths:
         - name: id
           in: path
           required: true
-          schema: {type: integer, format: int64, minimum: 1}
+          schema: {type: string, format: uuid}
       responses:
         '200':
           description: Событие
@@ -432,7 +432,7 @@ paths:
         - name: id
           in: path
           required: true
-          schema: {type: integer, format: int64, minimum: 1}
+          schema: {type: string, format: uuid}
       responses:
         '204':
           description: Отметка установлена или уже существовала
@@ -480,34 +480,34 @@ components:
       type: object
       required: [id, infra_type_id, infra_type]
       properties:
-        id: {type: integer, format: int64, minimum: 1}
-        infra_type_id: {type: integer, format: int64, minimum: 1}
+        id: {type: string, format: uuid}
+        infra_type_id: {type: string, format: uuid}
         infra_type:
           $ref: '#/components/schemas/InfraType'
     InfraType:
       type: object
       required: [id, slug, name, weight, max_radius]
       properties:
-        id: {type: integer, format: int64, minimum: 1}
+        id: {type: string, format: uuid}
         slug: {type: string, minLength: 1}
         name: {type: string, minLength: 1}
         weight: {type: number, exclusiveMinimum: 0}
         max_radius: {type: integer, minimum: 1, maximum: 65535}
     InfraObject:
-      example: {id: 101, type_id: 1, lat: 59.9358, lon: 30.3259, address: Санкт-Петербург, name: Тестовый объект}
+      example: {id: 44444444-4444-4444-8444-444444444444, type_id: 33333333-3333-4333-8333-333333333333, lat: 59.9358, lon: 30.3259, address: Санкт-Петербург, name: Тестовый объект}
       allOf:
         - $ref: '#/components/schemas/Address'
         - type: object
           required: [id, type_id]
           properties:
-            id: {type: integer, format: int64, minimum: 1}
-            type_id: {type: integer, format: int64, minimum: 1}
+            id: {type: string, format: uuid}
+            type_id: {type: string, format: uuid}
             name: {type: [string, 'null']}
     Event:
       type: object
       required: [id, provider, external_id, lat, lon, date, info, notified_at]
       properties:
-        id: {type: integer, format: int64, minimum: 1}
+        id: {type: string, format: uuid}
         provider: {type: string, minLength: 1}
         external_id: {type: string, minLength: 1}
         lat: {type: number, minimum: -90, maximum: 90}
@@ -527,10 +527,10 @@ components:
         max_radius: {type: integer, minimum: 1, maximum: 65535}
     BusinessTypeInput:
       type: object
-      example: {infra_type_id: 1}
+      example: {infra_type_id: 33333333-3333-4333-8333-333333333333}
       required: [infra_type_id]
       properties:
-        infra_type_id: {type: integer, format: int64, minimum: 1}
+        infra_type_id: {type: string, format: uuid}
     EventInput:
       type: object
       example:
@@ -557,21 +557,19 @@ components:
         lon: {type: number, minimum: -180, maximum: 180}
     User:
       type: object
-      required: [id, max_user_id, max_chat_id, created_at]
+      required: [id, max_user_id, max_chat_id]
       properties:
-        id: {type: integer, format: int64, minimum: 1}
+        id: {type: string, format: uuid}
         max_user_id: {type: integer, format: int64, minimum: 1}
         max_chat_id: {type: integer, format: int64}
-        created_at: {type: string, format: date-time}
     TrackedLocation:
       allOf:
         - $ref: '#/components/schemas/Address'
         - type: object
-          required: [id, business_type_id, created_at]
+          required: [id, business_type_id]
           properties:
-            id: {type: integer, format: int64, minimum: 1}
-            business_type_id: {type: integer, format: int64, minimum: 1}
-            created_at: {type: string, format: date-time}
+            id: {type: string, format: uuid}
+            business_type_id: {type: string, format: uuid}
     CreatedTrackedLocation:
       description: Рейтинг возвращается только при создании и не сохраняется в точке.
       allOf:

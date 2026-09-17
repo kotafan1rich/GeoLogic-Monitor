@@ -6,8 +6,8 @@
 
 | Модель / таблица | Поля |
 | --- | --- |
-| User / users | id, max_user_id (unique), max_chat_id, created_at |
-| TrackedLocation / tracked_locations | id, user_id FK, business_type_id FK, address, location, created_at |
+| User / users | id, max_user_id (unique), max_chat_id, created_at, updated_at |
+| TrackedLocation / tracked_locations | id, user_id FK, business_type_id FK, address, location, created_at, updated_at |
 | InfraType / infra_types | id, slug (unique), name, weight, max_radius, created_at, updated_at |
 | InfraObject / infra_objects | id, type_id FK infra_types, location, address, name nullable, created_at, updated_at |
 | BusinessType / business_types | id, infra_type_id FK infra_types (unique), created_at, updated_at |
@@ -21,7 +21,7 @@ User заменяет Telegram ID на MAX ID. У TrackedLocation добавле
 
 ## Типы, связи и индексы
 
-ID — положительные bigint; даты — timestamptz UTC, календарные границы — Europe/Moscow. GeoPoint хранится как geometry(Point,4326); PostGIS и OSRM принимают lon,lat, HTTP использует именованные lat/lon. Поиск в метрах выполняется через geography, GiST-индекс должен соответствовать выражению location::geography.
+Внутренние ID и ссылающиеся на них внешние ключи — UUID. Идентификаторы MAX остаются bigint, внешние идентификаторы провайдеров — text. `created_at` и `updated_at` хранятся в БД для диагностики и журналирования, но не возвращаются через HTTP API. Даты — timestamptz UTC, календарные границы — Europe/Moscow. GeoPoint хранится как geometry(Point,4326); PostGIS и OSRM принимают lon,lat, HTTP использует именованные lat/lon. Поиск в метрах выполняется через geography, GiST-индекс должен соответствовать выражению location::geography.
 
 Уникальность events — (provider, external_id). Индексы: tracked_locations.user_id, infra_objects.type_id, events.date, пространственные индексы infra_objects и events. Удаление точки физическое. API не обращается к БД ingestion, поэтому кэш удалённой точки исчезает при очередной TTL-очистке. Типы с существующими объектами/точками не удаляются: загрузочное API MVP не предоставляет удаления справочников.
 
@@ -35,7 +35,7 @@ events.notified_at означает завершённую публикацию 
 
 ## CompetitorCache
 
-Таблица competitor_cache в БД ingestion: tracked_location_id, external_id, name, type_id, address, location, opened_at (date), notified_at nullable, expires_at. Primary key — (tracked_location_id, external_id), индекс — expires_at. `tracked_location_id` и `type_id` — внешние идентификаторы без FK: связанные таблицы находятся в другой БД.
+Таблица competitor_cache в БД ingestion: tracked_location_id, external_id, name, type_id, address, location, opened_at (date), notified_at nullable, expires_at, created_at, updated_at. Primary key — (tracked_location_id, external_id), индекс — expires_at. `tracked_location_id` и `type_id` — внешние UUID без FK: связанные таблицы находятся в другой БД.
 
 TTL — 24 часа от фактического получения; повтор не продлевает срок. Данные с истёкшим TTL не читаются. Физическая очистка выполняется ingestion перед ежедневным и ручным запуском; остановка процесса откладывает удаление. Данные не служат историей, не попадают в логи и не копируются в infra_objects.
 

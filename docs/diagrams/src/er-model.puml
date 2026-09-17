@@ -4,63 +4,75 @@ hide circle
 skinparam linetype ortho
 package "API DB" {
 entity users {
- * id : bigint <<PK>>
+ * id : uuid <<PK>>
  --
  * max_user_id : bigint <<UNIQUE>>
  * max_chat_id : bigint
  * created_at : timestamptz
+ * updated_at : timestamptz
 }
 entity tracked_locations {
- * id : bigint <<PK>>
+ * id : uuid <<PK>>
  --
- * user_id : bigint <<FK>>
- * business_type_id : bigint <<FK>>
+ * user_id : uuid <<FK>>
+ * business_type_id : uuid <<FK>>
  * address : text
  * location : geometry(Point,4326)
  * created_at : timestamptz
+ * updated_at : timestamptz
 }
 entity infra_types {
- * id : bigint <<PK>>
+ * id : uuid <<PK>>
  --
  * slug : text <<UNIQUE>>
  * name : text
  * weight : float
  * max_radius : integer
+ * created_at : timestamptz
+ * updated_at : timestamptz
 }
 entity infra_objects {
- * id : bigint <<PK>>
+ * id : uuid <<PK>>
  --
- * type_id : bigint <<FK>>
+ * type_id : uuid <<FK>>
  * location : geometry(Point,4326)
  * address : text
  name : text
+ * created_at : timestamptz
+ * updated_at : timestamptz
 }
 entity business_types {
- * id : bigint <<PK>>
+ * id : uuid <<PK>>
  --
- * infra_type_id : bigint <<FK,UNIQUE>>
+ * infra_type_id : uuid <<FK,UNIQUE>>
+ * created_at : timestamptz
+ * updated_at : timestamptz
 }
 entity events {
- * id : bigint <<PK>>
+ * id : uuid <<PK>>
  --
  * provider, external_id : text <<UNIQUE pair>>
  * location : geometry(Point,4326)
  * date : timestamptz
  info : text
  notified_at : timestamptz
+ * created_at : timestamptz
+ * updated_at : timestamptz
 }
 }
 package "Ingestion DB" {
 entity competitor_cache {
- * tracked_location_id : bigint <<PK,external ID>>
+ * tracked_location_id : uuid <<PK,external ID>>
  * external_id : text <<PK>>
  --
- * type_id : bigint <<external ID>>
+ * type_id : uuid <<external ID>>
  * name, address : text
  * location : geometry(Point,4326)
  * opened_at : date
  notified_at : timestamptz
  * expires_at : timestamptz
+ * created_at : timestamptz
+ * updated_at : timestamptz
 }
 }
 users ||--o{ tracked_locations
@@ -71,7 +83,7 @@ tracked_locations .. competitor_cache : ID only, no FK
 infra_types .. competitor_cache : ID only, no FK
 note bottom of events
  notified_at после публикации для всех точек.
- timestamps постоянных справочников
- описаны в data-model.md.
+ created_at и updated_at хранятся только в БД
+ и не входят в HTTP-контракты.
 end note
 @enduml
