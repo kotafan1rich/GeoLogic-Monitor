@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/api"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database/postgres"
@@ -15,6 +16,7 @@ type diContainer struct {
 	db        database.DBTX
 	txManager database.TxManager
 	log       *logger.Logger
+	handler   api.Handler
 }
 
 func NewDIContainer(cfg *config.Config) *diContainer {
@@ -61,4 +63,11 @@ func (d *diContainer) Log() *logger.Logger {
 		)
 	}
 	return d.log
+}
+
+func (d *diContainer) Handler(ctx context.Context) api.Handler {
+	if d.handler == nil {
+		d.handler = api.NewHandler()
+	}
+	return d.handler
 }
