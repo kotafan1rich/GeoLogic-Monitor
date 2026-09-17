@@ -1,0 +1,78 @@
+services:
+  api:
+    build: ./api
+    env_file:
+      - api/.env
+    ports:
+      - "8080:8080"
+    networks:
+      - geo_logic_net
+    depends_on:
+      api-db:
+        condition: service_healthy
+
+  ingestion:
+    build: ./ingestion
+    env_file:
+      - ingestion/.env
+    networks:
+      - geo_logic_net
+    depends_on:
+      ingestion-db:
+        condition: service_healthy
+      # kafka:
+      #   condition: service_healthy
+
+  bot:
+    build: ./bot
+    env_file:
+      - bot/.env
+    networks:
+      - geo_logic_net
+
+  api-db:
+    image: postgis/postgis:18-3.6
+    env_file:
+      - api/.env
+    ports:
+      - "5432:5432"
+    networks:
+      - geo_logic_net
+    volumes:
+      - api_db_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
+
+  ingestion-db:
+    image: postgis/postgis:18-3.6
+    env_file:
+      - ingestion/.env
+    ports:
+      - "5433:5432"
+    networks:
+      - geo_logic_net
+    volumes:
+      - ingestion_db_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
+  # я ещё не рабтал с кафкой, потом надо будет посмотреть
+  # kafka:
+  #   image: apache/kafka:4.3.1
+  #   container_name: kafka
+  #   ports:
+  #     - "9092:9092"
+  #   # environment:
+  #     # заполнить при подключении
+
+  #   volumes:
+  #     - kafka-data:/var/lib/kafka/data
+
+
+volumes:
+  api_db_data:
+  ingestion_db_data:
+    # kafka-data:
+
+networks:
+  geo_logic_net:
+    driver: bridge

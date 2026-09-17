@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: GeoLogic Monitor API
-  version: 0.2.0
+  version: 0.3.0
   description: >
     Контракт хакатонного MVP, только Санкт-Петербург. API пока не реализован.
     Пользовательские методы доступны только bot-сервису с его Bearer token
@@ -84,6 +84,10 @@ paths:
       description: >
         Bot передаёт выбранный результат геокодинга без изменений.
         Пользователь определяется по X-Max-User-Id и должен быть зарегистрирован.
+        API один раз рассчитывает рейтинг окружения по пешеходным расстояниям OSRM.
+        PostGIS используется только для предварительного отбора; отдельный NoRoute
+        пропускается, а при отсутствии подходящей инфраструктуры рейтинг равен 5.0.
+        Создание и расчёт атомарны; рейтинг не сохраняется и позднее не пересчитывается.
         Повторный POST не является идемпотентным.
       requestBody:
         required: true
@@ -105,17 +109,19 @@ paths:
               lon: 30.3259
       responses:
         '201':
-          description: Точка создана
+          description: Точка создана, рейтинг рассчитан
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TrackedLocation'
+                $ref: '#/components/schemas/CreatedTrackedLocation'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ProviderUnavailable'
         '500':
           $ref: '#/components/responses/InternalError'
     get:
@@ -148,7 +154,7 @@ paths:
           schema: {type: integer, format: int64, minimum: 1}
       responses:
         '204':
-          description: Точка и её кэш конкурентов удалены
+          description: Точка удалена; независимый кэш ingestion истечёт по TTL
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -248,6 +254,31 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /internal/v1/infra/{id}:
+    get:
+      operationId: getInfraObject
+      summary: Получить объект инфраструктуры по внутреннему ID
+      security: [{IngestionToken: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: Объект инфраструктуры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfraObject'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /internal/v1/business-types:
     put:
       operationId: upsertBusinessType
@@ -324,15 +355,52 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-  /internal/v1/tracked-locations/{id}/rating-context:
+  /internal/v1/events/near:
     get:
-      operationId: getRatingContext
-      summary: Исходные данные окружения для расчёта ingestion
+      operationId: listUnnotifiedEventsNear
+      summary: Получить необработанные события рядом с точкой
       description: >
-        Инфраструктура предварительно отбирается по прямому расстоянию в пределах
-        max_radius своего типа; ingestion уточняет маршруты OSRM.
-        Все InfraType возвращаются, включая типы без объектов, для сопоставления кэша.
-        Кэш 2ГИС добавляет ingestion, API его в постоянные объекты не включает.
+        Возвращает события с notified_at=null в заданном радиусе. Если day передан,
+        календарные границы вычисляются в Europe/Moscow; без day дата не ограничивается.
+        Пустой результат возвращается как пустой массив.
+      security: [{IngestionToken: []}]
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: {type: number, minimum: -90, maximum: 90}
+        - name: lon
+          in: query
+          required: true
+          schema: {type: number, minimum: -180, maximum: 180}
+        - name: radius
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 5000, default: 500}
+          description: Радиус поиска в метрах.
+        - name: day
+          in: query
+          required: false
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Необработанные события рядом с точкой
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /internal/v1/events/{id}:
+    get:
+      operationId: getEvent
+      summary: Получить событие по внутреннему ID
       security: [{IngestionToken: []}]
       parameters:
         - name: id
@@ -341,11 +409,11 @@ paths:
           schema: {type: integer, format: int64, minimum: 1}
       responses:
         '200':
-          description: Снимок окружения точки
+          description: Событие
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RatingContext'
+                $ref: '#/components/schemas/Event'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -480,22 +548,6 @@ components:
         lon: {type: number, minimum: -180, maximum: 180}
         date: {type: string, format: date-time}
         info: {type: [string, 'null']}
-    RatingContext:
-      type: object
-      required: [tracked_location, business_type, infra_types, infra_objects]
-      properties:
-        tracked_location:
-          $ref: '#/components/schemas/TrackedLocation'
-        business_type:
-          $ref: '#/components/schemas/BusinessType'
-        infra_types:
-          type: array
-          items:
-            $ref: '#/components/schemas/InfraType'
-        infra_objects:
-          type: array
-          items:
-            $ref: '#/components/schemas/InfraObject'
     Address:
       type: object
       required: [address, lat, lon]
@@ -520,6 +572,19 @@ components:
             id: {type: integer, format: int64, minimum: 1}
             business_type_id: {type: integer, format: int64, minimum: 1}
             created_at: {type: string, format: date-time}
+    CreatedTrackedLocation:
+      description: Рейтинг возвращается только при создании и не сохраняется в точке.
+      allOf:
+        - $ref: '#/components/schemas/TrackedLocation'
+        - type: object
+          required: [rating]
+          properties:
+            rating:
+              type: number
+              minimum: 0.1
+              maximum: 9.9
+              multipleOf: 0.1
+              example: 8.0
     Error:
       type: object
       required: [code, message]
@@ -543,13 +608,19 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     NotFound:
-      description: Пользователь или принадлежащая ему точка не найдены
+      description: Запрошенный пользователь, справочник или ресурс не найден
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
     InternalError:
       description: Внутренняя ошибка без раскрытия деталей БД
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ProviderUnavailable:
+      description: OSRM недоступен либо обязательный расчёт рейтинга не завершён
       content:
         application/json:
           schema:

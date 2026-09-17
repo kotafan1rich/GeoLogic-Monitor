@@ -1,11 +1,11 @@
 asyncapi: 3.0.0
 info:
   title: GeoLogic Monitor Notifications
-  version: 0.2.0
+  version: 0.3.0
   description: >
     Контракт ingestion → bot. Один topic, одна consumer group,
-    retention.ms=3600000, без outbox и DLQ. Рейтинг всего окружения точки направленный,
-    пороги LOW/MEDIUM/HIGH пока не определены.
+    retention.ms=3600000, без outbox и DLQ. Рейтинг рассчитывается API только
+    при создании точки и в уведомления не входит.
 defaultContentType: application/json
 servers:
   local:
@@ -62,7 +62,6 @@ components:
               opened_at: '2026-09-15'
             route: {distance_meters: 420, duration_seconds: 360}
             assessment:
-              location_rating: 2.0
               reasons: [Та же категория бизнеса, Пешая доступность, Открылась вчера]
               recommendations: []
         - name: event
@@ -79,7 +78,6 @@ components:
               date: '2026-09-17T16:00:00Z'
             route: {distance_meters: 600, duration_seconds: 480}
             assessment:
-              location_rating: 8.0
               reasons: [Завтра вечером, Пешая доступность]
               recommendations: [Проверить запас продукции]
   schemas:
@@ -118,13 +116,8 @@ components:
             duration_seconds: {type: number, minimum: 0}
         assessment:
           type: object
-          required: [location_rating, reasons, recommendations]
+          required: [reasons, recommendations]
           properties:
-            location_rating:
-              type: number
-              minimum: 0.1
-              maximum: 9.9
-              description: Рейтинг агрегированного окружения TrackedLocation, не коэффициент сигнала.
             reasons: {type: array, items: {type: string}}
             recommendations: {type: array, items: {type: string}}
       oneOf:
