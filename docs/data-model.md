@@ -1,6 +1,6 @@
 # Модель данных
 
-[ER-диаграмма](diagrams/rendered/er-model.svg). Все таблицы создаются миграциями api/migrations. Постоянные данные принадлежат API; ingestion заполняет их по HTTP. Кэш конкурентов записывает ingestion напрямую через свой repository.
+[ER-диаграмма](diagrams/rendered/er-model.svg). Постоянные данные принадлежат API и создаются его миграциями; ingestion заполняет их по HTTP. Кэш конкурентов находится в отдельной БД и создаётся миграциями ingestion.
 
 ## Сохранённые модели старого API
 
@@ -23,7 +23,7 @@ User заменяет Telegram ID на MAX ID. У TrackedLocation добавле
 
 ID — положительные bigint; даты — timestamptz UTC, календарные границы — Europe/Moscow. GeoPoint хранится как geometry(Point,4326); PostGIS и OSRM принимают lon,lat, HTTP использует именованные lat/lon. Поиск в метрах выполняется через geography, GiST-индекс должен соответствовать выражению location::geography.
 
-Уникальность events — (provider, external_id). Индексы: tracked_locations.user_id, infra_objects.type_id, events.date, пространственные индексы infra_objects и events. Удаление точки физическое, связанный кэш удаляется каскадно. Типы с существующими объектами/точками не удаляются: загрузочное API MVP не предоставляет удаления справочников.
+Уникальность events — (provider, external_id). Индексы: tracked_locations.user_id, infra_objects.type_id, events.date, пространственные индексы infra_objects и events. Удаление точки физическое. API не обращается к БД ingestion, поэтому кэш удалённой точки исчезает при очередной TTL-очистке. Типы с существующими объектами/точками не удаляются: загрузочное API MVP не предоставляет удаления справочников.
 
 Upsert типов инфраструктуры выполняется по slug, объектов инфраструктуры — по стабильному id загрузчика, типов бизнеса — по infra_type_id, событий — по provider/external_id. Для infra_objects загрузчик обязан поддерживать стабильные ID; это не идентификатор карточки 2ГИС. Перезапись справочника обновляет поля, но не создаёт дубликаты.
 
@@ -35,7 +35,7 @@ events.notified_at означает завершённую публикацию 
 
 ## CompetitorCache
 
-Таблица competitor_cache: tracked_location_id FK, external_id, name, type_id FK infra_types, address, location, opened_at (date), notified_at nullable, expires_at. Primary key — (tracked_location_id, external_id), индекс — expires_at.
+Таблица competitor_cache в БД ingestion: tracked_location_id, external_id, name, type_id, address, location, opened_at (date), notified_at nullable, expires_at. Primary key — (tracked_location_id, external_id), индекс — expires_at. `tracked_location_id` и `type_id` — внешние идентификаторы без FK: связанные таблицы находятся в другой БД.
 
 TTL — 24 часа от фактического получения; повтор не продлевает срок. Данные с истёкшим TTL не читаются. Физическая очистка выполняется ingestion перед ежедневным и ручным запуском; остановка процесса откладывает удаление. Данные не служат историей, не попадают в логи и не копируются в infra_objects.
 
@@ -47,9 +47,9 @@ TTL — 24 часа от фактического получения; повто
 
 - GeoPoint: lat, lon.
 - InfraTypeFeatures: TypeID, Slug, Weight, MaxRadiusMeters, ObjectCount, NearestMeters, MeanMeters, DistanceSum, Influence, Count100m, Count300m, Count500m, IsCompetitor.
-- LocationFeatures: TrackedLocationID, BusinessTypeID, InfraTypes.
-- CalculatedRating: TrackedLocationID, Value.
+- LocationFeatures: BusinessTypeID, InfraTypes.
+- CalculatedRating: Value.
 - Route: distance_meters, duration_seconds.
-- Notification: получатель, точка, сигнал, маршрут, location_rating, reasons, recommendations.
+- Notification: получатель, точка, сигнал, маршрут, reasons, recommendations.
 
-Набор признаков сохранён из старого API. Их подготовка и использование описаны в [рейтинге](impact-engine.md); транспортные формы — в спецификациях.
+Расчётные модели рейтинга принадлежат API и существуют только во время создания точки; рейтинг в таблицах не хранится. Набор признаков сохранён из старого API, но расстояния уточняются OSRM. Их подготовка и использование описаны в [рейтинге](impact-engine.md); транспортные формы — в спецификациях.

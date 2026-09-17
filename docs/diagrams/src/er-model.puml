@@ -2,6 +2,7 @@
 title GeoLogic — модель данных MVP
 hide circle
 skinparam linetype ortho
+package "API DB" {
 entity users {
  * id : bigint <<PK>>
  --
@@ -48,23 +49,26 @@ entity events {
  info : text
  notified_at : timestamptz
 }
+}
+package "Ingestion DB" {
 entity competitor_cache {
- * tracked_location_id : bigint <<PK,FK>>
+ * tracked_location_id : bigint <<PK,external ID>>
  * external_id : text <<PK>>
  --
- * type_id : bigint <<FK>>
+ * type_id : bigint <<external ID>>
  * name, address : text
  * location : geometry(Point,4326)
  * opened_at : date
  notified_at : timestamptz
  * expires_at : timestamptz
 }
+}
 users ||--o{ tracked_locations
 infra_types ||--o{ infra_objects
 infra_types ||--o| business_types
 business_types ||--o{ tracked_locations
-tracked_locations ||--o{ competitor_cache : DELETE CASCADE
-infra_types ||--o{ competitor_cache
+tracked_locations .. competitor_cache : ID only, no FK
+infra_types .. competitor_cache : ID only, no FK
 note bottom of events
  notified_at после публикации для всех точек.
  timestamps постоянных справочников
