@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -29,7 +28,7 @@ func New(level, format string, out io.Writer) (*slog.Logger, error) {
 	case LevelInfo:
 		l = slog.LevelInfo
 	default:
-		return nil, errors.New("invalid log level")
+		return nil, ErrInvalidLoggerLevel
 	}
 
 	if out == nil {
@@ -45,7 +44,7 @@ func New(level, format string, out io.Writer) (*slog.Logger, error) {
 	case JSONFormat:
 		h = slog.NewJSONHandler(out, handlerOpts)
 	default:
-		return nil, errors.New("invalid log format")
+		return nil, ErrInvalidLoggerFormat
 	}
 
 	return slog.New(ContextHandler{Handler: h}), nil
