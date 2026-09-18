@@ -8,8 +8,8 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 )
 
-type Service interface {
-	Calculate(ctx context.Context, features domain.LocationFeatures) (*domain.CalculatedRating, error)
+type Calculator interface {
+	Calculate(context.Context, domain.LocationFeatures) (*domain.CalculatedRating, error)
 }
 
 type service struct {
@@ -17,7 +17,7 @@ type service struct {
 	log        *logger.Logger
 }
 
-func NewService(log *logger.Logger, calculator Calculator) Service {
+func NewService(log *logger.Logger, calculator Calculator) *service {
 	return &service{
 		calculator: calculator,
 		log:        log,

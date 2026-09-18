@@ -7,10 +7,6 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 )
 
-type Calculator interface {
-	Calculate(context.Context, domain.LocationFeatures) (*domain.CalculatedRating, error)
-}
-
 type FormulaCalculator struct{}
 
 func NewFormulaCalculator() FormulaCalculator {
