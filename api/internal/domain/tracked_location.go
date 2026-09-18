@@ -23,3 +23,15 @@ func NewTrackedLocation(
 		GeoPoint:       *geopoint,
 	}
 }
+
+type MonitoringLocation struct {
+	TrackedLocation
+	MaxChatID int64
+}
+
+func NewMonitoringLocation(location *TrackedLocation, maxChatID int64) *MonitoringLocation {
+	return &MonitoringLocation{
+		TrackedLocation: *location,
+		MaxChatID:       maxChatID,
+	}
+}

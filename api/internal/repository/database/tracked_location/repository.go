@@ -129,3 +129,38 @@ func (r *repository) Delete(ctx context.Context, id uuid.UUID) error {
 
 	return nil
 }
+
+func (r *repository) GetAllForMonitoring(ctx context.Context) ([]domain.MonitoringLocation, error) {
+	rows, err := r.db.Query(ctx, query.GetAllForMonitoring)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	locations := make([]domain.MonitoringLocation, 0)
+	for rows.Next() {
+		locationModel := model.TrackedLocation{}
+		var maxChatID int64
+		if err := rows.Scan(
+			&locationModel.ID,
+			&locationModel.UserID,
+			&locationModel.BusinessTypeID,
+			&locationModel.Address,
+			&locationModel.Location,
+			&maxChatID,
+			&locationModel.CreatedAt,
+			&locationModel.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		location := dto.ToDomain(locationModel)
+		locations = append(locations, *domain.NewMonitoringLocation(location, maxChatID))
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return locations, nil
+}
