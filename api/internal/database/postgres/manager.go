@@ -46,13 +46,15 @@ func (m *manager) WithTx(ctx context.Context, fn func(ctx context.Context) error
 
 	defer func() {
 		err := tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+		switch {
+		case err == nil:
+			m.logger.InfoContext(ctx, "transaction rollback")
+		case !errors.Is(err, pgx.ErrTxClosed):
 			m.logger.ErrorContext(ctx,
 				"failed to rollback tx",
 				"error", err,
 			)
 		}
-		m.logger.InfoContext(ctx, "transaction rollback")
 	}()
 
 	if err := fn(withTx(ctx, tx)); err != nil {

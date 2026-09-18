@@ -33,3 +33,7 @@ func (t *postgresTx) Exec(ctx context.Context, query string, args ...any) error 
 func (t *postgresTx) QueryRow(ctx context.Context, query string, args ...any) database.Row {
 	return t.tx.QueryRow(ctx, query, args...)
 }
+
+func (t *postgresTx) Query(ctx context.Context, query string, args ...any) (database.Rows, error) {
+	return t.tx.Query(ctx, query, args...)
+}

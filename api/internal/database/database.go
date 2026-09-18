@@ -18,6 +18,7 @@ type Tx interface {
 	Rollback(ctx context.Context) error
 	Exec(ctx context.Context, query string, args ...any) error
 	QueryRow(ctx context.Context, query string, args ...any) Row
+	Query(ctx context.Context, query string, args ...any) (Rows, error)
 }
 
 type DBTX interface {

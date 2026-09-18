@@ -34,6 +34,7 @@ func (d *diContainer) DB(ctx context.Context) database.DBTX {
 		pool, err := postgres.NewPool(
 			ctx,
 			cfg.DSN(),
+			cfg.MinIdleConns,
 			cfg.MaxOpenConns,
 			cfg.MaxConnLifetime,
 		)

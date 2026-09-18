@@ -15,6 +15,7 @@ type pgxPool struct {
 func NewPool(
 	ctx context.Context,
 	dsn string,
+	minIdleConns int,
 	maxConns int,
 	maxConnLifetime time.Duration,
 ) (database.DBTX, error) {
@@ -23,6 +24,7 @@ func NewPool(
 		return nil, err
 	}
 
+	poolConfig.MinIdleConns = int32(minIdleConns)
 	poolConfig.MaxConns = int32(maxConns)
 	poolConfig.MaxConnLifetime = maxConnLifetime
 
@@ -39,15 +41,27 @@ func NewPool(
 }
 
 func (p *pgxPool) Exec(ctx context.Context, query string, args ...any) error {
+	if tx, ok := txFromContext(ctx); ok {
+		return tx.Exec(ctx, query, args...)
+	}
+
 	_, err := p.pool.Exec(ctx, query, args...)
 	return err
 }
 
 func (p *pgxPool) QueryRow(ctx context.Context, query string, args ...any) database.Row {
+	if tx, ok := txFromContext(ctx); ok {
+		return tx.QueryRow(ctx, query, args...)
+	}
+
 	return p.pool.QueryRow(ctx, query, args...)
 }
 
 func (p *pgxPool) Query(ctx context.Context, query string, args ...any) (database.Rows, error) {
+	if tx, ok := txFromContext(ctx); ok {
+		return tx.Query(ctx, query, args...)
+	}
+
 	return p.pool.Query(ctx, query, args...)
 }
 func (p *pgxPool) Begin(ctx context.Context) (database.Tx, error) {

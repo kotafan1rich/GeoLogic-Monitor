@@ -12,7 +12,7 @@ type Database struct {
 	Password        string        `env:"POSTGRES_PASSWORD" envDefault:"postgres"`
 	Name            string        `env:"POSTGRES_NAME" envDefault:"postgres"`
 	SSLMode         string        `env:"POSTGRES_SSL_MODE" envDefault:"disable"`
-	MaxIdleConns    int           `env:"MAX_IDLE_CONNS" envDefault:"10"`
+	MinIdleConns    int           `env:"MIN_IDLE_CONNS" envDefault:"0"`
 	MaxOpenConns    int           `env:"MAX_OPEN_CONNS" envDefault:"100"`
 	MaxConnLifetime time.Duration `env:"MAX_CONN_LIFETIME" envDefault:"5m"`
 }
