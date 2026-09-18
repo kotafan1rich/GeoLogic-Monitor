@@ -41,7 +41,7 @@ services:
     volumes:
       - api_db_data:/var/lib/postgresql
     healthcheck:
-      test: [ "CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
+      test: [ "CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_NAME"' ]
 
   ingestion-db:
     image: postgis/postgis:18-3.6
