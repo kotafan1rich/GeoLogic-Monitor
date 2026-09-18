@@ -1,0 +1,10 @@
+aggregator:
+  digitalspb:
+    max_idle_conns: 20
+    max_idle_conns_per_host: 10
+    max_conns_per_host: 10
+    request_timeout: 30s
+
+logger:
+  level: debug
+  format: text
