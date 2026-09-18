@@ -1,3 +1,3 @@
-.env.template
+.env*
 README.md
 data/
