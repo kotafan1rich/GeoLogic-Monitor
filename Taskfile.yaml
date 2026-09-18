@@ -75,6 +75,16 @@ tasks:
     desc: "Остановить обе базы данных"
     cmds:
       - docker compose stop api-db ingestion-db
+  
+  osrm:up:
+    desc: "Запустить osrm"
+    cmds:
+      - docker compose up -d osrm
+
+  osrm:down:
+    desc: "Остановить osrm"
+    cmds:
+      - docker compose stop osrm
 
   all:up:
     aliases: [app:up]

@@ -10,7 +10,17 @@ MVP позволяет добавить несколько точек, посм�
 
 Go 1.27, стандартный net/http, pgx/pgxpool и ручной SQL, PostgreSQL 18 + PostGIS 3.6, franz-go, OSRM с foot.lua, log/slog, Docker Compose и Taskfile. Frontend-стек пока не определяется.
 
-## Установка Task
+## Текущее состояние
+
+Репозиторий содержит целевую документацию MVP, контракты OpenAPI и AsyncAPI, Docker Compose, заготовки трёх Go-модулей и локальный контейнер OSRM. Полный пользовательский сценарий пока не реализован: `api` и `bot` находятся на стадии каркаса, а в `ingestion` подготовлены базовые конфигурация, логирование и DI.
+
+Локальная инфраструктура OSRM подготовлена отдельно от Go-сервисов; известное ограничение её entrypoint зафиксировано в [README OSRM](osrm/README.md). Команды полного стека уже определены для целевой конфигурации, но станут рабочими после реализации исполняемых файлов сервисов и заполнения их переменных окружения.
+
+## Локальный запуск
+
+Подробная настройка окружения и текущее состояние сервисов описаны в [инструкции по локальной разработке](docs/local-development.md).
+
+### Установка Task
 
 Для запуска команд проекта нужен [Task](https://taskfile.dev/docs/installation). Установить его можно одним из способов:
 
@@ -35,7 +45,7 @@ task --version
 task --list
 ```
 
-Основные команды для Docker Compose:
+Определённые в проекте команды Docker Compose:
 
 ```bash
 task all:up                 # запустить всё
@@ -50,7 +60,17 @@ task api-db:up
 task api-db:down
 task ingestion-db:up
 task ingestion-db:down
+task db:up                  # запустить обе базы данных
+task db:down                # остановить обе базы данных
+task osrm:up                # запустить OSRM
+task osrm:down              # остановить OSRM
 task logs                   # смотреть общие логи
+```
+
+Для первой сборки OSRM или после изменения его Dockerfile и entrypoint используйте:
+
+```bash
+docker compose up --build -d osrm
 ```
 
 ## Документация
@@ -62,12 +82,12 @@ task logs                   # смотреть общие логи
 - [Рейтинг окружения](docs/impact-engine.md)
 - [OpenAPI](docs/openapi/geologic.yaml)
 - [AsyncAPI](docs/asyncapi/notifications.yaml)
-- [Локальная разработка и демо](docs/local-development.md)
-- [Этапы реализации](docs/implementation-plan.md)
+- [Локальная разработка](docs/local-development.md)
+- [Локальный OSRM](osrm/README.md)
 - [Диаграммы: PlantUML и SVG](docs/diagrams/README.md)
 
 ## Статус
 
-Подготовлены документация хакатонного MVP, базовые Docker Compose и Taskfile. Реализация сервисов и миграций продолжается. История уведомлений, Mini App и другие города не входят в объём работ.
+Реализация сервисов, миграций и интеграций продолжается. История уведомлений, Mini App и другие города не входят в объём MVP.
 
 Организация документации основана на [референсном проекте](https://github.com/talense-tasks/backend-trainee-assignment-autumn-2026-kotafan1rich-aee3bbdd/tree/main/docs).
