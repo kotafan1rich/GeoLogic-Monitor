@@ -2,6 +2,8 @@
 
 Целевая архитектура хакатонного MVP: три независимых Go-модуля со своими go.mod, go.sum, Dockerfile, конфигурацией и DI. Общего Go-пакета и импортов соседних модулей нет.
 
+OSRM — отдельный инфраструктурный контейнер, а не четвёртый Go-модуль. Его образ и подготовка локального графа находятся в каталоге `osrm`.
+
 [Контейнеры](diagrams/rendered/c4-containers.svg) · [Компоненты API](diagrams/rendered/c4-components.svg) · [Мониторинг](diagrams/rendered/monitoring-sequence.svg)
 
 ## Ответственность модулей
@@ -78,9 +80,22 @@ ingestion/
 ├── Dockerfile
 ├── go.mod
 └── go.sum
+
+osrm/
+├── cmd/prepare.sh
+├── data/SanktPetersburg.osm.pbf
+├── .env.template
+├── Dockerfile
+└── README.md
 ```
 
 В каждом repository при необходимости создаётся model/. API CLI применяет миграции постоянных данных, ingestion CLI — миграции своей БД и ручной запуск загрузки/мониторинга.
+
+## Локальная инфраструктура OSRM
+
+Compose собирает OSRM из закреплённого образа `ghcr.io/project-osrm/osrm-backend:v26.9.0-debian`. Локальная, не хранящаяся в Git выгрузка Санкт-Петербурга подключается read-only как `/source/SanktPetersburg.osm.pbf`, а подготовленный MLD-граф сохраняется в volume `osrm_graph`. Для маршрутизации используется профиль `/opt/foot.lua`.
+
+Внутри сети `geo_logic_net` сервис доступен по адресу `http://osrm:5000`. Порт хоста настраивается переменной `OSRM_HTTP_PORT` и по умолчанию равен `5000`. Инструкции по сборке, обновлению карты и проверочным запросам находятся в [README OSRM](../osrm/README.md); общая настройка окружения — в [инструкции по локальной разработке](local-development.md).
 
 ## Мониторинг и загрузка
 
