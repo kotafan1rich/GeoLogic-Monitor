@@ -14,6 +14,11 @@ type UserHandler interface {
 	Upsert(w http.ResponseWriter, r *http.Request)
 }
 
+type BusinessTypeHandler interface {
+	Upsert(w http.ResponseWriter, r *http.Request)
+	GetAll(w http.ResponseWriter, r *http.Request)
+}
+
 type EventHandler interface {
 	Upsert(w http.ResponseWriter, r *http.Request)
 	ListUnnotified(w http.ResponseWriter, r *http.Request)
@@ -26,6 +31,7 @@ func RegisterRoutes(
 	mux *http.ServeMux,
 	healthHandler HealthHandler,
 	userHandler UserHandler,
+	businessTypeHandler BusinessTypeHandler,
 	eventHandler EventHandler,
 	botServiceToken string,
 	ingestionServiceToken string,
@@ -37,6 +43,20 @@ func RegisterRoutes(
 		middleware.BotToken(
 			botServiceToken,
 			middleware.MaxUserID(http.HandlerFunc(userHandler.Upsert)),
+		),
+	)
+	mux.Handle(
+		"GET /api/v1/business-types",
+		middleware.BotToken(
+			botServiceToken,
+			middleware.MaxUserID(http.HandlerFunc(businessTypeHandler.GetAll)),
+		),
+	)
+	mux.Handle(
+		"PUT /internal/v1/business-types",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(businessTypeHandler.Upsert),
 		),
 	)
 

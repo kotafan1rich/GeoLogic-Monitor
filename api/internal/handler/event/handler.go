@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/event/dto"
+	handlerrequest "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/request"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/response"
 )
 
@@ -52,11 +52,8 @@ func New(service EventService) *handler {
 
 func (h *handler) Upsert(w http.ResponseWriter, r *http.Request) {
 	var request dto.UpsertRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&request); err != nil {
-		response.WriteError(w, app.ValidationError(errors.New("invalid request body")))
+	if err := handlerrequest.DecodeJSON(r, &request); err != nil {
+		response.WriteError(w, app.ValidationError(err))
 		return
 	}
 
@@ -75,7 +72,7 @@ func (h *handler) Upsert(w http.ResponseWriter, r *http.Request) {
 		request.Info,
 	)
 	if err != nil {
-		writeServiceError(w, err)
+		response.WriteServiceError(w, err)
 		return
 	}
 
@@ -91,7 +88,7 @@ func (h *handler) ListUnnotified(w http.ResponseWriter, r *http.Request) {
 
 	events, err := h.service.GetUnnotifiedByPeriod(r.Context(), from, to)
 	if err != nil {
-		writeServiceError(w, err)
+		response.WriteServiceError(w, err)
 		return
 	}
 
@@ -139,7 +136,7 @@ func (h *handler) ListUnnotifiedNear(w http.ResponseWriter, r *http.Request) {
 
 	events, err := h.service.GetUnnotifiedNear(r.Context(), geoPoint, radius, from, to)
 	if err != nil {
-		writeServiceError(w, err)
+		response.WriteServiceError(w, err)
 		return
 	}
 
@@ -155,7 +152,7 @@ func (h *handler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	event, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		writeServiceError(w, err)
+		response.WriteServiceError(w, err)
 		return
 	}
 
@@ -170,7 +167,7 @@ func (h *handler) MarkNotified(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.MarkNotified(r.Context(), id); err != nil {
-		writeServiceError(w, err)
+		response.WriteServiceError(w, err)
 		return
 	}
 
@@ -200,12 +197,4 @@ func parseFloat(value, name string) (float64, error) {
 		return 0, errors.New("invalid " + name)
 	}
 	return parsed, nil
-}
-
-func writeServiceError(w http.ResponseWriter, err error) {
-	if serviceError, ok := errors.AsType[*app.Error](err); ok {
-		response.WriteError(w, serviceError)
-	} else {
-		response.WriteError(w, app.ErrInternal)
-	}
 }

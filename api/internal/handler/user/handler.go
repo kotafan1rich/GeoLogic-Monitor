@@ -2,12 +2,12 @@ package user
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
+	handlerrequest "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/request"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/response"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/user/dto"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
@@ -29,11 +29,8 @@ func New(service UserService) *handler {
 
 func (h *handler) Upsert(w http.ResponseWriter, r *http.Request) {
 	var request dto.UpsertRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&request); err != nil {
-		response.WriteError(w, app.ValidationError(errors.New("invalid request body")))
+	if err := handlerrequest.DecodeJSON(r, &request); err != nil {
+		response.WriteError(w, app.ValidationError(err))
 		return
 	}
 
@@ -52,11 +49,7 @@ func (h *handler) Upsert(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.service.Upsert(ctx, maxUserID, *request.MaxChatID)
 	if err != nil {
-		if serviceError, ok := errors.AsType[*app.Error](err); ok {
-			response.WriteError(w, serviceError)
-		} else {
-			response.WriteError(w, app.ErrInternal)
-		}
+		response.WriteServiceError(w, err)
 		return
 	}
 

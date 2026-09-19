@@ -10,6 +10,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database/postgres"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler"
+	businesstypehandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/business_type"
 	eventhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/event"
 	healthhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/health"
 	userhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/user"
@@ -47,8 +48,10 @@ type diContainer struct {
 	geocoderRepository        geocodingservice.Repository
 	geocodingService          geocodingservice.Service
 	userService               userhandler.UserService
+	businessTypeService       businesstypehandler.BusinessTypeService
 	healthHandler             handler.HealthHandler
 	userHandler               handler.UserHandler
+	businessTypeHandler       handler.BusinessTypeHandler
 	eventService              eventhandler.EventService
 	eventHandler              handler.EventHandler
 	handler                   api.Handler
@@ -189,6 +192,20 @@ func (d *diContainer) UserHandler(ctx context.Context) handler.UserHandler {
 	return d.userHandler
 }
 
+func (d *diContainer) BusinessTypeService(ctx context.Context) businesstypehandler.BusinessTypeService {
+	if d.businessTypeService == nil {
+		d.businessTypeService = businesstypeservice.NewService(d.Log(), d.BusinessTypeRepository(ctx))
+	}
+	return d.businessTypeService
+}
+
+func (d *diContainer) BusinessTypeHandler(ctx context.Context) handler.BusinessTypeHandler {
+	if d.businessTypeHandler == nil {
+		d.businessTypeHandler = businesstypehandler.New(d.BusinessTypeService(ctx))
+	}
+	return d.businessTypeHandler
+}
+
 func (d *diContainer) EventService(ctx context.Context) eventhandler.EventService {
 	if d.eventService == nil {
 		d.eventService = eventservice.NewEventService(d.Log(), d.EventRepository(ctx))
@@ -208,6 +225,7 @@ func (d *diContainer) Handler(ctx context.Context) api.Handler {
 		d.handler = api.NewHandler(
 			d.HealthHandler(ctx),
 			d.UserHandler(ctx),
+			d.BusinessTypeHandler(ctx),
 			d.EventHandler(ctx),
 			d.cfg.BotServiceToken,
 			d.cfg.IngestionServiceToken,
