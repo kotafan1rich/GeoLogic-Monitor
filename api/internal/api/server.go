@@ -12,6 +12,7 @@ type Handler interface {
 }
 
 type httpHandler struct {
+	healthHandler         handler.HealthHandler
 	userHandler           handler.UserHandler
 	eventHandler          handler.EventHandler
 	botServiceToken       string
@@ -20,6 +21,7 @@ type httpHandler struct {
 }
 
 func NewHandler(
+	healthHandler handler.HealthHandler,
 	userHandler handler.UserHandler,
 	eventHandler handler.EventHandler,
 	botServiceToken string,
@@ -27,6 +29,7 @@ func NewHandler(
 	corsAllowedOrigin string,
 ) Handler {
 	return &httpHandler{
+		healthHandler:         healthHandler,
 		userHandler:           userHandler,
 		eventHandler:          eventHandler,
 		botServiceToken:       botServiceToken,
@@ -39,6 +42,7 @@ func (h *httpHandler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(
 		mux,
+		h.healthHandler,
 		h.userHandler,
 		h.eventHandler,
 		h.botServiceToken,

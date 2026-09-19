@@ -6,6 +6,10 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
 
+type HealthHandler interface {
+	Health(w http.ResponseWriter, r *http.Request)
+}
+
 type UserHandler interface {
 	Upsert(w http.ResponseWriter, r *http.Request)
 }
@@ -20,11 +24,14 @@ type EventHandler interface {
 
 func RegisterRoutes(
 	mux *http.ServeMux,
+	healthHandler HealthHandler,
 	userHandler UserHandler,
 	eventHandler EventHandler,
 	botServiceToken string,
 	ingestionServiceToken string,
 ) {
+	mux.HandleFunc("GET /health", healthHandler.Health)
+
 	mux.Handle(
 		"PUT /api/v1/users/me",
 		middleware.BotToken(
