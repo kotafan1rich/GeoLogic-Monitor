@@ -144,7 +144,7 @@ func (h *handler) ListUnnotifiedNear(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) GetByID(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
+	id, err := handlerrequest.ParseUUIDPath(r, "id")
 	if err != nil {
 		response.WriteError(w, app.ValidationError(errors.New("invalid event id")))
 		return
@@ -160,7 +160,7 @@ func (h *handler) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) MarkNotified(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
+	id, err := handlerrequest.ParseUUIDPath(r, "id")
 	if err != nil {
 		response.WriteError(w, app.ValidationError(errors.New("invalid event id")))
 		return

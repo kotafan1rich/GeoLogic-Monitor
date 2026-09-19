@@ -13,6 +13,7 @@ import (
 	businesstypehandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/business_type"
 	eventhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/event"
 	healthhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/health"
+	infrahandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/infra"
 	userhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/user"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
@@ -49,9 +50,12 @@ type diContainer struct {
 	geocodingService          geocodingservice.Service
 	userService               userhandler.UserService
 	businessTypeService       businesstypehandler.BusinessTypeService
+	infraTypeService          infrahandler.InfraTypeService
+	infraService              infrahandler.InfraService
 	healthHandler             handler.HealthHandler
 	userHandler               handler.UserHandler
 	businessTypeHandler       handler.BusinessTypeHandler
+	infraHandler              handler.InfraHandler
 	eventService              eventhandler.EventService
 	eventHandler              handler.EventHandler
 	handler                   api.Handler
@@ -206,6 +210,27 @@ func (d *diContainer) BusinessTypeHandler(ctx context.Context) handler.BusinessT
 	return d.businessTypeHandler
 }
 
+func (d *diContainer) InfraTypeService(ctx context.Context) infrahandler.InfraTypeService {
+	if d.infraTypeService == nil {
+		d.infraTypeService = infraservice.NewTypeService(d.Log(), d.InfraTypeRepository(ctx))
+	}
+	return d.infraTypeService
+}
+
+func (d *diContainer) InfraService(ctx context.Context) infrahandler.InfraService {
+	if d.infraService == nil {
+		d.infraService = infraservice.NewInfraService(d.Log(), d.InfraObjectRepository(ctx))
+	}
+	return d.infraService
+}
+
+func (d *diContainer) InfraHandler(ctx context.Context) handler.InfraHandler {
+	if d.infraHandler == nil {
+		d.infraHandler = infrahandler.New(d.InfraTypeService(ctx), d.InfraService(ctx))
+	}
+	return d.infraHandler
+}
+
 func (d *diContainer) EventService(ctx context.Context) eventhandler.EventService {
 	if d.eventService == nil {
 		d.eventService = eventservice.NewEventService(d.Log(), d.EventRepository(ctx))
@@ -226,6 +251,7 @@ func (d *diContainer) Handler(ctx context.Context) api.Handler {
 			d.HealthHandler(ctx),
 			d.UserHandler(ctx),
 			d.BusinessTypeHandler(ctx),
+			d.InfraHandler(ctx),
 			d.EventHandler(ctx),
 			d.cfg.BotServiceToken,
 			d.cfg.IngestionServiceToken,

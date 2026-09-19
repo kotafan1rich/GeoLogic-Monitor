@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"uuid"
 )
 
 func DecodeJSON(r *http.Request, destination any) error {
@@ -14,4 +15,8 @@ func DecodeJSON(r *http.Request, destination any) error {
 		return errors.New("invalid request body")
 	}
 	return nil
+}
+
+func ParseUUIDPath(r *http.Request, name string) (uuid.UUID, error) {
+	return uuid.Parse(r.PathValue(name))
 }

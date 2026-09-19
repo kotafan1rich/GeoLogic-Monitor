@@ -19,6 +19,12 @@ type BusinessTypeHandler interface {
 	GetAll(w http.ResponseWriter, r *http.Request)
 }
 
+type InfraHandler interface {
+	UpsertType(w http.ResponseWriter, r *http.Request)
+	UpsertObject(w http.ResponseWriter, r *http.Request)
+	GetObjectByID(w http.ResponseWriter, r *http.Request)
+}
+
 type EventHandler interface {
 	Upsert(w http.ResponseWriter, r *http.Request)
 	ListUnnotified(w http.ResponseWriter, r *http.Request)
@@ -32,6 +38,7 @@ func RegisterRoutes(
 	healthHandler HealthHandler,
 	userHandler UserHandler,
 	businessTypeHandler BusinessTypeHandler,
+	infraHandler InfraHandler,
 	eventHandler EventHandler,
 	botServiceToken string,
 	ingestionServiceToken string,
@@ -59,6 +66,20 @@ func RegisterRoutes(
 			http.HandlerFunc(businessTypeHandler.Upsert),
 		),
 	)
+	infraRoutes := []struct {
+		pattern string
+		handler http.HandlerFunc
+	}{
+		{"PUT /internal/v1/infra-types", infraHandler.UpsertType},
+		{"PUT /internal/v1/infra", infraHandler.UpsertObject},
+		{"GET /internal/v1/infra/{id}", infraHandler.GetObjectByID},
+	}
+	for _, route := range infraRoutes {
+		mux.Handle(
+			route.pattern,
+			middleware.IngestionToken(ingestionServiceToken, route.handler),
+		)
+	}
 
 	eventRoutes := []struct {
 		pattern string

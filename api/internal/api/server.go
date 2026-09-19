@@ -15,6 +15,7 @@ type httpHandler struct {
 	healthHandler         handler.HealthHandler
 	userHandler           handler.UserHandler
 	businessTypeHandler   handler.BusinessTypeHandler
+	infraHandler          handler.InfraHandler
 	eventHandler          handler.EventHandler
 	botServiceToken       string
 	ingestionServiceToken string
@@ -25,6 +26,7 @@ func NewHandler(
 	healthHandler handler.HealthHandler,
 	userHandler handler.UserHandler,
 	businessTypeHandler handler.BusinessTypeHandler,
+	infraHandler handler.InfraHandler,
 	eventHandler handler.EventHandler,
 	botServiceToken string,
 	ingestionServiceToken string,
@@ -34,6 +36,7 @@ func NewHandler(
 		healthHandler:         healthHandler,
 		userHandler:           userHandler,
 		businessTypeHandler:   businessTypeHandler,
+		infraHandler:          infraHandler,
 		eventHandler:          eventHandler,
 		botServiceToken:       botServiceToken,
 		ingestionServiceToken: ingestionServiceToken,
@@ -48,6 +51,7 @@ func (h *httpHandler) Routes() http.Handler {
 		h.healthHandler,
 		h.userHandler,
 		h.businessTypeHandler,
+		h.infraHandler,
 		h.eventHandler,
 		h.botServiceToken,
 		h.ingestionServiceToken,
