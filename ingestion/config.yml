@@ -4,6 +4,13 @@ aggregator:
     max_idle_conns_per_host: 10
     max_conns_per_host: 10
     request_timeout: 30s
+    attempt_timeout: 5s
+    max_retries: 3
+    job_interval: 30s
+    base_urls:
+      spb_classif_gate: "https://spb-classif.gate.petersburg.ru/api/v2/"
+      egs_gate: "https://egs.gate.petersburg.ru/egs/"
+      yazzh_gate: "https://yazzh.gate.petersburg.ru"
 
 logger:
   level: debug

@@ -20,10 +20,14 @@ type AggregatorConfig struct {
 }
 
 type DigitalSpbConfig struct {
-	MaxIdleConns        int           `yaml:"max_idle_conns"`
-	MaxIdleConnsPerHost int           `yaml:"max_idle_conns_per_host"`
-	MaxConnsPerHost     int           `yaml:"max_conns_per_host"`
-	RequestTimeout      time.Duration `yaml:"request_timeout"`
+	MaxIdleConns        int               `yaml:"max_idle_conns"`
+	MaxIdleConnsPerHost int               `yaml:"max_idle_conns_per_host"`
+	MaxConnsPerHost     int               `yaml:"max_conns_per_host"`
+	RequestTimeout      time.Duration     `yaml:"request_timeout"`
+	AttemptTimeout      time.Duration     `yaml:"attempt_timeout"`
+	MaxRetries          uint              `yaml:"max_retries"`
+	JobInterval         time.Duration     `yaml:"job_interval"`
+	BaseURLMap          map[string]string `yaml:"base_urls"`
 }
 
 var config *Config

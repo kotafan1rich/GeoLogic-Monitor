@@ -16,38 +16,57 @@ const maxBodySize = 64 << 20
 
 type Client struct {
 	httpClient     *http.Client
-	baseURLs       map[string]*url.URL
+	BaseURLs       map[string]*url.URL
 	attemptTimeout time.Duration
 	maxRetries     uint
 	newBackOff     func() backoff.BackOff
 }
 
 func New(
-	hc *http.Client, baseURLs map[string]*url.URL, attemptTimeout time.Duration, maxRetries uint,
+	hc *http.Client, baseURLs map[string]string, attemptTimeout time.Duration, maxRetries uint,
 ) (*Client, error) {
-	const op = "digitalspb.New"
-
 	if hc == nil {
-		return nil, fmt.Errorf("%s: %w", op, ErrInvalidHTTPClient)
+		return nil, ErrInvalidHTTPClient
 	}
 
 	if len(baseURLs) == 0 {
-		return nil, fmt.Errorf("%s: %w", op, ErrInvalidHTTPClient)
+		return nil, ErrInvalidURLMap
 	}
 
+	parsedBaseURLs := make(map[string]*url.URL)
+
 	for source, u := range baseURLs {
-		if u == nil || u.Scheme == "" || u.Host == "" {
-			return nil, fmt.Errorf("%s: %w: %q", op, ErrInvalidURLMap, source)
+		parsed, err := url.Parse(u)
+		if err != nil {
+			return nil, fmt.Errorf("%w [%s]: %v", ErrInvalidURL, source, err)
 		}
+
+		if !validateURL(parsed) {
+			return nil, fmt.Errorf("%w [%s]", ErrInvalidURL, source)
+		}
+
+		parsedBaseURLs[source] = parsed
 	}
 
 	return &Client{
 		httpClient:     hc,
-		baseURLs:       baseURLs,
+		BaseURLs:       parsedBaseURLs,
 		attemptTimeout: attemptTimeout,
 		maxRetries:     maxRetries,
 		newBackOff:     func() backoff.BackOff { return backoff.NewExponentialBackOff() },
 	}, nil
+}
+
+func MustNew(
+	hc *http.Client, baseURLs map[string]string, attemptTimeout time.Duration, maxRetries uint,
+) *Client {
+	const op = "digitalspb.MustNew"
+
+	c, err := New(hc, baseURLs, attemptTimeout, maxRetries)
+	if err != nil {
+		panic(fmt.Sprintf("%s: failed to init digital-spb client: %v", op, err))
+	}
+	return c
 }
 
 func (c *Client) do(ctx context.Context, baseURL *url.URL, endpoint string, query url.Values, out any) error {
@@ -122,4 +141,8 @@ func (c *Client) attempt(ctx context.Context, target string) ([]byte, error) {
 	}
 
 	return bytes, nil
+}
+
+func validateURL(u *url.URL) bool {
+	return !(u == nil && u.Scheme == "" && u.Host == "")
 }
