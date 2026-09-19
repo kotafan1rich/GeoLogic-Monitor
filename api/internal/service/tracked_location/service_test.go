@@ -17,7 +17,7 @@ func TestServiceCreate(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeTrackedLocationRepository{}
-	service := NewTrackedLocationService(testLogger(), repo)
+	service := newTestService(repo)
 	userID := uuid.New()
 	businessTypeID := uuid.New()
 
@@ -28,6 +28,9 @@ func TestServiceCreate(t *testing.T) {
 	if result.UserID != userID || result.BusinessTypeID != businessTypeID || result.Address != "address" {
 		t.Fatalf("unexpected tracked location: %+v", result)
 	}
+	if result.Value != 5 {
+		t.Fatalf("rating: got %v, want 5", result.Value)
+	}
 	if repo.createCalls != 1 {
 		t.Fatalf("repository create calls: got %d, want 1", repo.createCalls)
 	}
@@ -37,7 +40,7 @@ func TestServiceCreateRejectsInvalidLatitude(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeTrackedLocationRepository{}
-	service := NewTrackedLocationService(testLogger(), repo)
+	service := newTestService(repo)
 
 	_, err := service.Create(context.Background(), uuid.New(), uuid.New(), "address", 91, 30.32)
 	var appErr *apperrs.Error
@@ -59,7 +62,7 @@ func TestServiceGetByIDMapsNotFound(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeTrackedLocationRepository{getByIDErr: domainerrs.ErrTrackedLocationNotFound}
-	service := NewTrackedLocationService(testLogger(), repo)
+	service := newTestService(repo)
 
 	_, err := service.GetByID(context.Background(), uuid.New())
 	var appErr *apperrs.Error
@@ -77,6 +80,61 @@ func TestServiceGetByIDMapsNotFound(t *testing.T) {
 type fakeTrackedLocationRepository struct {
 	createCalls int
 	getByIDErr  error
+}
+
+type fakeOSRMRepository struct{}
+
+func (*fakeOSRMRepository) FilterWalkingDistance(
+	context.Context,
+	*domain.GeoPoint,
+	[]*domain.InfraObject,
+) ([]*domain.InfraObjectDistance, error) {
+	return []*domain.InfraObjectDistance{}, nil
+}
+
+type fakeInfraService struct{}
+
+func (*fakeInfraService) Near(
+	context.Context,
+	*domain.GeoPoint,
+) ([]*domain.InfraObject, error) {
+	return []*domain.InfraObject{}, nil
+}
+
+type fakeBusinessTypeService struct{}
+
+func (*fakeBusinessTypeService) GetByID(
+	_ context.Context,
+	id uuid.UUID,
+) (*domain.BusinessType, error) {
+	return &domain.BusinessType{ID: id, InfraTypeID: uuid.New()}, nil
+}
+
+type fakeRatingService struct{}
+
+func (*fakeRatingService) Calculate(
+	context.Context,
+	domain.LocationFeatures,
+) (*domain.CalculatedRating, error) {
+	return &domain.CalculatedRating{Value: 5}, nil
+}
+
+type fakeTxManager struct{}
+
+func (fakeTxManager) WithTx(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
+}
+
+func newTestService(repo TrackedLocationRepository) *service {
+	return NewTrackedLocationService(
+		repo,
+		&fakeOSRMRepository{},
+		&fakeInfraService{},
+		&fakeBusinessTypeService{},
+		&fakeRatingService{},
+		fakeTxManager{},
+		testLogger(),
+	)
 }
 
 func (r *fakeTrackedLocationRepository) Create(

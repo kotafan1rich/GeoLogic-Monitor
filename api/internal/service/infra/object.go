@@ -15,7 +15,7 @@ import (
 type InfraRepository interface {
 	Upsert(ctx context.Context, infraObject *domain.InfraObject) (*domain.InfraObject, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.InfraObject, error)
-	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]domain.InfraObject, error)
+	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error)
 }
 
 type infraService struct {
@@ -84,7 +84,7 @@ func (s *infraService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Infra
 func (s *infraService) Near(
 	ctx context.Context,
 	geoPoint *domain.GeoPoint,
-) ([]domain.InfraObject, error) {
+) ([]*domain.InfraObject, error) {
 	infraObjects, err := s.repo.Near(ctx, geoPoint)
 	if err != nil {
 		s.log.ErrorContext(ctx,

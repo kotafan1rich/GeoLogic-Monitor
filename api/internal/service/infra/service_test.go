@@ -118,7 +118,7 @@ func (r *fakeInfraRepository) GetByID(context.Context, uuid.UUID) (*domain.Infra
 	return nil, nil
 }
 
-func (r *fakeInfraRepository) Near(context.Context, *domain.GeoPoint) ([]domain.InfraObject, error) {
+func (r *fakeInfraRepository) Near(context.Context, *domain.GeoPoint) ([]*domain.InfraObject, error) {
 	return nil, nil
 }
 

@@ -11,6 +11,7 @@ type Config struct {
 	HttpServer HttpServer
 	Database   Database
 	Logging    Logging
+	OSRM       OSRM
 }
 
 func LoadConfig() (*Config, error) {

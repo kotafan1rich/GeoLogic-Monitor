@@ -24,6 +24,18 @@ func NewTrackedLocation(
 	}
 }
 
+type TrackedLocationRating struct {
+	TrackedLocation
+	CalculatedRating
+}
+
+func NewTrackedLocationRating(location *TrackedLocation, rating *CalculatedRating) *TrackedLocationRating {
+	return &TrackedLocationRating{
+		TrackedLocation:  *location,
+		CalculatedRating: *rating,
+	}
+}
+
 type MonitoringLocation struct {
 	TrackedLocation
 	MaxChatID int64

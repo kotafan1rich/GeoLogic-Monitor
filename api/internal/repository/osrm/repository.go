@@ -9,7 +9,7 @@ import (
 )
 
 type OSRMClient interface {
-	GetWalkingDistance(ctx context.Context, src *osrm.Coordinate, dst []*osrm.Coordinate) ([]*float64, error)
+	GetWalkingDistances(ctx context.Context, src *osrm.Coordinate, dst []*osrm.Coordinate) ([]*float64, error)
 }
 
 type repository struct {
@@ -31,7 +31,7 @@ func (r *repository) FilterWalkingDistance(
 		return []*domain.InfraObjectDistance{}, nil
 	}
 
-	distances, err := r.osrmClient.GetWalkingDistance(
+	distances, err := r.osrmClient.GetWalkingDistances(
 		ctx,
 		dto.ToCoordinate(src),
 		dto.ToCoordinateSlice(dst),

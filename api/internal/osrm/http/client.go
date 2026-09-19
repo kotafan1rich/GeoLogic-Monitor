@@ -24,7 +24,7 @@ func New(client *http.Client, baseUrl string) *osrmClient {
 	}
 }
 
-func (o *osrmClient) GetWalkingDistance(ctx context.Context, src *osrm.Coordinate, dst []*osrm.Coordinate) ([]*float64, error) {
+func (o *osrmClient) GetWalkingDistances(ctx context.Context, src *osrm.Coordinate, dst []*osrm.Coordinate) ([]*float64, error) {
 	path := "/table/v1/foot/" + joinCoordinates(src, dst)
 
 	query := url.Values{}

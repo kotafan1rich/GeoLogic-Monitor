@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"net/http"
 	"os"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/api"
@@ -9,12 +10,14 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database/postgres"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
+	osrmhttp "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/osrm/http"
 	businesstyperepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/business_type"
 	eventrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/event"
 	infraobjectrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/infra_object"
 	infratyperepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/infra_type"
 	trackedlocationrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_location"
 	userrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/user"
+	osrmrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/osrm"
 	businesstypeservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/business_type"
 	eventservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/event"
 	infraservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra"
@@ -33,6 +36,7 @@ type diContainer struct {
 	infraTypeRepository       infraservice.InfraTypeRepository
 	trackedLocationRepository trackedlocationservice.TrackedLocationRepository
 	userRepository            userservice.UserRepository
+	osrmRepository            trackedlocationservice.OSRMRepository
 	handler                   api.Handler
 }
 
@@ -123,6 +127,15 @@ func (d *diContainer) UserRepository(ctx context.Context) userservice.UserReposi
 		d.userRepository = userrepository.NewRepository(d.DB(ctx))
 	}
 	return d.userRepository
+}
+
+func (d *diContainer) OSRMRepository() trackedlocationservice.OSRMRepository {
+	if d.osrmRepository == nil {
+		client := &http.Client{Timeout: d.cfg.OSRM.Timeout}
+		osrmClient := osrmhttp.New(client, d.cfg.OSRM.BaseURL)
+		d.osrmRepository = osrmrepository.New(osrmClient)
+	}
+	return d.osrmRepository
 }
 
 func (d *diContainer) Handler(ctx context.Context) api.Handler {

@@ -6,12 +6,29 @@ import (
 	"log/slog"
 	"uuid"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	domainerrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
 	apperrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating"
 )
 
+type RatingService interface {
+	Calculate(ctx context.Context, features domain.LocationFeatures) (*domain.CalculatedRating, error)
+}
+
+type InfraService interface {
+	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error)
+}
+
+type BusinessTypeService interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.BusinessType, error)
+}
+
+type OSRMRepository interface {
+	FilterWalkingDistance(ctx context.Context, src *domain.GeoPoint, dst []*domain.InfraObject) ([]*domain.InfraObjectDistance, error)
+}
 type TrackedLocationRepository interface {
 	Create(ctx context.Context, location *domain.TrackedLocation) (*domain.TrackedLocation, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error)
@@ -21,12 +38,34 @@ type TrackedLocationRepository interface {
 }
 
 type service struct {
-	repo TrackedLocationRepository
-	log  *logger.Logger
+	repo                TrackedLocationRepository
+	osrmRepo            OSRMRepository
+	infraServie         InfraService
+	businessTypeService BusinessTypeService
+	ratingService       RatingService
+
+	txManager database.TxManager
+	log       *logger.Logger
 }
 
-func NewTrackedLocationService(log *logger.Logger, repo TrackedLocationRepository) *service {
-	return &service{repo: repo, log: log}
+func NewTrackedLocationService(
+	repo TrackedLocationRepository,
+	osrmRepo OSRMRepository,
+	infraServie InfraService,
+	businessTypeService BusinessTypeService,
+	ratingService RatingService,
+	txManager database.TxManager,
+	log *logger.Logger,
+) *service {
+	return &service{
+		repo:                repo,
+		osrmRepo:            osrmRepo,
+		infraServie:         infraServie,
+		businessTypeService: businessTypeService,
+		ratingService:       ratingService,
+		txManager:           txManager,
+		log:                 log,
+	}
 }
 
 func (s *service) Create(
@@ -36,24 +75,63 @@ func (s *service) Create(
 	address string,
 	lat float64,
 	lng float64,
-) (*domain.TrackedLocation, error) {
+) (*domain.TrackedLocationRating, error) {
 	geoPoint, err := domain.NewGeoPoint(lat, lng)
 	if err != nil || geoPoint == nil {
 		return nil, apperrs.ValidationError(err)
 	}
 
-	location := domain.NewTrackedLocation(userID, businessTypeID, address, geoPoint)
-	location, err = s.repo.Create(ctx, location)
+	var calculatedRating *domain.CalculatedRating
+	var createdLocation *domain.TrackedLocation
+
+	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		location := domain.NewTrackedLocation(userID, businessTypeID, address, geoPoint)
+		location, err := s.repo.Create(ctx, location)
+		if err != nil {
+			s.log.ErrorContext(ctx,
+				"failed to create tracked location",
+				slog.String("user_id", userID.String()),
+				slog.String("error", err.Error()),
+			)
+			return err
+		}
+
+		infraNear, err := s.infraServie.Near(ctx, &location.GeoPoint)
+		if err != nil {
+			return err
+		}
+
+		infraWithDistance, err := s.osrmRepo.FilterWalkingDistance(ctx, &location.GeoPoint, infraNear)
+		if err != nil {
+			s.log.ErrorContext(ctx,
+				"failed to get walking distances for location",
+				slog.String("user_id", userID.String()),
+				slog.String("error", err.Error()),
+			)
+			return apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
+		}
+
+		businessType, err := s.businessTypeService.GetByID(ctx, location.BusinessTypeID)
+		if err != nil {
+			return err
+		}
+		features := rating.BuildLocationFeatures(businessType, infraWithDistance)
+
+		ratingResult, err := s.ratingService.Calculate(ctx, *features)
+		if err != nil {
+			return apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
+		}
+
+		createdLocation = location
+		calculatedRating = ratingResult
+		return nil
+	})
+
 	if err != nil {
-		s.log.ErrorContext(ctx,
-			"failed to create tracked location",
-			slog.String("user_id", userID.String()),
-			slog.String("error", err.Error()),
-		)
 		return nil, err
 	}
 
-	return location, nil
+	return domain.NewTrackedLocationRating(createdLocation, calculatedRating), nil
 }
 
 func (s *service) GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error) {
