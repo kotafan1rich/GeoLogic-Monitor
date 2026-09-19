@@ -1,5 +1,9 @@
 FROM ghcr.io/project-osrm/osrm-backend:v26.9.0-debian
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY . .

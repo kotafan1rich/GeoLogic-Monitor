@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	HttpServer HttpServer
-	Database   Database
-	Logging    Logging
-	OSRM       OSRM
-	Geocoder   Geocoder
+	HttpServer      HttpServer
+	Database        Database
+	Logging         Logging
+	OSRM            OSRM
+	Geocoder        Geocoder
+	BotServiceToken string `env:"BOT_SERVICE_TOKEN,required"`
 }
 
 func LoadConfig() (*Config, error) {
