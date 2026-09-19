@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	apperrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 )
 
@@ -19,33 +19,27 @@ var (
 	errQueryTooLong = errors.New("query is too long")
 )
 
-type Client interface {
-	Autocomplete(ctx context.Context, search string) (*geocoder.Autocomplete, error)
-}
-
-type Suggestion struct {
-	Address string
-	Lat     float64
-	Lon     float64
+type Repository interface {
+	Suggestions(ctx context.Context, query string) ([]domain.Address, error)
 }
 
 type Service interface {
-	Suggest(ctx context.Context, query string) ([]Suggestion, error)
+	Suggest(ctx context.Context, query string) ([]domain.Address, error)
 }
 
 type service struct {
-	client Client
-	log    *logger.Logger
+	repo Repository
+	log  *logger.Logger
 }
 
-func NewService(client Client, log *logger.Logger) Service {
+func NewService(repo Repository, log *logger.Logger) Service {
 	return &service{
-		client: client,
-		log:    log,
+		repo: repo,
+		log:  log,
 	}
 }
 
-func (s *service) Suggest(ctx context.Context, query string) ([]Suggestion, error) {
+func (s *service) Suggest(ctx context.Context, query string) ([]domain.Address, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, apperrs.ValidationError(errEmptyQuery)
@@ -54,7 +48,7 @@ func (s *service) Suggest(ctx context.Context, query string) ([]Suggestion, erro
 		return nil, apperrs.ValidationError(errQueryTooLong)
 	}
 
-	result, err := s.client.Autocomplete(ctx, query)
+	result, err := s.repo.Suggestions(ctx, query)
 	if err != nil {
 		s.log.ErrorContext(ctx,
 			"failed to get geocoding suggestions",
@@ -63,24 +57,8 @@ func (s *service) Suggest(ctx context.Context, query string) ([]Suggestion, erro
 		return nil, apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
 	}
 	if result == nil {
-		return []Suggestion{}, nil
+		return []domain.Address{}, nil
 	}
 
-	return []Suggestion{{
-		Address: formatAddress(result.Name, result.BuildingName),
-		Lat:     result.Latitude,
-		Lon:     result.Longitude,
-	}}, nil
-}
-
-func formatAddress(name, buildingName string) string {
-	name = strings.TrimSpace(name)
-	buildingName = strings.TrimSpace(buildingName)
-	if name == "" {
-		return buildingName
-	}
-	if buildingName == "" || strings.Contains(name, buildingName) {
-		return name
-	}
-	return name + ", " + buildingName
+	return result, nil
 }

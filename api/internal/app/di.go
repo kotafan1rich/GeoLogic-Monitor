@@ -9,6 +9,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database/postgres"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 	businesstyperepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/business_type"
@@ -17,9 +18,11 @@ import (
 	infratyperepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/infra_type"
 	trackedlocationrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_location"
 	userrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/user"
+	geocoderrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/geocoder"
 	osrmrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/osrm"
 	businesstypeservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/business_type"
 	eventservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/event"
+	geocodingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/geocoding"
 	infraservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra"
 	trackedlocationservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/tracked_location"
 	userservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/user"
@@ -37,6 +40,8 @@ type diContainer struct {
 	trackedLocationRepository trackedlocationservice.TrackedLocationRepository
 	userRepository            userservice.UserRepository
 	osrmRepository            trackedlocationservice.OSRMRepository
+	geocoderRepository        geocodingservice.Repository
+	geocodingService          geocodingservice.Service
 	handler                   api.Handler
 }
 
@@ -136,6 +141,22 @@ func (d *diContainer) OSRMRepository() trackedlocationservice.OSRMRepository {
 		d.osrmRepository = osrmrepository.New(osrmClient)
 	}
 	return d.osrmRepository
+}
+
+func (d *diContainer) GeocoderRepository() geocodingservice.Repository {
+	if d.geocoderRepository == nil {
+		client := &http.Client{Timeout: d.cfg.Geocoder.Timeout}
+		geocoderClient := geocoder.New(client, d.cfg.Geocoder.BaseURL)
+		d.geocoderRepository = geocoderrepository.New(geocoderClient)
+	}
+	return d.geocoderRepository
+}
+
+func (d *diContainer) GeocodingService() geocodingservice.Service {
+	if d.geocodingService == nil {
+		d.geocodingService = geocodingservice.NewService(d.GeocoderRepository(), d.Log())
+	}
+	return d.geocodingService
 }
 
 func (d *diContainer) Handler(ctx context.Context) api.Handler {

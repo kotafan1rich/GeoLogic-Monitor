@@ -7,28 +7,27 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	apperrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 )
 
 func TestSuggest(t *testing.T) {
 	t.Parallel()
 
-	client := &fakeClient{result: &geocoder.Autocomplete{
-		Name:         "Невский проспект",
-		BuildingName: "6",
-		Latitude:     59.94,
-		Longitude:    30.32,
-	}}
-	service := NewService(client, testLogger())
+	repo := &fakeRepository{result: []domain.Address{{
+		Address: "Невский проспект, 6",
+		Lat:     59.94,
+		Lon:     30.32,
+	}}}
+	service := NewService(repo, testLogger())
 
 	result, err := service.Suggest(context.Background(), "  Невс 6  ")
 	if err != nil {
 		t.Fatalf("Suggest returned an error: %v", err)
 	}
-	if client.query != "Невс 6" {
-		t.Fatalf("client query: got %q, want %q", client.query, "Невс 6")
+	if repo.query != "Невс 6" {
+		t.Fatalf("repository query: got %q, want %q", repo.query, "Невс 6")
 	}
 	if len(result) != 1 {
 		t.Fatalf("suggestion count: got %d, want 1", len(result))
@@ -41,8 +40,8 @@ func TestSuggest(t *testing.T) {
 func TestSuggestValidatesQuery(t *testing.T) {
 	t.Parallel()
 
-	client := &fakeClient{}
-	service := NewService(client, testLogger())
+	repo := &fakeRepository{}
+	service := NewService(repo, testLogger())
 
 	for _, query := range []string{" ", strings.Repeat("я", maxQueryLength+1)} {
 		_, err := service.Suggest(context.Background(), query)
@@ -51,38 +50,38 @@ func TestSuggestValidatesQuery(t *testing.T) {
 			t.Fatalf("error for query length %d: got %v, want validation_error", len(query), err)
 		}
 	}
-	if client.calls != 0 {
-		t.Fatalf("client calls: got %d, want 0", client.calls)
+	if repo.calls != 0 {
+		t.Fatalf("repository calls: got %d, want 0", repo.calls)
 	}
 }
 
 func TestSuggestMapsClientError(t *testing.T) {
 	t.Parallel()
 
-	clientErr := errors.New("geocoder unavailable")
-	service := NewService(&fakeClient{err: clientErr}, testLogger())
+	repositoryErr := errors.New("geocoder unavailable")
+	service := NewService(&fakeRepository{err: repositoryErr}, testLogger())
 
 	_, err := service.Suggest(context.Background(), "Невс 6")
 	var appErr *apperrs.Error
 	if !errors.As(err, &appErr) || appErr.Code != "provider_unavailable" {
 		t.Fatalf("error: got %v, want provider_unavailable", err)
 	}
-	if !errors.Is(err, clientErr) {
-		t.Fatal("client error is not preserved")
+	if !errors.Is(err, repositoryErr) {
+		t.Fatal("repository error is not preserved")
 	}
 }
 
-type fakeClient struct {
-	result *geocoder.Autocomplete
+type fakeRepository struct {
+	result []domain.Address
 	err    error
 	query  string
 	calls  int
 }
 
-func (c *fakeClient) Autocomplete(_ context.Context, search string) (*geocoder.Autocomplete, error) {
-	c.calls++
-	c.query = search
-	return c.result, c.err
+func (r *fakeRepository) Suggestions(_ context.Context, query string) ([]domain.Address, error) {
+	r.calls++
+	r.query = query
+	return r.result, r.err
 }
 
 func testLogger() *logger.Logger {

@@ -12,6 +12,7 @@ type Config struct {
 	Database   Database
 	Logging    Logging
 	OSRM       OSRM
+	Geocoder   Geocoder
 }
 
 func LoadConfig() (*Config, error) {
