@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 )
 
 const (
 	egsGateV1 = 1
 	egsGateV2 = 2
+
+	recordsPerPage = 500
 )
 
 func fetchSpbClassifGate[T any](
@@ -18,14 +21,34 @@ func fetchSpbClassifGate[T any](
 		return nil, fmt.Errorf("%s: %w", op, ErrInvalidURL)
 	}
 
-	var raw SpbClassifGateResponse[T]
+	var results []T
 
-	err := c.do(ctx, baseURL, endpoint, url.Values{}, &raw)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+	page := 1
+	query := url.Values{
+		"page":     {strconv.Itoa(page)},
+		"per_page": {strconv.Itoa(recordsPerPage)},
 	}
 
-	return raw.Results, nil
+	for {
+		var raw SpbClassifGateResponse[T]
+
+		if err := c.do(ctx, baseURL, endpoint, query, &raw); err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		if results == nil {
+			results = make([]T, 0, max(raw.Count, len(raw.Results)))
+		}
+
+		results = append(results, raw.Results...)
+
+		if raw.Next == nil || *raw.Next == "" {
+			return results, nil
+		}
+
+		page += 1
+		query.Set("page", strconv.Itoa(page))
+	}
 }
 
 func fetchEgsGate[T any](
