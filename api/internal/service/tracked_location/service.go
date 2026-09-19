@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
@@ -76,6 +77,10 @@ func (s *service) Create(
 	lat float64,
 	lng float64,
 ) (*domain.TrackedLocationRating, error) {
+	if strings.TrimSpace(address) == "" {
+		return nil, apperrs.ValidationError(domainerrs.ErrInvalidAddress)
+	}
+
 	geoPoint, err := domain.NewGeoPoint(lat, lng)
 	if err != nil || geoPoint == nil {
 		return nil, apperrs.ValidationError(err)
@@ -88,6 +93,9 @@ func (s *service) Create(
 		location := domain.NewTrackedLocation(userID, businessTypeID, address, geoPoint)
 		location, err := s.repo.Create(ctx, location)
 		if err != nil {
+			if errors.Is(err, domainerrs.ErrBusinessTypeNotFound) {
+				return apperrs.Wrap(err, apperrs.ErrNotFound)
+			}
 			s.log.ErrorContext(ctx,
 				"failed to create tracked location",
 				slog.String("user_id", userID.String()),
@@ -171,6 +179,18 @@ func (s *service) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (s *service) DeleteForUser(ctx context.Context, id, userID uuid.UUID) error {
+	location, err := s.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if location.UserID != userID {
+		return apperrs.Wrap(domainerrs.ErrTrackedLocationNotFound, apperrs.ErrNotFound)
+	}
+
+	return s.Delete(ctx, id)
 }
 
 func (s *service) GetAllForMonitoring(ctx context.Context) ([]domain.MonitoringLocation, error) {

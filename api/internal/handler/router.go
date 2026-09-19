@@ -14,6 +14,17 @@ type UserHandler interface {
 	Upsert(w http.ResponseWriter, r *http.Request)
 }
 
+type GeocodingHandler interface {
+	Suggest(w http.ResponseWriter, r *http.Request)
+}
+
+type TrackedLocationHandler interface {
+	Create(w http.ResponseWriter, r *http.Request)
+	GetMine(w http.ResponseWriter, r *http.Request)
+	DeleteMine(w http.ResponseWriter, r *http.Request)
+	GetAllForMonitoring(w http.ResponseWriter, r *http.Request)
+}
+
 type BusinessTypeHandler interface {
 	Upsert(w http.ResponseWriter, r *http.Request)
 	GetAll(w http.ResponseWriter, r *http.Request)
@@ -37,6 +48,8 @@ func RegisterRoutes(
 	mux *http.ServeMux,
 	healthHandler HealthHandler,
 	userHandler UserHandler,
+	geocodingHandler GeocodingHandler,
+	trackedLocationHandler TrackedLocationHandler,
 	businessTypeHandler BusinessTypeHandler,
 	infraHandler InfraHandler,
 	eventHandler EventHandler,
@@ -50,6 +63,31 @@ func RegisterRoutes(
 		middleware.BotToken(
 			botServiceToken,
 			middleware.MaxUserID(http.HandlerFunc(userHandler.Upsert)),
+		),
+	)
+	userRoutes := []struct {
+		pattern string
+		handler http.HandlerFunc
+	}{
+		{"GET /api/v1/geocoding/suggestions", geocodingHandler.Suggest},
+		{"POST /api/v1/tracked-locations", trackedLocationHandler.Create},
+		{"GET /api/v1/tracked-locations", trackedLocationHandler.GetMine},
+		{"DELETE /api/v1/tracked-locations/{id}", trackedLocationHandler.DeleteMine},
+	}
+	for _, route := range userRoutes {
+		mux.Handle(
+			route.pattern,
+			middleware.BotToken(
+				botServiceToken,
+				middleware.MaxUserID(route.handler),
+			),
+		)
+	}
+	mux.Handle(
+		"GET /internal/v1/tracked-locations",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(trackedLocationHandler.GetAllForMonitoring),
 		),
 	)
 	mux.Handle(

@@ -77,9 +77,29 @@ func TestServiceGetByIDMapsNotFound(t *testing.T) {
 	}
 }
 
+func TestServiceDeleteForUserHidesForeignLocation(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeTrackedLocationRepository{
+		getByIDResult: &domain.TrackedLocation{UserID: uuid.New()},
+	}
+	service := newTestService(repo)
+
+	err := service.DeleteForUser(context.Background(), uuid.New(), uuid.New())
+	var appErr *apperrs.Error
+	if !errors.As(err, &appErr) || appErr.Code != "not_found" {
+		t.Fatalf("error: got %v, want not_found", err)
+	}
+	if repo.deleteCalls != 0 {
+		t.Fatalf("repository delete calls: got %d, want 0", repo.deleteCalls)
+	}
+}
+
 type fakeTrackedLocationRepository struct {
-	createCalls int
-	getByIDErr  error
+	createCalls   int
+	deleteCalls   int
+	getByIDResult *domain.TrackedLocation
+	getByIDErr    error
 }
 
 type fakeOSRMRepository struct{}
@@ -149,7 +169,7 @@ func (r *fakeTrackedLocationRepository) GetByID(
 	context.Context,
 	uuid.UUID,
 ) (*domain.TrackedLocation, error) {
-	return nil, r.getByIDErr
+	return r.getByIDResult, r.getByIDErr
 }
 
 func (r *fakeTrackedLocationRepository) GetByUserID(
@@ -160,6 +180,7 @@ func (r *fakeTrackedLocationRepository) GetByUserID(
 }
 
 func (r *fakeTrackedLocationRepository) Delete(context.Context, uuid.UUID) error {
+	r.deleteCalls++
 	return nil
 }
 

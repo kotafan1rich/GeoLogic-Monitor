@@ -46,6 +46,9 @@ func (r *repository) Create(ctx context.Context, location *domain.TrackedLocatio
 		if pgerrors.IsUniqueViolation(err) {
 			return nil, errs.ErrTrackedLocationAlreadyExists
 		}
+		if pgerrors.IsForeignKeyViolation(err) {
+			return nil, errs.ErrBusinessTypeNotFound
+		}
 		return nil, err
 	}
 	return dto.ToDomain(*locationModel), nil

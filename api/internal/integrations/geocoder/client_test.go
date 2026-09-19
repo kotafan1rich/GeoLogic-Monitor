@@ -58,6 +58,28 @@ func TestReverse(t *testing.T) {
 	}
 }
 
+func TestAutocomplete(t *testing.T) {
+	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path != "/autocomplete/universal" {
+			t.Errorf("path = %q, want %q", r.URL.Path, "/autocomplete/universal")
+		}
+		if got := r.URL.Query().Get("s"); got != "Невс 6" {
+			t.Errorf("s = %q, want %q", got, "Невс 6")
+		}
+
+		return jsonResponse(http.StatusOK, `[{"address_id":20,"Name":"Невский проспект","building_id":10,"building_name":"6","Longitude":30.32,"Latitude":59.94}]`), nil
+	})}
+
+	client := New(httpClient, "http://geocoder.example")
+	result, err := client.Autocomplete(context.Background(), "Невс 6")
+	if err != nil {
+		t.Fatalf("Autocomplete returned an error: %v", err)
+	}
+	if len(result) != 1 || result[0].Name != "Невский проспект" || result[0].BuildingName != "6" {
+		t.Fatalf("unexpected autocomplete result: %+v", result)
+	}
+}
+
 func TestClientReturnsErrorForNonOKStatus(t *testing.T) {
 	httpClient := &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		return jsonResponse(http.StatusUnprocessableEntity, `{}`), nil

@@ -12,8 +12,10 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler"
 	businesstypehandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/business_type"
 	eventhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/event"
+	geocodinghandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/geocoding"
 	healthhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/health"
 	infrahandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/infra"
+	trackedlocationhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/tracked_location"
 	userhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/user"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
@@ -30,9 +32,25 @@ import (
 	eventservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/event"
 	geocodingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/geocoding"
 	infraservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra"
+	ratingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating"
 	trackedlocationservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/tracked_location"
 	userservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/user"
 )
+
+type userService interface {
+	userhandler.UserService
+	trackedlocationhandler.UserService
+}
+
+type businessTypeService interface {
+	businesstypehandler.BusinessTypeService
+	trackedlocationservice.BusinessTypeService
+}
+
+type infraService interface {
+	infrahandler.InfraService
+	trackedlocationservice.InfraService
+}
 
 type diContainer struct {
 	cfg                       *config.Config
@@ -48,12 +66,16 @@ type diContainer struct {
 	osrmRepository            trackedlocationservice.OSRMRepository
 	geocoderRepository        geocodingservice.Repository
 	geocodingService          geocodingservice.Service
-	userService               userhandler.UserService
-	businessTypeService       businesstypehandler.BusinessTypeService
+	ratingService             trackedlocationservice.RatingService
+	trackedLocationService    trackedlocationhandler.TrackedLocationService
+	userService               userService
+	businessTypeService       businessTypeService
 	infraTypeService          infrahandler.InfraTypeService
-	infraService              infrahandler.InfraService
+	infraService              infraService
 	healthHandler             handler.HealthHandler
 	userHandler               handler.UserHandler
+	geocodingHandler          handler.GeocodingHandler
+	trackedLocationHandler    handler.TrackedLocationHandler
 	businessTypeHandler       handler.BusinessTypeHandler
 	infraHandler              handler.InfraHandler
 	eventService              eventhandler.EventService
@@ -175,7 +197,14 @@ func (d *diContainer) GeocodingService() geocodingservice.Service {
 	return d.geocodingService
 }
 
-func (d *diContainer) UserService(ctx context.Context) userhandler.UserService {
+func (d *diContainer) RatingService() trackedlocationservice.RatingService {
+	if d.ratingService == nil {
+		d.ratingService = ratingservice.NewService(d.Log(), ratingservice.NewFormulaCalculator())
+	}
+	return d.ratingService
+}
+
+func (d *diContainer) UserService(ctx context.Context) userService {
 	if d.userService == nil {
 		d.userService = userservice.NewUserService(d.Log(), d.UserRepository(ctx))
 	}
@@ -196,7 +225,39 @@ func (d *diContainer) UserHandler(ctx context.Context) handler.UserHandler {
 	return d.userHandler
 }
 
-func (d *diContainer) BusinessTypeService(ctx context.Context) businesstypehandler.BusinessTypeService {
+func (d *diContainer) GeocodingHandler() handler.GeocodingHandler {
+	if d.geocodingHandler == nil {
+		d.geocodingHandler = geocodinghandler.New(d.GeocodingService())
+	}
+	return d.geocodingHandler
+}
+
+func (d *diContainer) TrackedLocationService(ctx context.Context) trackedlocationhandler.TrackedLocationService {
+	if d.trackedLocationService == nil {
+		d.trackedLocationService = trackedlocationservice.NewTrackedLocationService(
+			d.TrackedLocationRepository(ctx),
+			d.OSRMRepository(),
+			d.InfraService(ctx),
+			d.BusinessTypeService(ctx),
+			d.RatingService(),
+			d.TxManager(ctx),
+			d.Log(),
+		)
+	}
+	return d.trackedLocationService
+}
+
+func (d *diContainer) TrackedLocationHandler(ctx context.Context) handler.TrackedLocationHandler {
+	if d.trackedLocationHandler == nil {
+		d.trackedLocationHandler = trackedlocationhandler.New(
+			d.UserService(ctx),
+			d.TrackedLocationService(ctx),
+		)
+	}
+	return d.trackedLocationHandler
+}
+
+func (d *diContainer) BusinessTypeService(ctx context.Context) businessTypeService {
 	if d.businessTypeService == nil {
 		d.businessTypeService = businesstypeservice.NewService(d.Log(), d.BusinessTypeRepository(ctx))
 	}
@@ -217,7 +278,7 @@ func (d *diContainer) InfraTypeService(ctx context.Context) infrahandler.InfraTy
 	return d.infraTypeService
 }
 
-func (d *diContainer) InfraService(ctx context.Context) infrahandler.InfraService {
+func (d *diContainer) InfraService(ctx context.Context) infraService {
 	if d.infraService == nil {
 		d.infraService = infraservice.NewInfraService(d.Log(), d.InfraObjectRepository(ctx))
 	}
@@ -250,6 +311,8 @@ func (d *diContainer) Handler(ctx context.Context) api.Handler {
 		d.handler = api.NewHandler(
 			d.HealthHandler(ctx),
 			d.UserHandler(ctx),
+			d.GeocodingHandler(),
+			d.TrackedLocationHandler(ctx),
 			d.BusinessTypeHandler(ctx),
 			d.InfraHandler(ctx),
 			d.EventHandler(ctx),

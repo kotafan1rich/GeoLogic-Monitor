@@ -9,7 +9,7 @@ import (
 )
 
 type Client interface {
-	Autocomplete(ctx context.Context, search string) (*geocoderintegration.Autocomplete, error)
+	Autocomplete(ctx context.Context, search string) ([]geocoderintegration.Autocomplete, error)
 }
 
 type repository struct {
@@ -25,15 +25,20 @@ func (r *repository) Suggestions(ctx context.Context, query string) ([]domain.Ad
 	if err != nil {
 		return nil, err
 	}
-	if result == nil {
+	if len(result) == 0 {
 		return []domain.Address{}, nil
 	}
 
-	return []domain.Address{{
-		Address: formatAddress(result.Name, result.BuildingName),
-		Lat:     result.Latitude,
-		Lon:     result.Longitude,
-	}}, nil
+	addresses := make([]domain.Address, 0, len(result))
+	for _, suggestion := range result {
+		addresses = append(addresses, domain.Address{
+			Address: formatAddress(suggestion.Name, suggestion.BuildingName),
+			Lat:     suggestion.Latitude,
+			Lon:     suggestion.Longitude,
+		})
+	}
+
+	return addresses, nil
 }
 
 func formatAddress(name, buildingName string) string {

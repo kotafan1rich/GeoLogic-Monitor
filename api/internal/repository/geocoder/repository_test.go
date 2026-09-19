@@ -11,12 +11,12 @@ import (
 func TestSuggestions(t *testing.T) {
 	t.Parallel()
 
-	client := &fakeClient{result: &geocoderintegration.Autocomplete{
+	client := &fakeClient{result: []geocoderintegration.Autocomplete{{
 		Name:         "Невский проспект",
 		BuildingName: "6",
 		Latitude:     59.94,
 		Longitude:    30.32,
-	}}
+	}}}
 	repository := New(client)
 
 	result, err := repository.Suggestions(context.Background(), "Невс 6")
@@ -57,7 +57,7 @@ func TestSuggestionsPreservesClientError(t *testing.T) {
 }
 
 type fakeClient struct {
-	result *geocoderintegration.Autocomplete
+	result []geocoderintegration.Autocomplete
 	err    error
 	query  string
 }
@@ -65,7 +65,7 @@ type fakeClient struct {
 func (c *fakeClient) Autocomplete(
 	_ context.Context,
 	search string,
-) (*geocoderintegration.Autocomplete, error) {
+) ([]geocoderintegration.Autocomplete, error) {
 	c.query = search
 	return c.result, c.err
 }

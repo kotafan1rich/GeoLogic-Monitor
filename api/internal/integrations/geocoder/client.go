@@ -45,11 +45,16 @@ func (c *geocoderClient) ParseEAS(ctx context.Context, street string) (*EASAddre
 	return get[EASAddress](ctx, c, "/parse/eas", query)
 }
 
-func (c *geocoderClient) Autocomplete(ctx context.Context, search string) (*Autocomplete, error) {
+func (c *geocoderClient) Autocomplete(ctx context.Context, search string) ([]Autocomplete, error) {
 	query := url.Values{}
 	query.Set("s", search)
 
-	return get[Autocomplete](ctx, c, "/autocomplete/universal", query)
+	result, err := get[[]Autocomplete](ctx, c, "/autocomplete/universal", query)
+	if err != nil {
+		return nil, err
+	}
+
+	return *result, nil
 }
 
 func get[T any](ctx context.Context, client *geocoderClient, path string, query url.Values) (*T, error) {

@@ -12,19 +12,23 @@ type Handler interface {
 }
 
 type httpHandler struct {
-	healthHandler         handler.HealthHandler
-	userHandler           handler.UserHandler
-	businessTypeHandler   handler.BusinessTypeHandler
-	infraHandler          handler.InfraHandler
-	eventHandler          handler.EventHandler
-	botServiceToken       string
-	ingestionServiceToken string
-	corsAllowedOrigin     string
+	healthHandler          handler.HealthHandler
+	userHandler            handler.UserHandler
+	geocodingHandler       handler.GeocodingHandler
+	trackedLocationHandler handler.TrackedLocationHandler
+	businessTypeHandler    handler.BusinessTypeHandler
+	infraHandler           handler.InfraHandler
+	eventHandler           handler.EventHandler
+	botServiceToken        string
+	ingestionServiceToken  string
+	corsAllowedOrigin      string
 }
 
 func NewHandler(
 	healthHandler handler.HealthHandler,
 	userHandler handler.UserHandler,
+	geocodingHandler handler.GeocodingHandler,
+	trackedLocationHandler handler.TrackedLocationHandler,
 	businessTypeHandler handler.BusinessTypeHandler,
 	infraHandler handler.InfraHandler,
 	eventHandler handler.EventHandler,
@@ -33,14 +37,16 @@ func NewHandler(
 	corsAllowedOrigin string,
 ) Handler {
 	return &httpHandler{
-		healthHandler:         healthHandler,
-		userHandler:           userHandler,
-		businessTypeHandler:   businessTypeHandler,
-		infraHandler:          infraHandler,
-		eventHandler:          eventHandler,
-		botServiceToken:       botServiceToken,
-		ingestionServiceToken: ingestionServiceToken,
-		corsAllowedOrigin:     corsAllowedOrigin,
+		healthHandler:          healthHandler,
+		userHandler:            userHandler,
+		geocodingHandler:       geocodingHandler,
+		trackedLocationHandler: trackedLocationHandler,
+		businessTypeHandler:    businessTypeHandler,
+		infraHandler:           infraHandler,
+		eventHandler:           eventHandler,
+		botServiceToken:        botServiceToken,
+		ingestionServiceToken:  ingestionServiceToken,
+		corsAllowedOrigin:      corsAllowedOrigin,
 	}
 }
 
@@ -50,6 +56,8 @@ func (h *httpHandler) Routes() http.Handler {
 		mux,
 		h.healthHandler,
 		h.userHandler,
+		h.geocodingHandler,
+		h.trackedLocationHandler,
 		h.businessTypeHandler,
 		h.infraHandler,
 		h.eventHandler,
