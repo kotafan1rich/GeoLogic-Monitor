@@ -1,4 +1,4 @@
-package http
+package osrm
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/osrm"
 )
 
 type osrmClient struct {
@@ -24,7 +23,7 @@ func New(client *http.Client, baseUrl string) *osrmClient {
 	}
 }
 
-func (o *osrmClient) GetWalkingDistances(ctx context.Context, src *osrm.Coordinate, dst []*osrm.Coordinate) ([]*float64, error) {
+func (o *osrmClient) GetWalkingDistances(ctx context.Context, src *Coordinate, dst []*Coordinate) ([]*float64, error) {
 	path := "/table/v1/foot/" + joinCoordinates(src, dst)
 
 	query := url.Values{}
@@ -80,13 +79,13 @@ func (o *osrmClient) GetWalkingDistances(ctx context.Context, src *osrm.Coordina
 	return response.Distances[0], nil
 }
 
-func formatCoordinate(point *osrm.Coordinate) string {
+func formatCoordinate(point *Coordinate) string {
 	return strconv.FormatFloat(point.Lon, 'f', -1, 64) +
 		"," +
 		strconv.FormatFloat(point.Lat, 'f', -1, 64)
 }
 
-func joinCoordinates(src *osrm.Coordinate, dst []*osrm.Coordinate) string {
+func joinCoordinates(src *Coordinate, dst []*Coordinate) string {
 	coordinates := make([]string, 0, len(dst)+1)
 	coordinates = append(coordinates, formatCoordinate(src))
 

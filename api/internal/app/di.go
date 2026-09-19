@@ -9,8 +9,8 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database/postgres"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
-	osrmhttp "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/osrm/http"
 	businesstyperepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/business_type"
 	eventrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/event"
 	infraobjectrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/infra_object"
@@ -132,7 +132,7 @@ func (d *diContainer) UserRepository(ctx context.Context) userservice.UserReposi
 func (d *diContainer) OSRMRepository() trackedlocationservice.OSRMRepository {
 	if d.osrmRepository == nil {
 		client := &http.Client{Timeout: d.cfg.OSRM.Timeout}
-		osrmClient := osrmhttp.New(client, d.cfg.OSRM.BaseURL)
+		osrmClient := osrm.New(client, d.cfg.OSRM.BaseURL)
 		d.osrmRepository = osrmrepository.New(osrmClient)
 	}
 	return d.osrmRepository

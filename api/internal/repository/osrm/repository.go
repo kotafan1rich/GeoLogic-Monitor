@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/osrm"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/osrm/dto"
 )
 
