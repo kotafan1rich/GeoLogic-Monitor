@@ -10,6 +10,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database/postgres"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler"
+	eventhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/event"
 	userhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/user"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
@@ -46,6 +47,8 @@ type diContainer struct {
 	geocodingService          geocodingservice.Service
 	userService               userhandler.UserService
 	userHandler               handler.UserHandler
+	eventService              eventhandler.EventService
+	eventHandler              handler.EventHandler
 	handler                   api.Handler
 }
 
@@ -177,9 +180,29 @@ func (d *diContainer) UserHandler(ctx context.Context) handler.UserHandler {
 	return d.userHandler
 }
 
+func (d *diContainer) EventService(ctx context.Context) eventhandler.EventService {
+	if d.eventService == nil {
+		d.eventService = eventservice.NewEventService(d.Log(), d.EventRepository(ctx))
+	}
+	return d.eventService
+}
+
+func (d *diContainer) EventHandler(ctx context.Context) handler.EventHandler {
+	if d.eventHandler == nil {
+		d.eventHandler = eventhandler.New(d.EventService(ctx))
+	}
+	return d.eventHandler
+}
+
 func (d *diContainer) Handler(ctx context.Context) api.Handler {
 	if d.handler == nil {
-		d.handler = api.NewHandler(d.UserHandler(ctx), d.cfg.BotServiceToken)
+		d.handler = api.NewHandler(
+			d.UserHandler(ctx),
+			d.EventHandler(ctx),
+			d.cfg.BotServiceToken,
+			d.cfg.IngestionServiceToken,
+			d.cfg.CORSAllowedOrigin,
+		)
 	}
 	return d.handler
 }

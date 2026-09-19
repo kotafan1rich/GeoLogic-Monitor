@@ -21,6 +21,10 @@ func BotToken(expectedToken string, next http.Handler) http.Handler {
 	})
 }
 
+func IngestionToken(expectedToken string, next http.Handler) http.Handler {
+	return BotToken(expectedToken, next)
+}
+
 func tokensEqual(actual, expected string) bool {
 	if actual == "" || expected == "" {
 		return false

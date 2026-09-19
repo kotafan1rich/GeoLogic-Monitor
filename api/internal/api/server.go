@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
 
 type Handler interface {
@@ -11,20 +12,38 @@ type Handler interface {
 }
 
 type httpHandler struct {
-	userHandler     handler.UserHandler
-	botServiceToken string
+	userHandler           handler.UserHandler
+	eventHandler          handler.EventHandler
+	botServiceToken       string
+	ingestionServiceToken string
+	corsAllowedOrigin     string
 }
 
-func NewHandler(userHandler handler.UserHandler, botServiceToken string) Handler {
+func NewHandler(
+	userHandler handler.UserHandler,
+	eventHandler handler.EventHandler,
+	botServiceToken string,
+	ingestionServiceToken string,
+	corsAllowedOrigin string,
+) Handler {
 	return &httpHandler{
-		userHandler:     userHandler,
-		botServiceToken: botServiceToken,
+		userHandler:           userHandler,
+		eventHandler:          eventHandler,
+		botServiceToken:       botServiceToken,
+		ingestionServiceToken: ingestionServiceToken,
+		corsAllowedOrigin:     corsAllowedOrigin,
 	}
 }
 
 func (h *httpHandler) Routes() http.Handler {
 	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux, h.userHandler, h.botServiceToken)
+	handler.RegisterRoutes(
+		mux,
+		h.userHandler,
+		h.eventHandler,
+		h.botServiceToken,
+		h.ingestionServiceToken,
+	)
 
-	return mux
+	return middleware.CORS(h.corsAllowedOrigin, mux)
 }
