@@ -6,6 +6,11 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
 )
 
+type InfraObjectDistance struct {
+	Object         *InfraObject
+	DistanceMeters float64
+}
+
 type InfraObject struct {
 	ID       uuid.UUID
 	TypeID   uuid.UUID
