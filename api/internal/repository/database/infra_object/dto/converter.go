@@ -8,11 +8,12 @@ import (
 
 func ToDomain(infraObject model.InfraObject) *domain.InfraObject {
 	return &domain.InfraObject{
-		ID:       infraObject.ID,
-		TypeID:   infraObject.TypeID,
-		GeoPoint: domain.GeoPoint(infraObject.Location),
-		Address:  infraObject.Address,
-		Name:     infraObject.Name,
+		ID:         infraObject.ID,
+		ExternalID: infraObject.ExternalID,
+		TypeID:     infraObject.TypeID,
+		GeoPoint:   domain.GeoPoint(infraObject.Location),
+		Address:    infraObject.Address,
+		Name:       infraObject.Name,
 		Type: domain.InfraType{
 			ID:        infraObject.Type.ID,
 			Slug:      infraObject.Type.Slug,
@@ -25,10 +26,11 @@ func ToDomain(infraObject model.InfraObject) *domain.InfraObject {
 
 func ToModel(infraObject domain.InfraObject) *model.InfraObject {
 	return &model.InfraObject{
-		ID:       infraObject.ID,
-		TypeID:   infraObject.TypeID,
-		Location: basemodel.GeoPoint(infraObject.GeoPoint),
-		Address:  infraObject.Address,
-		Name:     infraObject.Name,
+		ID:         infraObject.ID,
+		ExternalID: infraObject.ExternalID,
+		TypeID:     infraObject.TypeID,
+		Location:   basemodel.GeoPoint(infraObject.GeoPoint),
+		Address:    infraObject.Address,
+		Name:       infraObject.Name,
 	}
 }

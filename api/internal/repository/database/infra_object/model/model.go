@@ -8,11 +8,12 @@ import (
 
 type InfraObject struct {
 	basemodel.Base
-	TypeID   uuid.UUID
-	Location basemodel.GeoPoint
-	Address  string
-	Name     *string
-	Type     InfraType
+	ExternalID string
+	TypeID     uuid.UUID
+	Location   basemodel.GeoPoint
+	Address    string
+	Name       *string
+	Type       InfraType
 }
 
 type InfraType struct {

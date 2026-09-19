@@ -12,30 +12,34 @@ type InfraObjectDistance struct {
 }
 
 type InfraObject struct {
-	ID       uuid.UUID
-	TypeID   uuid.UUID
-	GeoPoint GeoPoint
-	Address  string
-	Name     *string
-	Type     InfraType
+	ID         uuid.UUID
+	ExternalID string
+	TypeID     uuid.UUID
+	GeoPoint   GeoPoint
+	Address    string
+	Name       *string
+	Type       InfraType
 }
 
 func NewInfraObject(
-	id uuid.UUID,
+	externalID string,
 	typeID uuid.UUID,
 	geopoint *GeoPoint,
 	address string,
 	name *string,
 ) (*InfraObject, error) {
+	if externalID == "" {
+		return nil, errs.ErrInvalidExternalID
+	}
 	if address == "" {
 		return nil, errs.ErrInvalidAddress
 	}
 
 	return &InfraObject{
-		ID:       id,
-		TypeID:   typeID,
-		GeoPoint: *geopoint,
-		Address:  address,
-		Name:     name,
+		ExternalID: externalID,
+		TypeID:     typeID,
+		GeoPoint:   *geopoint,
+		Address:    address,
+		Name:       name,
 	}, nil
 }

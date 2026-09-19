@@ -30,7 +30,7 @@ func (r *repository) Upsert(ctx context.Context, infraObject *domain.InfraObject
 	err := r.db.QueryRow(
 		ctx,
 		query.Upsert,
-		infraObjectModel.ID,
+		infraObjectModel.ExternalID,
 		infraObjectModel.TypeID,
 		infraObjectModel.Location,
 		infraObjectModel.Address,
@@ -90,6 +90,7 @@ type scanner interface {
 func scanInfraObject(row scanner, infraObject *model.InfraObject) error {
 	return row.Scan(
 		&infraObject.ID,
+		&infraObject.ExternalID,
 		&infraObject.TypeID,
 		&infraObject.Location,
 		&infraObject.Address,

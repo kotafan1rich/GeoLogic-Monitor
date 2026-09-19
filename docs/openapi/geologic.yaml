@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: GeoLogic Monitor API
-  version: 0.4.0
+  version: 0.5.0
   description: >
     Контракт хакатонного MVP, только Санкт-Петербург. API пока не реализован.
     Пользовательские методы доступны только bot-сервису с его Bearer token
@@ -231,14 +231,14 @@ paths:
   /internal/v1/infra:
     put:
       operationId: upsertInfraObject
-      summary: Upsert по стабильному id загрузчика; type_id должен существовать
+      summary: Upsert по стабильному external_id загрузчика; внутренний id генерирует API
       security: [{IngestionToken: []}]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InfraObject'
+              $ref: '#/components/schemas/InfraObjectInput'
       responses:
         '200':
           description: Созданная или обновлённая запись
@@ -493,16 +493,24 @@ components:
         name: {type: string, minLength: 1}
         weight: {type: number, exclusiveMinimum: 0}
         max_radius: {type: integer, minimum: 1, maximum: 65535}
-    InfraObject:
-      example: {id: 44444444-4444-4444-8444-444444444444, type_id: 33333333-3333-4333-8333-333333333333, lat: 59.9358, lon: 30.3259, address: Санкт-Петербург, name: Тестовый объект}
+    InfraObjectInput:
+      example: {external_id: fixture-object-1, type_id: 33333333-3333-4333-8333-333333333333, lat: 59.9358, lon: 30.3259, address: Санкт-Петербург, name: Тестовый объект}
       allOf:
         - $ref: '#/components/schemas/Address'
         - type: object
-          required: [id, type_id]
+          required: [external_id, type_id]
           properties:
-            id: {type: string, format: uuid}
+            external_id: {type: string, minLength: 1}
             type_id: {type: string, format: uuid}
             name: {type: [string, 'null']}
+    InfraObject:
+      example: {id: 44444444-4444-4444-8444-444444444444, external_id: fixture-object-1, type_id: 33333333-3333-4333-8333-333333333333, lat: 59.9358, lon: 30.3259, address: Санкт-Петербург, name: Тестовый объект}
+      allOf:
+        - $ref: '#/components/schemas/InfraObjectInput'
+        - type: object
+          required: [id]
+          properties:
+            id: {type: string, format: uuid}
     Event:
       type: object
       required: [id, provider, external_id, lat, lon, date, info, notified_at]

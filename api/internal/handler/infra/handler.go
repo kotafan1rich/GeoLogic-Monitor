@@ -26,7 +26,7 @@ type InfraTypeService interface {
 type InfraService interface {
 	Upsert(
 		ctx context.Context,
-		id uuid.UUID,
+		externalID string,
 		typeID uuid.UUID,
 		lat float64,
 		lng float64,
@@ -80,15 +80,15 @@ func (h *handler) UpsertObject(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, app.ValidationError(err))
 		return
 	}
-	if request.ID == nil || request.TypeID == nil || request.Lat == nil ||
+	if request.ExternalID == nil || request.TypeID == nil || request.Lat == nil ||
 		request.Lon == nil || request.Address == nil {
-		response.WriteError(w, app.ValidationError(errors.New("id, type_id, lat, lon and address are required")))
+		response.WriteError(w, app.ValidationError(errors.New("external_id, type_id, lat, lon and address are required")))
 		return
 	}
 
 	infraObject, err := h.infraService.Upsert(
 		r.Context(),
-		*request.ID,
+		*request.ExternalID,
 		*request.TypeID,
 		*request.Lat,
 		*request.Lon,

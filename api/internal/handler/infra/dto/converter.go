@@ -14,11 +14,12 @@ func InfraTypeToResponse(infraType domain.InfraType) *InfraTypeResponse {
 
 func InfraObjectToResponse(infraObject domain.InfraObject) *InfraObjectResponse {
 	return &InfraObjectResponse{
-		ID:      infraObject.ID,
-		TypeID:  infraObject.TypeID,
-		Lat:     infraObject.GeoPoint.Lat,
-		Lon:     infraObject.GeoPoint.Lng,
-		Address: infraObject.Address,
-		Name:    infraObject.Name,
+		ID:         infraObject.ID,
+		ExternalID: infraObject.ExternalID,
+		TypeID:     infraObject.TypeID,
+		Lat:        infraObject.GeoPoint.Lat,
+		Lon:        infraObject.GeoPoint.Lng,
+		Address:    infraObject.Address,
+		Name:       infraObject.Name,
 	}
 }

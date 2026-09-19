@@ -49,18 +49,30 @@ func TestInfraServiceUpsert(t *testing.T) {
 
 	repo := &fakeInfraRepository{}
 	service := NewInfraService(testLogger(), repo)
-	id := uuid.New()
 	typeID := uuid.New()
 
-	result, err := service.Upsert(context.Background(), id, typeID, 59.93, 30.32, "address", nil)
+	result, err := service.Upsert(context.Background(), "external-id", typeID, 59.93, 30.32, "address", nil)
 	if err != nil {
 		t.Fatalf("Upsert returned an error: %v", err)
 	}
-	if result.ID != id || result.TypeID != typeID || result.Address != "address" {
+	if result.ExternalID != "external-id" || result.TypeID != typeID || result.Address != "address" {
 		t.Fatalf("unexpected infra object: %+v", result)
 	}
 	if repo.upsertCalls != 1 {
 		t.Fatalf("repository upsert calls: got %d, want 1", repo.upsertCalls)
+	}
+}
+
+func TestInfraServiceUpsertRejectsInvalidExternalID(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeInfraRepository{}
+	service := NewInfraService(testLogger(), repo)
+
+	_, err := service.Upsert(context.Background(), "", uuid.New(), 59.93, 30.32, "address", nil)
+	assertAppError(t, err, "validation_error", domainerrs.ErrInvalidExternalID)
+	if repo.upsertCalls != 0 {
+		t.Fatalf("repository upsert calls: got %d, want 0", repo.upsertCalls)
 	}
 }
 
@@ -72,7 +84,7 @@ func TestInfraServiceUpsertMapsMissingType(t *testing.T) {
 
 	_, err := service.Upsert(
 		context.Background(),
-		uuid.New(),
+		"external-id",
 		uuid.New(),
 		59.93,
 		30.32,

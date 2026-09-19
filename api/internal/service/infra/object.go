@@ -29,7 +29,7 @@ func NewInfraService(log *logger.Logger, repo InfraRepository) *infraService {
 
 func (s *infraService) Upsert(
 	ctx context.Context,
-	id uuid.UUID,
+	externalID string,
 	typeID uuid.UUID,
 	lat float64,
 	lng float64,
@@ -41,7 +41,7 @@ func (s *infraService) Upsert(
 		return nil, apperrs.ValidationError(err)
 	}
 
-	infraObject, err := domain.NewInfraObject(id, typeID, geoPoint, address, name)
+	infraObject, err := domain.NewInfraObject(externalID, typeID, geoPoint, address, name)
 	if err != nil {
 		return nil, apperrs.ValidationError(err)
 	}
@@ -54,7 +54,7 @@ func (s *infraService) Upsert(
 
 		s.log.ErrorContext(ctx,
 			"failed to upsert infra object",
-			slog.String("id", id.String()),
+			slog.String("external_id", externalID),
 			slog.String("error", err.Error()),
 		)
 		return nil, err

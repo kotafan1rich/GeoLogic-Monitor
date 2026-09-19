@@ -2,9 +2,9 @@ package query
 
 const (
 	Upsert = `
-		INSERT INTO infra_objects (id, type_id, location, address, name)
+		INSERT INTO infra_objects (external_id, type_id, location, address, name)
 		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (id) DO UPDATE
+		ON CONFLICT (external_id) DO UPDATE
 		SET type_id = EXCLUDED.type_id,
 			location = EXCLUDED.location,
 			address = EXCLUDED.address,
@@ -13,7 +13,8 @@ const (
 	`
 
 	GetByID = `
-		SELECT infra_objects.id, infra_objects.type_id, infra_objects.location,
+		SELECT infra_objects.id, infra_objects.external_id,
+			infra_objects.type_id, infra_objects.location,
 			infra_objects.address, infra_objects.name,
 			infra_types.id, infra_types.slug, infra_types.name,
 			infra_types.weight, infra_types.max_radius,
@@ -24,7 +25,8 @@ const (
 	`
 
 	Near = `
-		SELECT infra_objects.id, infra_objects.type_id, infra_objects.location,
+		SELECT infra_objects.id, infra_objects.external_id,
+			infra_objects.type_id, infra_objects.location,
 			infra_objects.address, infra_objects.name,
 			infra_types.id, infra_types.slug, infra_types.name,
 			infra_types.weight, infra_types.max_radius,

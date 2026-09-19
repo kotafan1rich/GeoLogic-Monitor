@@ -8,5 +8,6 @@ var (
 	ErrInvalidWeight       = errors.New("invalid weight")
 	ErrInvalidRadius       = errors.New("invalid radius")
 	ErrInvalidAddress      = errors.New("invalid address")
+	ErrInvalidExternalID   = errors.New("invalid external ID")
 	ErrInfraObjectNotFound = errors.New("infra object not found")
 )

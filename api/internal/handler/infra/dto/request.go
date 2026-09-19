@@ -10,10 +10,10 @@ type UpsertTypeRequest struct {
 }
 
 type UpsertObjectRequest struct {
-	ID      *uuid.UUID `json:"id"`
-	TypeID  *uuid.UUID `json:"type_id"`
-	Lat     *float64   `json:"lat"`
-	Lon     *float64   `json:"lon"`
-	Address *string    `json:"address"`
-	Name    *string    `json:"name"`
+	ExternalID *string    `json:"external_id"`
+	TypeID     *uuid.UUID `json:"type_id"`
+	Lat        *float64   `json:"lat"`
+	Lon        *float64   `json:"lon"`
+	Address    *string    `json:"address"`
+	Name       *string    `json:"name"`
 }

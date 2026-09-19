@@ -34,6 +34,7 @@ entity infra_types {
 entity infra_objects {
  * id : uuid <<PK>>
  --
+ * external_id : text <<UNIQUE>>
  * type_id : uuid <<FK>>
  * location : geometry(Point,4326)
  * address : text
