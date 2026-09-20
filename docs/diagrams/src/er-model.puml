@@ -21,6 +21,13 @@ entity tracked_locations {
  * created_at : timestamptz
  * updated_at : timestamptz
 }
+entity rating_history {
+ * id : uuid <<PK>>
+ --
+ * tracked_location_id : uuid <<FK, ON DELETE CASCADE>>
+ * value : numeric(2,1)
+ * calculated_at : timestamptz
+}
 entity infra_types {
  * id : uuid <<PK>>
  --
@@ -77,6 +84,12 @@ entity competitor_cache {
 }
 }
 users ||--o{ tracked_locations
+tracked_locations ||--o{ rating_history
+note bottom of rating_history
+ value: 0.1..9.9; только успешные расчёты.
+ Индекс (tracked_location_id, calculated_at).
+ Хранится до удаления точки; calculated_at входит в HTTP.
+end note
 infra_types ||--o{ infra_objects
 infra_types ||--o| business_types
 business_types ||--o{ tracked_locations

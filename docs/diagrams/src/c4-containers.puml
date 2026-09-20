@@ -5,9 +5,10 @@ skinparam componentStyle rectangle
 skinparam shadowing false
 actor "Предприниматель" as user
 rectangle "MAX" as max
+rectangle "MAX Mini App\nточки / рейтинг / история" as miniapp
 package "GeoLogic" {
- rectangle "bot\nLong Polling + Kafka consumer" as bot
- rectangle "api\nnet/http + рейтинг" as api
+ rectangle "bot\n/start + Kafka consumer" as bot
+ rectangle "api\nnet/http + рейтинг + планировщик" as api
  rectangle "ingestion\nзагрузка + мониторинг" as worker
  database "API PostgreSQL + PostGIS\nпостоянные данные" as apidb
  database "Ingestion PostgreSQL + PostGIS\ncompetitor_cache" as ingestiondb
@@ -18,12 +19,15 @@ rectangle "Geocoder" as geo
 rectangle "Источники инфраструктуры / Events" as sources
 rectangle "2ГИС" as gis
 user <--> max
-bot --> max : polling / ответы / оповещения
-bot --> api : пользовательский HTTP API
+bot --> max : /start / запуск Mini App / оповещения
+user <--> miniapp
+max --> miniapp : открыть
+miniapp --> api : HTTP / проверенные initData
+bot --> api : регистрация чата / сервисный токен
 worker --> api : загрузка / точки / события / отметки
 api --> apidb : постоянные данные
 api --> geo
-api --> osrm : рейтинг при создании точки
+api --> osrm : рейтинг при создании и по расписанию
 worker --> ingestiondb : только свой кэш
 worker --> sources
 worker --> gis : открытия за вчера

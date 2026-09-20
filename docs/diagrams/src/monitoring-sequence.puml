@@ -1,6 +1,8 @@
 @startuml monitoring-sequence
 title GeoLogic — добавление точки, загрузка и уведомления
+participant "Mini App" as F
 participant bot as B
+participant "Планировщик API" as S
 participant ingestion as W
 participant API as A
 database "API DB" as ADB
@@ -9,17 +11,36 @@ participant "Источники / 2ГИС" as P
 participant OSRM as R
 queue Kafka as K
 participant MAX as M
-B -> A : POST tracked-locations
+B -> A : PUT users/me после /start (чат уведомлений)
+F -> A : POST tracked-locations / initData
 A -> ADB : проверить пользователя, business type;\nвыбрать кандидатов infra (PostGIS)
 A -> R : пешеходные расстояния до infra
 R --> A : метры / NoRoute
 A -> A : отфильтровать MaxRadius;\nрассчитать рейтинг
-A -> ADB : сохранить точку
-A --> B : 201 точка + rating
+A -> ADB : атомарно сохранить точку и rating_history
+A --> F : 201 точка + rating + rating_calculated_at
 note over A,R
  При общей ошибке OSRM — 503 и точка не сохраняется.
  Отдельный NoRoute пропускается.
 end note
+group 1-го числа месяца, 03:00 Europe/Moscow
+ S -> A : пересчитать рейтинги всех точек
+ loop каждая сохранённая точка
+  A -> ADB : актуальная инфраструктура и параметры
+  A -> R : пешеходные расстояния
+  R --> A : расстояния / ошибка
+  alt успешный расчёт
+   A -> ADB : добавить rating_history
+  else ошибка
+   A -> A : логировать, сохранить прежний рейтинг; продолжить
+  end
+ end
+end
+F -> A : GET tracked-locations / initData
+A --> F : точки с последним рейтингом и временем
+F -> A : GET tracked-locations/{id}/rating-history?months=3
+A -> ADB : проверить владельца; история за период
+A --> F : [{value, calculated_at}]
 W -> P : инфраструктура / типы / события
 P --> W : нормализуемые данные
 W -> A : PUT internal: типы, инфраструктура, события
