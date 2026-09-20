@@ -1,8 +1,9 @@
-package rating
+package calculate
 
 import (
 	"context"
 	"math"
+	"time"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 )
@@ -36,7 +37,10 @@ func (FormulaCalculator) Calculate(
 	}
 
 	raw := positive - competition
-	return &domain.CalculatedRating{Value: roundRating(logisticRating(raw))}, nil
+	return &domain.CalculatedRating{
+		Value:        roundRating(logisticRating(raw)),
+		CalculatedAt: time.Now().UTC(),
+	}, nil
 }
 
 func roundRating(rating float64) float64 {

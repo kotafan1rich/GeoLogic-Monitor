@@ -139,6 +139,14 @@ func (*fakeRatingService) Calculate(
 	return &domain.CalculatedRating{Value: 5}, nil
 }
 
+func (*fakeRatingService) Create(
+	context.Context,
+	uuid.UUID,
+	*domain.CalculatedRating,
+) (*domain.LocationRating, error) {
+	return &domain.LocationRating{}, nil
+}
+
 type fakeTxManager struct{}
 
 func (fakeTxManager) WithTx(ctx context.Context, fn func(context.Context) error) error {

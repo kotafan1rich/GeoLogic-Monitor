@@ -95,13 +95,12 @@ func (l *Logger) WithLatency(latency time.Duration) *Logger {
 	}
 }
 
-func (l *Logger) WithRequest(status int, method, path, query, ip, userAgent string, latency time.Duration) *Logger {
+func (l *Logger) WithRequest(status int, method, path, ip, userAgent string, latency time.Duration) *Logger {
 	return &Logger{
 		Logger: l.With(
 			slog.Int("status", status),
 			slog.String("method", method),
 			slog.String("path", path),
-			slog.String("query", query),
 			slog.String("ip", ip),
 			slog.String("user-agent", userAgent),
 			slog.Duration("latency", latency),

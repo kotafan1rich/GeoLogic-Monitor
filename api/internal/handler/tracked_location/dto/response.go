@@ -1,6 +1,9 @@
 package dto
 
-import "uuid"
+import (
+	"time"
+	"uuid"
+)
 
 type TrackedLocationResponse struct {
 	ID             uuid.UUID `json:"id"`
@@ -12,7 +15,19 @@ type TrackedLocationResponse struct {
 
 type CreatedTrackedLocationResponse struct {
 	TrackedLocationResponse
-	Rating float64 `json:"rating"`
+	Rating             float64   `json:"rating"`
+	RatingCalculatedAt time.Time `json:"rating_calculated_at"`
+}
+
+type UserTrackedLocationResponse struct {
+	TrackedLocationResponse
+	Rating             *float64   `json:"rating"`
+	RatingCalculatedAt *time.Time `json:"rating_calculated_at"`
+}
+
+type RatingHistoryEntryResponse struct {
+	Value        float64   `json:"value"`
+	CalculatedAt time.Time `json:"calculated_at"`
 }
 
 type MonitoringLocationResponse struct {

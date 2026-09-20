@@ -27,6 +27,8 @@ entity rating_history {
  * tracked_location_id : uuid <<FK, ON DELETE CASCADE>>
  * value : numeric(2,1)
  * calculated_at : timestamptz
+ * created_at : timestamptz
+ * updated_at : timestamptz
 }
 entity infra_types {
  * id : uuid <<PK>>

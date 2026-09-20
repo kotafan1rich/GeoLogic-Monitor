@@ -3,13 +3,14 @@ info:
   title: GeoLogic Monitor API
   version: 0.6.0
   description: >
-    Целевой контракт MVP, только Санкт-Петербург. История рейтинга, планировщик
-    и доступ Mini App проектируются и ещё не реализованы в Go DTO и обработчиках.
+    Текущий HTTP-контракт MVP, только Санкт-Петербург. Пользовательские и внутренние
+    методы, доступ Mini App и история рейтинга реализованы; плановый пересчёт
+    не является HTTP-операцией и пока не подключён в API-процессе.
     Mini App передаёт подписанные MAX initData; bot регистрирует чат с сервисным
     токеном и X-Max-User-Id. Внутренние методы требуют отдельного ingestion token.
 servers:
   - url: http://localhost:8080
-    description: Планируемый локальный API
+    description: Локальный API
 security:
   - MiniAppInitData: []
 paths:

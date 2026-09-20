@@ -1,10 +1,11 @@
-package rating
+package calculate
 
 import (
 	"context"
 	"errors"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 )
@@ -70,6 +71,12 @@ func TestFormulaCalculatorRatingIsFiniteAndBounded(t *testing.T) {
 		}
 		if rating.Value <= 0 || rating.Value >= 10 {
 			t.Fatalf("rating is outside bounds: %v", rating.Value)
+		}
+		if rating.CalculatedAt.IsZero() {
+			t.Fatal("calculation time is zero")
+		}
+		if rating.CalculatedAt.Location() != time.UTC {
+			t.Fatalf("calculation time location: got %v, want UTC", rating.CalculatedAt.Location())
 		}
 	}
 }

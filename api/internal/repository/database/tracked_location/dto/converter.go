@@ -7,13 +7,25 @@ import (
 )
 
 func ToDomain(trackedLocation model.TrackedLocation) *domain.TrackedLocation {
-	return &domain.TrackedLocation{
+	result := &domain.TrackedLocation{
 		ID:             trackedLocation.ID,
 		UserID:         trackedLocation.UserID,
 		BusinessTypeID: trackedLocation.BusinessTypeID,
 		Address:        trackedLocation.Address,
 		GeoPoint:       domain.GeoPoint(trackedLocation.Location),
+		User: domain.User{
+			ID:        trackedLocation.User.ID,
+			MaxUserID: trackedLocation.User.MaxUserID,
+			MaxChatID: trackedLocation.User.MaxChatID,
+		},
 	}
+	if trackedLocation.LatestRating != nil && trackedLocation.RatingCalculatedAt != nil {
+		result.LatestRating = &domain.CalculatedRating{
+			Value:        *trackedLocation.LatestRating,
+			CalculatedAt: *trackedLocation.RatingCalculatedAt,
+		}
+	}
+	return result
 }
 
 func ToModel(trackedLocation domain.TrackedLocation) *model.TrackedLocation {
@@ -25,6 +37,11 @@ func ToModel(trackedLocation domain.TrackedLocation) *model.TrackedLocation {
 		Location: basemodel.GeoPoint{
 			Lat: trackedLocation.GeoPoint.Lat,
 			Lng: trackedLocation.GeoPoint.Lng,
+		},
+		User: model.User{
+			ID:        trackedLocation.User.ID,
+			MaxUserID: trackedLocation.User.MaxUserID,
+			MaxChatID: trackedLocation.User.MaxChatID,
 		},
 	}
 }

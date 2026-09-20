@@ -24,15 +24,18 @@ import (
 	eventrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/event"
 	infraobjectrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/infra_object"
 	infratyperepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/infra_type"
+	ratingrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/rating"
 	trackedlocationrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/tracked_location"
 	userrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/user"
 	geocoderrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/geocoder"
 	osrmrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/osrm"
 	businesstypeservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/business_type"
+	calculateservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/calculate"
 	eventservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/event"
 	geocodingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/geocoding"
 	infraservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra"
 	ratingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating"
+	ratinghistoryservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating_history"
 	trackedlocationservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/tracked_location"
 	userservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/user"
 )
@@ -52,6 +55,16 @@ type infraService interface {
 	trackedlocationservice.InfraService
 }
 
+type trackedLocationService interface {
+	ratinghistoryservice.TrackedLocationService
+	trackedlocationhandler.TrackedLocationService
+}
+
+type ratingRepository interface {
+	ratingservice.RatingRepository
+	ratinghistoryservice.RatingRepository
+}
+
 type diContainer struct {
 	cfg                       *config.Config
 	db                        database.DBTX
@@ -61,13 +74,15 @@ type diContainer struct {
 	eventRepository           eventservice.EventRepository
 	infraObjectRepository     infraservice.InfraRepository
 	infraTypeRepository       infraservice.InfraTypeRepository
+	ratingRepository          ratingRepository
 	trackedLocationRepository trackedlocationservice.TrackedLocationRepository
 	userRepository            userservice.UserRepository
 	osrmRepository            trackedlocationservice.OSRMRepository
 	geocoderRepository        geocodingservice.Repository
 	geocodingService          geocodingservice.Service
-	ratingService             trackedlocationservice.RatingService
-	trackedLocationService    trackedlocationhandler.TrackedLocationService
+	ratingService             ratingservice.Service
+	ratingHistoryService      ratinghistoryservice.Service
+	trackedLocationService    trackedLocationService
 	userService               userService
 	businessTypeService       businessTypeService
 	infraTypeService          infrahandler.InfraTypeService
@@ -158,6 +173,13 @@ func (d *diContainer) InfraTypeRepository(ctx context.Context) infraservice.Infr
 	return d.infraTypeRepository
 }
 
+func (d *diContainer) RatingRepository(ctx context.Context) ratingRepository {
+	if d.ratingRepository == nil {
+		d.ratingRepository = ratingrepository.NewRepository(d.DB(ctx))
+	}
+	return d.ratingRepository
+}
+
 func (d *diContainer) TrackedLocationRepository(ctx context.Context) trackedlocationservice.TrackedLocationRepository {
 	if d.trackedLocationRepository == nil {
 		d.trackedLocationRepository = trackedlocationrepository.NewRepository(d.DB(ctx))
@@ -197,11 +219,26 @@ func (d *diContainer) GeocodingService() geocodingservice.Service {
 	return d.geocodingService
 }
 
-func (d *diContainer) RatingService() trackedlocationservice.RatingService {
+func (d *diContainer) RatingService(ctx context.Context) ratingservice.Service {
 	if d.ratingService == nil {
-		d.ratingService = ratingservice.NewService(d.Log(), ratingservice.NewFormulaCalculator())
+		d.ratingService = ratingservice.NewService(
+			d.Log(),
+			calculateservice.NewFormulaCalculator(),
+			d.RatingRepository(ctx),
+		)
 	}
 	return d.ratingService
+}
+
+func (d *diContainer) RatingHistoryService(ctx context.Context) ratinghistoryservice.Service {
+	if d.ratingHistoryService == nil {
+		d.ratingHistoryService = ratinghistoryservice.NewService(
+			d.Log(),
+			d.RatingRepository(ctx),
+			d.TrackedLocationService(ctx),
+		)
+	}
+	return d.ratingHistoryService
 }
 
 func (d *diContainer) UserService(ctx context.Context) userService {
@@ -232,14 +269,14 @@ func (d *diContainer) GeocodingHandler() handler.GeocodingHandler {
 	return d.geocodingHandler
 }
 
-func (d *diContainer) TrackedLocationService(ctx context.Context) trackedlocationhandler.TrackedLocationService {
+func (d *diContainer) TrackedLocationService(ctx context.Context) trackedLocationService {
 	if d.trackedLocationService == nil {
 		d.trackedLocationService = trackedlocationservice.NewTrackedLocationService(
 			d.TrackedLocationRepository(ctx),
 			d.OSRMRepository(),
 			d.InfraService(ctx),
 			d.BusinessTypeService(ctx),
-			d.RatingService(),
+			d.RatingService(ctx),
 			d.TxManager(ctx),
 			d.Log(),
 		)
@@ -252,6 +289,7 @@ func (d *diContainer) TrackedLocationHandler(ctx context.Context) handler.Tracke
 		d.trackedLocationHandler = trackedlocationhandler.New(
 			d.UserService(ctx),
 			d.TrackedLocationService(ctx),
+			d.RatingHistoryService(ctx),
 		)
 	}
 	return d.trackedLocationHandler
@@ -316,9 +354,11 @@ func (d *diContainer) Handler(ctx context.Context) api.Handler {
 			d.BusinessTypeHandler(ctx),
 			d.InfraHandler(ctx),
 			d.EventHandler(ctx),
-			d.cfg.BotServiceToken,
-			d.cfg.IngestionServiceToken,
-			d.cfg.CORSAllowedOrigin,
+			d.cfg.Security.MaxBotToken,
+			d.cfg.Security.MiniAppInitDataMaxAge,
+			d.cfg.Security.BotServiceToken,
+			d.cfg.Security.IngestionServiceToken,
+			d.cfg.Security.CORSAllowedOrigin,
 		)
 	}
 	return d.handler

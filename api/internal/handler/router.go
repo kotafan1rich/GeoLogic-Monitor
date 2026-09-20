@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
@@ -21,6 +22,7 @@ type GeocodingHandler interface {
 type TrackedLocationHandler interface {
 	Create(w http.ResponseWriter, r *http.Request)
 	GetMine(w http.ResponseWriter, r *http.Request)
+	GetRatingHistory(w http.ResponseWriter, r *http.Request)
 	DeleteMine(w http.ResponseWriter, r *http.Request)
 	GetAllForMonitoring(w http.ResponseWriter, r *http.Request)
 }
@@ -53,6 +55,8 @@ func RegisterRoutes(
 	businessTypeHandler BusinessTypeHandler,
 	infraHandler InfraHandler,
 	eventHandler EventHandler,
+	maxBotToken string,
+	miniAppInitDataMaxAge time.Duration,
 	botServiceToken string,
 	ingestionServiceToken string,
 ) {
@@ -72,15 +76,13 @@ func RegisterRoutes(
 		{"GET /api/v1/geocoding/suggestions", geocodingHandler.Suggest},
 		{"POST /api/v1/tracked-locations", trackedLocationHandler.Create},
 		{"GET /api/v1/tracked-locations", trackedLocationHandler.GetMine},
+		{"GET /api/v1/tracked-locations/{id}/rating-history", trackedLocationHandler.GetRatingHistory},
 		{"DELETE /api/v1/tracked-locations/{id}", trackedLocationHandler.DeleteMine},
 	}
 	for _, route := range userRoutes {
 		mux.Handle(
 			route.pattern,
-			middleware.BotToken(
-				botServiceToken,
-				middleware.MaxUserID(route.handler),
-			),
+			middleware.MiniAppInitData(maxBotToken, miniAppInitDataMaxAge, route.handler),
 		)
 	}
 	mux.Handle(
@@ -92,9 +94,10 @@ func RegisterRoutes(
 	)
 	mux.Handle(
 		"GET /api/v1/business-types",
-		middleware.BotToken(
-			botServiceToken,
-			middleware.MaxUserID(http.HandlerFunc(businessTypeHandler.GetAll)),
+		middleware.MiniAppInitData(
+			maxBotToken,
+			miniAppInitDataMaxAge,
+			http.HandlerFunc(businessTypeHandler.GetAll),
 		),
 	)
 	mux.Handle(
