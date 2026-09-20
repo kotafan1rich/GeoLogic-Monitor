@@ -14,6 +14,16 @@ aggregator:
     static_files:
       subway: "static/subway.json"
 
+geo-api:
+    url: "http://api:8080"
+    port: "8080"
+    max_idle_conns: 20
+    max_idle_conns_per_host: 20
+    max_conns_per_host: 20
+    request_timeout: 60s
+    attempt_timeout: 10s
+    max_retries: 3
+
 logger:
   level: debug
   format: text

@@ -12,6 +12,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/job"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/scheduler"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
 type diContainer struct {
@@ -19,6 +20,7 @@ type diContainer struct {
 	dsc   *digitalspb.Client
 	dsJob *job.DigitalSpb
 	s     *scheduler.Scheduler
+	gc    *geoapi.Client
 }
 
 func newDIContainer() *diContainer {
@@ -50,12 +52,7 @@ func (d *diContainer) DSClient() *digitalspb.Client {
 			cfg.Aggregator.DigitalSpb.RequestTimeout,
 		)
 
-		log.Info("digital-spb http client initialized",
-			slog.Int("max_idle_conns", cfg.Aggregator.DigitalSpb.MaxIdleConns),
-			slog.Int("max_idle_conns_per_host", cfg.Aggregator.DigitalSpb.MaxIdleConnsPerHost),
-			slog.Int("max_conns_per_host", cfg.Aggregator.DigitalSpb.MaxConnsPerHost),
-			slog.Duration("request_timeout", cfg.Aggregator.DigitalSpb.RequestTimeout),
-		)
+		log.Info("digital-spb http client initialized")
 
 		d.dsc = digitalspb.MustNew(
 			httpClient,
@@ -64,11 +61,7 @@ func (d *diContainer) DSClient() *digitalspb.Client {
 			cfg.Aggregator.DigitalSpb.MaxRetries,
 		)
 
-		log.Info("digital-spb client initialized",
-			slog.Int("base_urls", len(cfg.Aggregator.DigitalSpb.BaseURLMap)),
-			slog.Duration("attempt_timeout", cfg.Aggregator.DigitalSpb.AttemptTimeout),
-			slog.Uint64("max_retries", uint64(cfg.Aggregator.DigitalSpb.MaxRetries)),
-		)
+		log.Info("digital-spb client initialized")
 	}
 	return d.dsc
 }
@@ -111,4 +104,31 @@ func (d *diContainer) Scheduler() *scheduler.Scheduler {
 		d.s = s
 	}
 	return d.s
+}
+
+func (d *diContainer) GeoApiClient() *geoapi.Client {
+	if d.gc == nil {
+		cfg := config.Get()
+		log := d.Logger()
+
+		httpClient := infra.MustNewGeoAPIHTTPClient(
+			cfg.GeoApi.AuthToken,
+			cfg.GeoApi.MaxIdleConns,
+			cfg.GeoApi.MaxIdleConnsPerHost,
+			cfg.GeoApi.MaxConnsPerHost,
+			cfg.GeoApi.RequestTimeout,
+		)
+
+		log.Info("geo-api http client initialized")
+
+		d.gc = geoapi.MustNew(
+			httpClient,
+			cfg.GeoApi.URL,
+			cfg.GeoApi.AttemptTimeout,
+			cfg.GeoApi.MaxRetries,
+		)
+
+		log.Info("geo-api client initialized")
+	}
+	return d.gc
 }
