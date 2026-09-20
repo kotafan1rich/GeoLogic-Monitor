@@ -11,4 +11,7 @@ var (
 	ErrReadResponse      = errors.New("failed to read response")
 	ErrUnexpectedStatus  = errors.New("unexpected response status")
 	ErrUnmarshalData     = errors.New("failed to unmarshal data")
+	ErrInvalidFileName   = errors.New("invalid file name")
+	ErrOpenFile          = errors.New("failed to open file")
+	ErrDecodeData        = errors.New("failed to decode data")
 )

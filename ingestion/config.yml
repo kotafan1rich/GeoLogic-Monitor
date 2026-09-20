@@ -11,6 +11,8 @@ aggregator:
       spb_classif_gate: "https://spb-classif.gate.petersburg.ru/api/v2/"
       egs_gate: "https://egs.gate.petersburg.ru/egs/"
       yazzh_gate: "https://yazzh.gate.petersburg.ru"
+    static_files:
+      subway: "static/subway.json"
 
 logger:
   level: debug

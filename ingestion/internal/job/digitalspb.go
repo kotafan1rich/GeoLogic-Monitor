@@ -3,9 +3,9 @@ package job
 import (
 	"context"
 	"log/slog"
-	"net/url"
 	"time"
 
+	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
 )
 
@@ -17,14 +17,26 @@ const (
 	sourceYazzhGate      = "yazzh_gate"
 )
 
+const (
+	sourceSubwayFile = "subway"
+)
+
 type DigitalSpb struct {
 	log      *slog.Logger
 	client   *digitalspb.Client
 	interval time.Duration
+	files    map[string]a.File
 }
 
-func NewDigitalSpb(log *slog.Logger, client *digitalspb.Client, interval time.Duration) *DigitalSpb {
-	return &DigitalSpb{log: log, client: client, interval: interval}
+func NewDigitalSpb(
+	log *slog.Logger, client *digitalspb.Client, interval time.Duration, staticFiles map[string]string,
+) *DigitalSpb {
+	files := make(map[string]a.File, len(staticFiles))
+	for key, path := range staticFiles {
+		files[key] = a.NewFile(path)
+	}
+
+	return &DigitalSpb{log: log, client: client, interval: interval, files: files}
 }
 
 func (j *DigitalSpb) Name() string {
@@ -42,28 +54,33 @@ func (j *DigitalSpb) Run(ctx context.Context) {
 func (j *DigitalSpb) datasets() []dataset {
 	c := j.client
 
+	classif := j.url(sourceSpbClassifGate)
+	egs := j.url(sourceEgsGate)
+	yazzh := j.url(sourceYazzhGate)
+	subway := j.file(sourceSubwayFile)
+
 	return []dataset{
-		j.ds("railway_station", sourceSpbClassifGate, collect(c.ParseRailwayStationData)),
-		j.ds("restaurant", sourceSpbClassifGate, collect(c.ParseRestaurantData)),
-		j.ds("hotel", sourceSpbClassifGate, collect(c.ParseHotelData)),
-		j.ds("cinema", sourceSpbClassifGate, collect(c.ParseCinemaData)),
-		j.ds("museum", sourceSpbClassifGate, collect(c.ParseMuseumData)),
-		j.ds("exhibition_hall", sourceSpbClassifGate, collect(c.ParseExhibitionHallData)),
-		j.ds("theatre", sourceSpbClassifGate, collect(c.ParseTheatreData)),
-		j.ds("pharmacy", sourceSpbClassifGate, collect(c.ParsePharmacyData)),
-		j.ds("vet_clinic", sourceSpbClassifGate, collect(c.ParseVetClinicData)),
-		j.ds("property", sourceSpbClassifGate, collect(c.ParsePropertyData)),
-		j.ds("kids_place", sourceYazzhGate, collect(c.ParseKidsPlace)),
-		j.ds("visit", sourceEgsGate, collect(c.ParseVisitData)),
-		j.ds("street_musicians", sourceEgsGate, collect(c.ParseStreetMusiciansData)),
+		ds("railway_station", sourceSpbClassifGate, classif, c.ParseRailwayStationData),
+		ds("restaurant", sourceSpbClassifGate, classif, c.ParseRestaurantData),
+		ds("hotel", sourceSpbClassifGate, classif, c.ParseHotelData),
+		ds("cinema", sourceSpbClassifGate, classif, c.ParseCinemaData),
+		ds("museum", sourceSpbClassifGate, classif, c.ParseMuseumData),
+		ds("exhibition_hall", sourceSpbClassifGate, classif, c.ParseExhibitionHallData),
+		ds("theatre", sourceSpbClassifGate, classif, c.ParseTheatreData),
+		ds("pharmacy", sourceSpbClassifGate, classif, c.ParsePharmacyData),
+		ds("vet_clinic", sourceSpbClassifGate, classif, c.ParseVetClinicData),
+		ds("property", sourceSpbClassifGate, classif, c.ParsePropertyData),
+		ds("kids_place", sourceYazzhGate, yazzh, c.ParseKidsPlaceData),
+		ds("visit", sourceEgsGate, egs, c.ParseVisitData),
+		ds("street_musicians", sourceEgsGate, egs, c.ParseStreetMusiciansData),
+		ds("subway", sourceSubwayFile, subway, c.ParseSubwayData),
 	}
 }
 
-func (j *DigitalSpb) ds(name, source string, parse parseFunc) dataset {
-	var baseURL *url.URL
-	if u, ok := j.client.BaseURLs[source]; ok {
-		baseURL = u
-	}
+func (j *DigitalSpb) url(key string) a.URL {
+	return j.client.BaseURLs[key]
+}
 
-	return dataset{name: name, source: source, baseURL: baseURL, parse: parse}
+func (j *DigitalSpb) file(key string) a.File {
+	return j.files[key]
 }

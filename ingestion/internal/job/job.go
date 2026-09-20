@@ -4,31 +4,49 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
+	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
 )
 
-type parseFunc func(ctx context.Context, baseURL *url.URL) (int, error)
+type parseFunc func(ctx context.Context) (int, error)
 
 type dataset struct {
-	name    string
-	source  string
-	baseURL *url.URL
-	parse   parseFunc
+	name   string
+	source string
+	kind   a.Kind
+	target string
+	parse  parseFunc
 }
 
-func collect[T any](fn func(context.Context, *url.URL) ([]T, error)) parseFunc {
-	return func(ctx context.Context, baseURL *url.URL) (int, error) {
-		data, err := fn(ctx, baseURL)
+func ds[S a.Source, T any](
+	name, source string, src S, fn func(context.Context, S) ([]T, error),
+) dataset {
+	return dataset{
+		name:   name,
+		source: source,
+		kind:   src.Kind(),
+		target: src.String(),
+		parse:  collect(src, fn),
+	}
+}
+
+func collect[S a.Source, T any](src S, fn func(context.Context, S) ([]T, error)) parseFunc {
+	return func(ctx context.Context) (int, error) {
+		if err := src.Validate(); err != nil {
+			return 0, err
+		}
+
+		data, err := fn(ctx, src)
 		if err != nil {
 			return 0, err
 		}
 
+		// TODO: отдавать данные наружу (API сервиса-хранилища / kafka)
 		_ = data
 
 		return len(data), nil
@@ -53,37 +71,29 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		ds := ds
 
 		g.Go(func() error {
-			if ds.baseURL == nil {
-				failed.Add(1)
-
-				log.ErrorContext(ctx, "base url is not configured for source",
-					slog.String("dataset", ds.name),
-					slog.String("source", ds.source),
-				)
-
-				return fmt.Errorf("%s [%s]: %w", ds.name, ds.source, ErrInvalidURL)
-			}
-
 			log.DebugContext(ctx, "dataset parsing started",
 				slog.String("dataset", ds.name),
 				slog.String("source", ds.source),
-				slog.String("base_url", ds.baseURL.String()),
+				slog.String("kind", ds.kind.String()),
+				slog.String("target", ds.target),
 			)
 
 			dsStart := time.Now()
 
-			count, err := ds.parse(ctx, ds.baseURL)
+			count, err := ds.parse(ctx)
 			if err != nil {
 				failed.Add(1)
 
 				log.ErrorContext(ctx, "dataset parsing failed",
 					slog.String("dataset", ds.name),
 					slog.String("source", ds.source),
+					slog.String("kind", ds.kind.String()),
+					slog.String("target", ds.target),
 					slog.Duration("duration", time.Since(dsStart)),
 					slog.Any("error", err),
 				)
 
-				return fmt.Errorf("%s: %w", ds.name, err)
+				return fmt.Errorf("%s [%s]: %w", ds.name, ds.source, err)
 			}
 
 			succeeded.Add(1)

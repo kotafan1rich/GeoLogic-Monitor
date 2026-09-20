@@ -28,6 +28,7 @@ type DigitalSpbConfig struct {
 	MaxRetries          uint              `yaml:"max_retries"`
 	JobInterval         time.Duration     `yaml:"job_interval"`
 	BaseURLMap          map[string]string `yaml:"base_urls"`
+	StaticFiles         map[string]string `yaml:"static_files"`
 }
 
 var config *Config

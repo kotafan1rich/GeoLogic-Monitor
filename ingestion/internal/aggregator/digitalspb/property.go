@@ -2,15 +2,16 @@ package digitalspb
 
 import (
 	"context"
-	"net/url"
+
+	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 )
 
 const propertyEndpoint = "datasets/208/versions/latest/data/238/"
 
-func (c *Client) ParsePropertyData(ctx context.Context, baseURL *url.URL) ([]MSPProperty, error) {
+func (c *Client) ParsePropertyData(ctx context.Context, src a.URL) ([]MSPProperty, error) {
 	const op = "digitalspb.Client.ParsePropertyData"
 
-	data, err := fetchSpbClassifGate[MSPProperty](ctx, c, baseURL, propertyEndpoint, op)
+	data, err := fetchSpbClassifGate[MSPProperty](ctx, c, src, propertyEndpoint, op)
 	if err != nil {
 		return nil, err
 	}
