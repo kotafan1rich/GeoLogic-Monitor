@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
@@ -32,15 +33,30 @@ type TrackedLocationService interface {
 	GetAllForMonitoring(ctx context.Context) ([]domain.MonitoringLocation, error)
 }
 
-type handler struct {
-	userService     UserService
-	locationService TrackedLocationService
+type RatingHistoryService interface {
+	GetHistory(
+		ctx context.Context,
+		maxUserID int64,
+		trackedLocationID uuid.UUID,
+		months uint,
+	) (*domain.LocationRatingHistory, error)
 }
 
-func New(userService UserService, locationService TrackedLocationService) *handler {
+type handler struct {
+	userService          UserService
+	locationService      TrackedLocationService
+	ratingHistoryService RatingHistoryService
+}
+
+func New(
+	userService UserService,
+	locationService TrackedLocationService,
+	ratingHistoryService RatingHistoryService,
+) *handler {
 	return &handler{
-		userService:     userService,
-		locationService: locationService,
+		userService:          userService,
+		locationService:      locationService,
+		ratingHistoryService: ratingHistoryService,
 	}
 }
 
@@ -87,6 +103,38 @@ func (h *handler) GetMine(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, dto.ToResponseList(locations))
+}
+
+func (h *handler) GetRatingHistory(w http.ResponseWriter, r *http.Request) {
+	id, err := request.ParseUUIDPath(r, "id")
+	if err != nil {
+		response.WriteError(w, app.ValidationError(errors.New("invalid tracked location id")))
+		return
+	}
+
+	months := uint(3)
+	if value := r.URL.Query().Get("months"); value != "" {
+		parsed, err := strconv.ParseUint(value, 10, 31)
+		if err != nil || parsed < 1 {
+			response.WriteError(w, app.ValidationError(errors.New("invalid months")))
+			return
+		}
+		months = uint(parsed)
+	}
+
+	maxUserID, ok := middleware.GetMaxUserID(r.Context())
+	if !ok {
+		response.WriteError(w, app.ErrUnauthorized)
+		return
+	}
+
+	history, err := h.ratingHistoryService.GetHistory(r.Context(), maxUserID, id, months)
+	if err != nil {
+		response.WriteServiceError(w, err)
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, dto.ToRatingHistoryResponse(history))
 }
 
 func (h *handler) DeleteMine(w http.ResponseWriter, r *http.Request) {

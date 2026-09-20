@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
@@ -19,6 +20,8 @@ type httpHandler struct {
 	businessTypeHandler    handler.BusinessTypeHandler
 	infraHandler           handler.InfraHandler
 	eventHandler           handler.EventHandler
+	maxBotToken            string
+	miniAppInitDataMaxAge  time.Duration
 	botServiceToken        string
 	ingestionServiceToken  string
 	corsAllowedOrigin      string
@@ -32,6 +35,8 @@ func NewHandler(
 	businessTypeHandler handler.BusinessTypeHandler,
 	infraHandler handler.InfraHandler,
 	eventHandler handler.EventHandler,
+	maxBotToken string,
+	miniAppInitDataMaxAge time.Duration,
 	botServiceToken string,
 	ingestionServiceToken string,
 	corsAllowedOrigin string,
@@ -44,6 +49,8 @@ func NewHandler(
 		businessTypeHandler:    businessTypeHandler,
 		infraHandler:           infraHandler,
 		eventHandler:           eventHandler,
+		maxBotToken:            maxBotToken,
+		miniAppInitDataMaxAge:  miniAppInitDataMaxAge,
 		botServiceToken:        botServiceToken,
 		ingestionServiceToken:  ingestionServiceToken,
 		corsAllowedOrigin:      corsAllowedOrigin,
@@ -61,6 +68,8 @@ func (h *httpHandler) Routes() http.Handler {
 		h.businessTypeHandler,
 		h.infraHandler,
 		h.eventHandler,
+		h.maxBotToken,
+		h.miniAppInitDataMaxAge,
 		h.botServiceToken,
 		h.ingestionServiceToken,
 	)

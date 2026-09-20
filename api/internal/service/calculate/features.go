@@ -1,4 +1,4 @@
-package rating
+package calculate
 
 import (
 	"math"

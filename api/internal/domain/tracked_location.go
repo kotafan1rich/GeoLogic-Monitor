@@ -8,6 +8,8 @@ type TrackedLocation struct {
 	BusinessTypeID uuid.UUID
 	Address        string
 	GeoPoint       GeoPoint
+	User           User
+	LatestRating   *CalculatedRating
 }
 
 func NewTrackedLocation(
