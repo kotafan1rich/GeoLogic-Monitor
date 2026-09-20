@@ -81,12 +81,14 @@ func (d *diContainer) DSJob() *job.DigitalSpb {
 			d.Logger(),
 			d.DSClient(),
 			cfg.Aggregator.DigitalSpb.JobInterval,
+			cfg.Aggregator.DigitalSpb.StaticFiles,
 		)
 
 		d.Logger().Info(
 			"job initialized",
 			slog.String("job", d.dsJob.Name()),
 			slog.Duration("interval", d.dsJob.Interval()),
+			slog.Int("static_files", len(cfg.Aggregator.DigitalSpb.StaticFiles)),
 		)
 	}
 	return d.dsJob

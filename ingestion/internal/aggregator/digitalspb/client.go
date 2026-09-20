@@ -10,13 +10,15 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v7"
+
+	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 )
 
 const maxBodySize = 64 << 20
 
 type Client struct {
 	httpClient     *http.Client
-	BaseURLs       map[string]*url.URL
+	BaseURLs       map[string]a.URL
 	attemptTimeout time.Duration
 	maxRetries     uint
 	newBackOff     func() backoff.BackOff
@@ -33,19 +35,15 @@ func New(
 		return nil, ErrInvalidURLMap
 	}
 
-	parsedBaseURLs := make(map[string]*url.URL)
+	parsedBaseURLs := make(map[string]a.URL, len(baseURLs))
 
-	for source, u := range baseURLs {
-		parsed, err := url.Parse(u)
+	for source, raw := range baseURLs {
+		src, err := a.NewURL(raw)
 		if err != nil {
 			return nil, fmt.Errorf("%w [%s]: %v", ErrInvalidURL, source, err)
 		}
 
-		if !validateURL(parsed) {
-			return nil, fmt.Errorf("%w [%s]", ErrInvalidURL, source)
-		}
-
-		parsedBaseURLs[source] = parsed
+		parsedBaseURLs[source] = src
 	}
 
 	return &Client{
@@ -141,8 +139,4 @@ func (c *Client) attempt(ctx context.Context, target string) ([]byte, error) {
 	}
 
 	return bytes, nil
-}
-
-func validateURL(u *url.URL) bool {
-	return !(u == nil && u.Scheme == "" && u.Host == "")
 }

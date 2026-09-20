@@ -2,9 +2,14 @@ package digitalspb
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
+	"os"
 	"strconv"
+
+	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 )
 
 const (
@@ -15,10 +20,10 @@ const (
 )
 
 func fetchSpbClassifGate[T any](
-	ctx context.Context, c *Client, baseURL *url.URL, endpoint, op string,
+	ctx context.Context, c *Client, src a.URL, endpoint, op string,
 ) ([]T, error) {
-	if !validateURL(baseURL) {
-		return nil, fmt.Errorf("%s: %w", op, ErrInvalidURL)
+	if err := src.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	var results []T
@@ -32,7 +37,7 @@ func fetchSpbClassifGate[T any](
 	for {
 		var raw SpbClassifGateResponse[T]
 
-		if err := c.do(ctx, baseURL, endpoint, query, &raw); err != nil {
+		if err := c.do(ctx, src.URL(), endpoint, query, &raw); err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 
@@ -52,16 +57,16 @@ func fetchSpbClassifGate[T any](
 }
 
 func fetchEgsGate[T any](
-	ctx context.Context, c *Client, baseURL *url.URL, ver int, endpoint, op string,
+	ctx context.Context, c *Client, src a.URL, ver int, endpoint, op string,
 ) ([]T, error) {
-	if !validateURL(baseURL) {
-		return nil, fmt.Errorf("%s: %w", op, ErrInvalidURL)
+	if err := src.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	if ver == egsGateV1 {
 		var raw EgsGateResponseV1[T]
 
-		if err := c.do(ctx, baseURL, endpoint, url.Values{}, &raw); err != nil {
+		if err := c.do(ctx, src.URL(), endpoint, url.Values{}, &raw); err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 
@@ -69,7 +74,7 @@ func fetchEgsGate[T any](
 	} else {
 		var raw EgsGateResponseV2[T]
 
-		if err := c.do(ctx, baseURL, endpoint, url.Values{}, &raw); err != nil {
+		if err := c.do(ctx, src.URL(), endpoint, url.Values{}, &raw); err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 
@@ -78,18 +83,38 @@ func fetchEgsGate[T any](
 }
 
 func fetchYazzhGate[T any](
-	ctx context.Context, c *Client, baseURL *url.URL, endpoint, op string,
+	ctx context.Context, c *Client, src a.URL, endpoint, op string,
 ) ([]T, error) {
-	if !validateURL(baseURL) {
-		return nil, fmt.Errorf("%s: %w", op, ErrInvalidURL)
+	if err := src.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	var raw YazzhGateResponse[T]
 
-	err := c.do(ctx, baseURL, endpoint, url.Values{}, &raw)
+	err := c.do(ctx, src.URL(), endpoint, url.Values{}, &raw)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return raw.Data, nil
+}
+
+func fetchStatic[T any](ctx context.Context, src a.File, op string) ([]T, error) {
+	if err := src.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	f, err := os.Open(src.Path())
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w [%s]: %v", op, ErrOpenFile, src, err)
+	}
+	defer f.Close()
+
+	var raw []T
+
+	if err := json.NewDecoder(io.LimitReader(f, maxBodySize)).Decode(&raw); err != nil {
+		return nil, fmt.Errorf("%s: %w [%s]: %v", op, ErrDecodeData, src, err)
+	}
+
+	return raw, nil
 }

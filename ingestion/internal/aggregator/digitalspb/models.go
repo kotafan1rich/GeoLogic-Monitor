@@ -41,6 +41,14 @@ type (
 		Note                 string    `json:"note"`
 		Coordinates          []float64 `json:"coordinates"`
 	}
+
+	Subway struct {
+		Title   string  `json:"title"`
+		Address string  `json:"address"`
+		Lat     float64 `json:"lat"`
+		Lon     float64 `json:"lon"`
+		Source  string  `json:"source"`
+	}
 )
 
 type (
