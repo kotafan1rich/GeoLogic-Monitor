@@ -6,11 +6,18 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/domain"
 )
 
-type dispatcher struct {
+type StartHandler interface {
+	Start()
 }
 
-func NewDispatcher() *dispatcher {
-	return &dispatcher{}
+type dispatcher struct {
+	startHandler StartHandler
+}
+
+func NewDispatcher(startHandler StartHandler) *dispatcher {
+	return &dispatcher{
+		startHandler: startHandler,
+	}
 }
 
 func (d *dispatcher) Dispatch(ctx context.Context, update domain.Update) error

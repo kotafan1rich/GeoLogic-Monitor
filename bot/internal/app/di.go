@@ -4,15 +4,27 @@ import (
 	"context"
 	"os"
 
-	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/bot"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/config"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot/start"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/http/webhook"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/integrations"
+	apiintegration "github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/integrations/api"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/logger"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/repository/api"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/server"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/service/user"
 )
 
 type diContainer struct {
-	cfg     *config.Config
-	log     *logger.Logger
-	handler bot.Handler
+	cfg          *config.Config
+	log          *logger.Logger
+	startHandler bot.StartHandler
+	userService  start.UserService
+	handler      server.Handler
+	apiRepo      user.ApiRepository
+	apiClient    api.ApiClient
+	dispatcher   webhook.Dispatcher
 }
 
 func NewDIContainer(cfg *config.Config) *diContainer {
@@ -36,10 +48,48 @@ func (d *diContainer) Log() *logger.Logger {
 	return d.log
 }
 
-func (d *diContainer) Handler(ctx context.Context) bot.Handler {
+func (d *diContainer) Handler(ctx context.Context) server.Handler {
 	if d.handler == nil {
-		d.handler = bot.NewHandler(
-		)
+		d.handler = server.NewHandler()
 	}
 	return d.handler
+}
+
+func (d *diContainer) StartHandler() bot.StartHandler {
+	if d.startHandler == nil {
+		d.startHandler = start.NewStartHandler(d.UserService())
+	}
+	return d.startHandler
+}
+
+func (d *diContainer) UserService() start.UserService {
+	if d.userService == nil {
+		d.userService = user.NewService(d.ApiRepository())
+	}
+	return d.userService
+}
+
+func (d *diContainer) ApiRepository() user.ApiRepository {
+	if d.apiRepo == nil {
+		d.apiRepo = api.NewRepository(d.ApiClient())
+	}
+	return d.apiRepo
+}
+
+func (d *diContainer) ApiClient() api.ApiClient {
+	if d.apiClient == nil {
+		d.apiClient = apiintegration.New(
+			integrations.NewHTTPClient(d.cfg.Api.Timeout),
+			d.cfg.Api.BaseURL,
+			d.cfg.Security.MaxBotToken,
+		)
+	}
+	return d.apiClient
+}
+
+func (d *diContainer) Dispatcher() webhook.Dispatcher {
+	if d.dispatcher == nil {
+		d.dispatcher = bot.NewDispatcher(d.StartHandler())
+	}
+	return d.dispatcher
 }

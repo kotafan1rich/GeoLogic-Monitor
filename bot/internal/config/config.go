@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	HttpServer HttpServer
+	Api        Api
 	Logging    Logging
 	Security   Security
 }
