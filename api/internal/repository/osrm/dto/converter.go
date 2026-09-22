@@ -12,10 +12,10 @@ func ToCoordinate(point *domain.GeoPoint) *osrm.Coordinate {
 	}
 }
 
-func ToCoordinateSlice(infras []*domain.InfraObject) []*osrm.Coordinate {
-	result := make([]*osrm.Coordinate, len(infras))
-	for i, infra := range infras {
-		result[i] = ToCoordinate(&infra.GeoPoint)
+func ToCoordinateSlice(points []*domain.GeoPoint) []*osrm.Coordinate {
+	result := make([]*osrm.Coordinate, len(points))
+	for i, point := range points {
+		result[i] = ToCoordinate(point)
 	}
 	return result
 }

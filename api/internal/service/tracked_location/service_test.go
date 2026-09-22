@@ -102,14 +102,14 @@ type fakeTrackedLocationRepository struct {
 	getByIDErr    error
 }
 
-type fakeOSRMRepository struct{}
+type fakeOSRMService struct{}
 
-func (*fakeOSRMRepository) FilterWalkingDistance(
+func (*fakeOSRMService) WalkingDistances(
 	context.Context,
 	*domain.GeoPoint,
-	[]*domain.InfraObject,
-) ([]*domain.InfraObjectDistance, error) {
-	return []*domain.InfraObjectDistance{}, nil
+	[]*domain.GeoPoint,
+) ([]*float64, error) {
+	return []*float64{}, nil
 }
 
 type fakeInfraService struct{}
@@ -156,7 +156,7 @@ func (fakeTxManager) WithTx(ctx context.Context, fn func(context.Context) error)
 func newTestService(repo TrackedLocationRepository) *service {
 	return NewTrackedLocationService(
 		repo,
-		&fakeOSRMRepository{},
+		&fakeOSRMService{},
 		&fakeInfraService{},
 		&fakeBusinessTypeService{},
 		&fakeRatingService{},

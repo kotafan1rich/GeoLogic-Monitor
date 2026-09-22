@@ -116,7 +116,7 @@ func (r *fakeEventRepository) GetUnnotifiedByPeriod(
 	context.Context,
 	time.Time,
 	time.Time,
-) ([]domain.Event, error) {
+) ([]*domain.Event, error) {
 	return nil, nil
 }
 
@@ -126,7 +126,7 @@ func (r *fakeEventRepository) GetUnnotifiedNear(
 	radius uint16,
 	_ *time.Time,
 	_ *time.Time,
-) ([]domain.Event, error) {
+) ([]*domain.Event, error) {
 	r.nearCalls++
 	r.nearRadius = radius
 	return nil, nil

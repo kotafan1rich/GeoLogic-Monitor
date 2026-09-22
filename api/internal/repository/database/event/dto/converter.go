@@ -6,7 +6,7 @@ import (
 	basemodel "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/model"
 )
 
-func ToDomain(event model.Event) *domain.Event {
+func ToDomain(event *model.Event) *domain.Event {
 	return &domain.Event{
 		ID:         event.ID,
 		Provider:   event.Provider,
@@ -18,7 +18,7 @@ func ToDomain(event model.Event) *domain.Event {
 	}
 }
 
-func ToModel(event domain.Event) *model.Event {
+func ToModel(event *domain.Event) *model.Event {
 	return &model.Event{
 		ID:         event.ID,
 		Provider:   event.Provider,

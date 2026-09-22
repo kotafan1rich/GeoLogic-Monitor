@@ -47,6 +47,10 @@ type EventHandler interface {
 	MarkNotified(w http.ResponseWriter, r *http.Request)
 }
 
+type RoutesHandler interface {
+	WalkingDistances(w http.ResponseWriter, r *http.Request)
+}
+
 func RegisterRoutes(
 	mux *http.ServeMux,
 	healthHandler HealthHandler,
@@ -56,6 +60,7 @@ func RegisterRoutes(
 	businessTypeHandler BusinessTypeHandler,
 	infraHandler InfraHandler,
 	eventHandler EventHandler,
+	routesHandler RoutesHandler,
 	maxBotToken string,
 	miniAppInitDataMaxAge time.Duration,
 	botServiceToken string,
@@ -153,4 +158,11 @@ func RegisterRoutes(
 			middleware.IngestionToken(ingestionServiceToken, route.handler),
 		)
 	}
+	mux.Handle(
+		"POST /internal/v1/routes/walking-distances",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(routesHandler.WalkingDistances),
+		),
+	)
 }

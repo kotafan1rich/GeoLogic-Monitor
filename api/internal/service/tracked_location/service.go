@@ -23,9 +23,14 @@ type BusinessTypeService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.BusinessType, error)
 }
 
-type OSRMRepository interface {
-	FilterWalkingDistance(ctx context.Context, src *domain.GeoPoint, dst []*domain.InfraObject) ([]*domain.InfraObjectDistance, error)
+type OSRMService interface {
+	WalkingDistances(
+		ctx context.Context,
+		src *domain.GeoPoint,
+		dst []*domain.GeoPoint,
+	) ([]*float64, error)
 }
+
 type TrackedLocationRepository interface {
 	Create(ctx context.Context, location *domain.TrackedLocation) (*domain.TrackedLocation, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error)
@@ -45,7 +50,7 @@ type RatingService interface {
 
 type service struct {
 	repo                TrackedLocationRepository
-	osrmRepo            OSRMRepository
+	osrmService         OSRMService
 	infraServie         InfraService
 	businessTypeService BusinessTypeService
 	ratingService       RatingService
@@ -56,7 +61,7 @@ type service struct {
 
 func NewTrackedLocationService(
 	repo TrackedLocationRepository,
-	osrmRepo OSRMRepository,
+	osrmService OSRMService,
 	infraServie InfraService,
 	businessTypeService BusinessTypeService,
 	ratingService RatingService,
@@ -65,7 +70,7 @@ func NewTrackedLocationService(
 ) *service {
 	return &service{
 		repo:                repo,
-		osrmRepo:            osrmRepo,
+		osrmService:         osrmService,
 		infraServie:         infraServie,
 		businessTypeService: businessTypeService,
 		ratingService:       ratingService,
@@ -114,20 +119,40 @@ func (s *service) Create(
 			return err
 		}
 
-		infraWithDistance, err := s.osrmRepo.FilterWalkingDistance(ctx, &location.GeoPoint, infraNear)
+		dst := make([]*domain.GeoPoint, len(infraNear))
+		for i := range infraNear {
+			dst[i] = &infraNear[i].GeoPoint
+		}
+
+		distances, err := s.osrmService.WalkingDistances(ctx, &location.GeoPoint, dst)
 		if err != nil {
 			s.log.ErrorContext(ctx,
 				"failed to get walking distances for location",
 				slog.String("user_id", userID.String()),
 				slog.String("error", err.Error()),
 			)
-			return apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
+			return err
+		}
+		if len(distances) != len(infraNear) {
+			return errors.New("unexpected walking distance count")
 		}
 
 		businessType, err := s.businessTypeService.GetByID(ctx, location.BusinessTypeID)
 		if err != nil {
 			return err
 		}
+
+		infraWithDistance := make([]*domain.InfraObjectDistance, 0, len(infraNear))
+		for i, distance := range distances {
+			if distance == nil || *distance > float64(infraNear[i].Type.MaxRadius) {
+				continue
+			}
+			infraWithDistance = append(infraWithDistance, &domain.InfraObjectDistance{
+				Object:         infraNear[i],
+				DistanceMeters: *distance,
+			})
+		}
+
 		features := calculate.BuildLocationFeatures(businessType, infraWithDistance)
 
 		ratingResult, err := s.ratingService.Calculate(ctx, *features)

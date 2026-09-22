@@ -15,6 +15,7 @@ import (
 	geocodinghandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/geocoding"
 	healthhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/health"
 	infrahandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/infra"
+	routeshandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/route"
 	trackedlocationhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/tracked_location"
 	userhandler "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/user"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
@@ -34,6 +35,7 @@ import (
 	eventservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/event"
 	geocodingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/geocoding"
 	infraservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra"
+	osrmservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/osrm"
 	ratingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating"
 	ratinghistoryservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating_history"
 	trackedlocationservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/tracked_location"
@@ -65,6 +67,11 @@ type ratingRepository interface {
 	ratinghistoryservice.RatingRepository
 }
 
+type osrmService interface {
+	trackedlocationservice.OSRMService
+	routeshandler.OSRMService
+}
+
 type diContainer struct {
 	cfg                       *config.Config
 	db                        database.DBTX
@@ -77,9 +84,10 @@ type diContainer struct {
 	ratingRepository          ratingRepository
 	trackedLocationRepository trackedlocationservice.TrackedLocationRepository
 	userRepository            userservice.UserRepository
-	osrmRepository            trackedlocationservice.OSRMRepository
+	osrmRepository            osrmservice.OSRMRepository
 	geocoderRepository        geocodingservice.Repository
 	geocodingService          geocodinghandler.GeocodingService
+	osrmService               osrmService
 	ratingService             ratingservice.Service
 	ratingHistoryService      ratinghistoryservice.Service
 	trackedLocationService    trackedLocationService
@@ -95,6 +103,7 @@ type diContainer struct {
 	infraHandler              handler.InfraHandler
 	eventService              eventhandler.EventService
 	eventHandler              handler.EventHandler
+	routesHandler             handler.RoutesHandler
 	handler                   api.Handler
 }
 
@@ -194,13 +203,27 @@ func (d *diContainer) UserRepository(ctx context.Context) userservice.UserReposi
 	return d.userRepository
 }
 
-func (d *diContainer) OSRMRepository() trackedlocationservice.OSRMRepository {
+func (d *diContainer) OSRMRepository() osrmservice.OSRMRepository {
 	if d.osrmRepository == nil {
 		client := &http.Client{Timeout: d.cfg.OSRM.Timeout}
 		osrmClient := osrm.New(client, d.cfg.OSRM.BaseURL)
 		d.osrmRepository = osrmrepository.New(osrmClient)
 	}
 	return d.osrmRepository
+}
+
+func (d *diContainer) OSRMService() osrmService {
+	if d.osrmService == nil {
+		d.osrmService = osrmservice.NewService(d.Log(), d.OSRMRepository())
+	}
+	return d.osrmService
+}
+
+func (d *diContainer) RoutesHandler() handler.RoutesHandler {
+	if d.routesHandler == nil {
+		d.routesHandler = routeshandler.New(d.OSRMService())
+	}
+	return d.routesHandler
 }
 
 func (d *diContainer) GeocoderRepository() geocodingservice.Repository {
@@ -273,7 +296,7 @@ func (d *diContainer) TrackedLocationService(ctx context.Context) trackedLocatio
 	if d.trackedLocationService == nil {
 		d.trackedLocationService = trackedlocationservice.NewTrackedLocationService(
 			d.TrackedLocationRepository(ctx),
-			d.OSRMRepository(),
+			d.OSRMService(),
 			d.InfraService(ctx),
 			d.BusinessTypeService(ctx),
 			d.RatingService(ctx),
@@ -332,7 +355,10 @@ func (d *diContainer) InfraHandler(ctx context.Context) handler.InfraHandler {
 
 func (d *diContainer) EventService(ctx context.Context) eventhandler.EventService {
 	if d.eventService == nil {
-		d.eventService = eventservice.NewEventService(d.Log(), d.EventRepository(ctx))
+		d.eventService = eventservice.NewEventService(
+			d.Log(),
+			d.EventRepository(ctx),
+		)
 	}
 	return d.eventService
 }
@@ -354,6 +380,7 @@ func (d *diContainer) Handler(ctx context.Context) api.Handler {
 			d.BusinessTypeHandler(ctx),
 			d.InfraHandler(ctx),
 			d.EventHandler(ctx),
+			d.RoutesHandler(),
 			d.cfg.Security.MaxBotToken,
 			d.cfg.Security.MiniAppInitDataMaxAge,
 			d.cfg.Security.BotServiceToken,
