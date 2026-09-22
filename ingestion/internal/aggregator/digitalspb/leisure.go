@@ -134,15 +134,15 @@ func (c *Client) ParseVetClinicData(
 	return mappedData, nil
 }
 
-// func (c *Client) ParseKidsPlaceData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
-// 	const op = "digitalspb.Client.ParseKidsPlaceData"
+func (c *Client) ParseKidsPlaceData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
+	const op = "digitalspb.Client.ParseKidsPlaceData"
 
-// 	data, err := fetchYazzhGate[KidsPlace](ctx, c, src, kidsPlaceEndpoint, op)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	data, err := fetchYazzhGate[KidsPlace](ctx, c, src, kidsPlaceEndpoint, op)
+	if err != nil {
+		return nil, err
+	}
 
-// 	mappedData := mapToInfraObjects[KidsPlace](data, "", mapKid)
+	mappedData := mapToInfraObjects[KidsPlace](data, "", mapKidsPlace)
 
-// 	return mappedData, nil
-// }
+	return mappedData, nil
+}

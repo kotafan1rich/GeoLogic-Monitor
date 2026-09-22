@@ -34,6 +34,15 @@ geo-api:
       - { slug: pharmacy, name: "Аптека", weight: 2, max_radius: 300 }
       - { slug: cinema, name: "Кинотеатр", weight: 3, max_radius: 500 }
       - { slug: vet_clinic, name: "Ветклиника", weight: 2, max_radius: 500 }
+      - { slug: park, name: "Парк", weight: 3, max_radius: 600 }
+      - { slug: sports_center, name: "Спортивный центр", weight: 3, max_radius: 500 }
+      - { slug: zoo, name: "Зоопарк", weight: 3, max_radius: 800 }
+      - { slug: education_center, name: "Образовательный центр", weight: 2, max_radius: 400 }
+      - { slug: game_center, name: "Игровой центр", weight: 2, max_radius: 400 }
+      - { slug: playground, name: "Детская площадка", weight: 2, max_radius: 300 }
+      - { slug: library, name: "Библиотека", weight: 1, max_radius: 400 }
+      - { slug: camp, name: "Лагерь", weight: 1, max_radius: 500 }
+      - { slug: other, name: "Прочее", weight: 1, max_radius: 300 }
 
 logger:
   level: debug

@@ -18,17 +18,16 @@ const providerPrefix = "digitalspb"
 const geocodeConcurrency = 8
 
 const (
-	datasetRailwayStation = "railway_station"
-	datasetSubway         = "subway"
-	datasetRestaurant     = "restaurant"
-	datasetHotel          = "hotel"
-	datasetMuseum         = "museum"
-	datasetExhibitionHall = "exhibition_hall"
-	datasetTheatre        = "theatre"
-	datasetPharmacy       = "pharmacy"
-	datasetCinema         = "cinema"
-	datasetVetClinic      = "vet_clinic"
-	// datasetKidsPlace          = "kids_place"
+	datasetRailwayStation  = "railway_station"
+	datasetSubway          = "subway"
+	datasetRestaurant      = "restaurant"
+	datasetHotel           = "hotel"
+	datasetMuseum          = "museum"
+	datasetExhibitionHall  = "exhibition_hall"
+	datasetTheatre         = "theatre"
+	datasetPharmacy        = "pharmacy"
+	datasetCinema          = "cinema"
+	datasetVetClinic       = "vet_clinic"
 	datasetLibrary         = "library"
 	datasetZoo             = "zoo"
 	datasetGameCenter      = "game_center"
@@ -38,6 +37,18 @@ const (
 	datasetPlayground      = "playground"
 	datasetSportsCenter    = "sports_center"
 	datasetOther           = "other"
+
+	kidsPlaceLibrary         = "Библиотеки"
+	kidsPlaceZoo             = "Зоопарки"
+	kidsPlaceGameCenter      = "Игровые центры"
+	kidsPlaceCamp            = "Лагеря"
+	kidsPlaceMuseum          = "Музеи"
+	kidsPlaceEducationCenter = "Образовательные центры"
+	kidsPlacePark            = "Парки"
+	kidsPlacePlayground      = "Площадки"
+	kidsPlaceSportsCenter    = "Спортивные центры"
+	kidsPlaceTheatre         = "Театры"
+	kidsPlaceOther           = "Другое"
 )
 
 func mapToInfraObjects[T any](
@@ -170,9 +181,77 @@ func mapSubway(o Subway) geoapi.InfraObjectInput {
 	}
 }
 
-// func mapKidsPlace(o KidsPlace) geoapi.InfraObjectInput {
-// 	return infraObject()
-// }
+// TODO: потом нужно конвертировать координаты в строковый адрес
+func mapKidsPlaceLibrary(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetLibrary, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlaceZoo(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetZoo, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlaceGameCenter(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetGameCenter, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlaceCamp(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetCamp, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlaceMuseum(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetMuseum, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlaceEducationCenter(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetEducationCenter, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlacePark(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetPark, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlacePlayground(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetPlayground, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlaceSportsCenter(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetSportsCenter, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlacekidsPlaceTheatre(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetTheatre, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlacekidsOther(o KidsPlace) geoapi.InfraObjectInput {
+	return infraObject(datasetOther, o.ID, "test", o.Title, o.Coordinates)
+}
+
+func mapKidsPlace(o KidsPlace) geoapi.InfraObjectInput {
+	switch o.CategoriesName {
+	case kidsPlaceLibrary:
+		return mapKidsPlaceLibrary(o)
+	case kidsPlaceZoo:
+		return mapKidsPlaceZoo(o)
+	case kidsPlaceGameCenter:
+		return mapKidsPlaceGameCenter(o)
+	case kidsPlaceCamp:
+		return mapKidsPlaceCamp(o)
+	case kidsPlaceMuseum:
+		return mapKidsPlaceMuseum(o)
+	case kidsPlaceEducationCenter:
+		return mapKidsPlaceEducationCenter(o)
+	case kidsPlacePark:
+		return mapKidsPlacePark(o)
+	case kidsPlacePlayground:
+		return mapKidsPlacePlayground(o)
+	case kidsPlaceSportsCenter:
+		return mapKidsPlaceSportsCenter(o)
+	case kidsPlaceTheatre:
+		return mapKidsPlacekidsPlaceTheatre(o)
+	default:
+		return mapKidsPlacekidsOther(o)
+	}
+}
 
 func infraObject[I int | int64 | string](
 	dataset string, id I, address, name string, coord []float64,

@@ -92,7 +92,7 @@ func (j *DigitalSpb) datasets() []dataset {
 
 	classif := j.url(sourceSpbClassifGate)
 	// egs := j.url(sourceEgsGate)
-	// yazzh := j.url(sourceYazzhGate)
+	yazzh := j.url(sourceYazzhGate)
 	subway := j.file(sourceSubwayFile)
 
 	return []dataset{
@@ -116,13 +116,8 @@ func (j *DigitalSpb) datasets() []dataset {
 			toInfra(w, t, datasetCinema)),
 		ds(datasetVetClinic, sourceSpbClassifGate, classif, geocoded(c.ParseVetClinicData, conv),
 			toInfra(w, t, datasetVetClinic)),
-
-		// TODO: тип зависит от категории объекта, а не от датасета
-		// ds(datasetKidsPlace, sourceYazzhGate, yazzh, c.ParseKidsPlaceData, discard),
-
-		// TODO: нет координат, нужен геокодинг до записи
-		// ds(datasetProperty, sourceSpbClassifGate, classif, c.ParsePropertyData, discard),
-
+		ds(datasetKidsPlace, sourceYazzhGate, yazzh, c.ParseKidsPlaceData,
+			toInfra(w, t, datasetKidsPlace)),
 		// TODO: запись в /internal/v1/events
 		// ds(datasetVisit, sourceEgsGate, egs, c.ParseVisitData, discard),
 		// ds(datasetStreetMusician, sourceEgsGate, egs, c.ParseStreetMusiciansData, discard),

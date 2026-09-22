@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -12,7 +13,12 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
-const infraWriteConcurrency = 8
+const (
+	infraWriteConcurrency = 8
+
+	datasetSep   = ";"
+	otherDataset = "other"
+)
 
 type storeFunc[T any] = func(ctx context.Context, data []T) error
 
@@ -30,9 +36,16 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 			return nil
 		}
 
-		typeID, err := types.TypeID(ctx, slug)
-		if err != nil {
-			return fmt.Errorf("%w [%s]: %v", ErrResolveType, slug, err)
+		var (
+			typeID string
+			err    error
+		)
+
+		if slug != datasetKidsPlace {
+			typeID, err = types.TypeID(ctx, slug)
+			if err != nil {
+				return fmt.Errorf("%w [%s]: %v", ErrResolveType, slug, err)
+			}
 		}
 
 		var (
@@ -45,6 +58,13 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 		g.SetLimit(infraWriteConcurrency)
 
 		for _, obj := range data {
+			if slug == datasetKidsPlace {
+				dataset := extractDataset(obj.ExternalID)
+				typeID, err = types.TypeID(ctx, dataset)
+				if err != nil {
+					return fmt.Errorf("%w [%s]: %v", ErrResolveType, dataset, err)
+				}
+			}
 			obj.TypeID = typeID
 
 			if obj.Lat == 0 && obj.Lon == 0 {
@@ -84,6 +104,14 @@ func all[T any](stores ...storeFunc[T]) storeFunc[T] {
 
 		return nil
 	}
+}
+
+func extractDataset(externalID string) string {
+	raw := strings.Split(externalID, datasetSep)
+	if len(raw) < 2 {
+		return otherDataset
+	}
+	return raw[1]
 }
 
 // func discard[T any](_ context.Context, _ []T) error {
