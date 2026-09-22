@@ -24,30 +24,33 @@ type dataset struct {
 }
 
 func ds[S a.Source, T any](
-	name, source string, src S, fn func(context.Context, S) ([]T, error),
+	name, source string, src S, fetch func(context.Context, S) ([]T, error), store storeFunc[T],
 ) dataset {
 	return dataset{
 		name:   name,
 		source: source,
 		kind:   src.Kind(),
 		target: src.String(),
-		parse:  collect(src, fn),
+		parse:  collect(src, fetch, store),
 	}
 }
 
-func collect[S a.Source, T any](src S, fn func(context.Context, S) ([]T, error)) parseFunc {
+func collect[S a.Source, T any](
+	src S, fetch func(context.Context, S) ([]T, error), store storeFunc[T],
+) parseFunc {
 	return func(ctx context.Context) (int, error) {
 		if err := src.Validate(); err != nil {
 			return 0, err
 		}
 
-		data, err := fn(ctx, src)
+		data, err := fetch(ctx, src)
 		if err != nil {
 			return 0, err
 		}
 
-		// TODO: отдавать данные наружу (API сервиса-хранилища / kafka)
-		_ = data
+		if err := store(ctx, data); err != nil {
+			return len(data), err
+		}
 
 		return len(data), nil
 	}

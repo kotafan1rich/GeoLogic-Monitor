@@ -21,6 +21,7 @@ type diContainer struct {
 	dsJob *job.DigitalSpb
 	s     *scheduler.Scheduler
 	gc    *geoapi.Client
+	tr    *geoapi.TypeRegistry
 }
 
 func newDIContainer() *diContainer {
@@ -75,6 +76,8 @@ func (d *diContainer) DSJob() *job.DigitalSpb {
 			d.DSClient(),
 			cfg.Aggregator.DigitalSpb.JobInterval,
 			cfg.Aggregator.DigitalSpb.StaticFiles,
+			d.GeoApiClient(),
+			d.TypeRegistry(),
 		)
 
 		d.Logger().Info(
@@ -131,4 +134,25 @@ func (d *diContainer) GeoApiClient() *geoapi.Client {
 		log.Info("geo-api client initialized")
 	}
 	return d.gc
+}
+
+func (d *diContainer) TypeRegistry() *geoapi.TypeRegistry {
+	if d.tr == nil {
+		cfg := config.Get()
+
+		defs := make([]geoapi.InfraTypeInput, 0, len(cfg.GeoApi.InfraTypes))
+		for _, t := range cfg.GeoApi.InfraTypes {
+			defs = append(defs, geoapi.InfraTypeInput{
+				Slug:      t.Slug,
+				Name:      t.Name,
+				Weight:    t.Weight,
+				MaxRadius: t.MaxRadius,
+			})
+		}
+
+		d.tr = geoapi.MustNewTypeRegistry(d.GeoApiClient(), defs)
+
+		d.Logger().Info("infra type registry initialized", slog.Int("types", len(defs)))
+	}
+	return d.tr
 }

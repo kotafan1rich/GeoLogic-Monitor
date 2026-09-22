@@ -21,22 +21,51 @@ const (
 	sourceSubwayFile = "subway"
 )
 
+const (
+	datasetRailwayStation = "railway_station"
+	datasetRestaurant     = "restaurant"
+	datasetHotel          = "hotel"
+	datasetMuseum         = "museum"
+	datasetExhibitionHall = "exhibition_hall"
+	datasetTheatre        = "theatre"
+	datasetPharmacy       = "pharmacy"
+	datasetProperty       = "property"
+	datasetKidsPlace      = "kids_place"
+	datasetVisit          = "visit"
+	datasetStreetMusician = "street_musicians"
+	datasetSubway         = "subway"
+)
+
 type DigitalSpb struct {
 	log      *slog.Logger
 	client   *digitalspb.Client
 	interval time.Duration
 	files    map[string]a.File
+	writer   InfraWriter
+	types    TypeResolver
 }
 
 func NewDigitalSpb(
-	log *slog.Logger, client *digitalspb.Client, interval time.Duration, staticFiles map[string]string,
+	log *slog.Logger,
+	client *digitalspb.Client,
+	interval time.Duration,
+	staticFiles map[string]string,
+	writer InfraWriter,
+	types TypeResolver,
 ) *DigitalSpb {
 	files := make(map[string]a.File, len(staticFiles))
 	for key, path := range staticFiles {
 		files[key] = a.NewFile(path)
 	}
 
-	return &DigitalSpb{log: log, client: client, interval: interval, files: files}
+	return &DigitalSpb{
+		log:      log,
+		client:   client,
+		interval: interval,
+		files:    files,
+		writer:   writer,
+		types:    types,
+	}
 }
 
 func (j *DigitalSpb) Name() string {
@@ -53,27 +82,40 @@ func (j *DigitalSpb) Run(ctx context.Context) {
 
 func (j *DigitalSpb) datasets() []dataset {
 	c := j.client
+	w, t := j.writer, j.types
 
 	classif := j.url(sourceSpbClassifGate)
-	egs := j.url(sourceEgsGate)
-	yazzh := j.url(sourceYazzhGate)
+	// egs := j.url(sourceEgsGate)
+	// yazzh := j.url(sourceYazzhGate)
 	subway := j.file(sourceSubwayFile)
 
 	return []dataset{
-		ds("railway_station", sourceSpbClassifGate, classif, c.ParseRailwayStationData),
-		ds("restaurant", sourceSpbClassifGate, classif, c.ParseRestaurantData),
-		ds("hotel", sourceSpbClassifGate, classif, c.ParseHotelData),
-		ds("cinema", sourceSpbClassifGate, classif, c.ParseCinemaData),
-		ds("museum", sourceSpbClassifGate, classif, c.ParseMuseumData),
-		ds("exhibition_hall", sourceSpbClassifGate, classif, c.ParseExhibitionHallData),
-		ds("theatre", sourceSpbClassifGate, classif, c.ParseTheatreData),
-		ds("pharmacy", sourceSpbClassifGate, classif, c.ParsePharmacyData),
-		ds("vet_clinic", sourceSpbClassifGate, classif, c.ParseVetClinicData),
-		ds("property", sourceSpbClassifGate, classif, c.ParsePropertyData),
-		ds("kids_place", sourceYazzhGate, yazzh, c.ParseKidsPlaceData),
-		ds("visit", sourceEgsGate, egs, c.ParseVisitData),
-		ds("street_musicians", sourceEgsGate, egs, c.ParseStreetMusiciansData),
-		ds("subway", sourceSubwayFile, subway, c.ParseSubwayData),
+		ds(datasetRailwayStation, sourceSpbClassifGate, classif, c.ParseRailwayStationData,
+			toInfra(w, t, datasetRailwayStation)),
+		ds(datasetRestaurant, sourceSpbClassifGate, classif, c.ParseRestaurantData,
+			toInfra(w, t, datasetRestaurant)),
+		ds(datasetHotel, sourceSpbClassifGate, classif, c.ParseHotelData,
+			toInfra(w, t, datasetHotel)),
+		ds(datasetMuseum, sourceSpbClassifGate, classif, c.ParseMuseumData,
+			toInfra(w, t, datasetMuseum)),
+		ds(datasetExhibitionHall, sourceSpbClassifGate, classif, c.ParseExhibitionHallData,
+			toInfra(w, t, datasetExhibitionHall)),
+		ds(datasetTheatre, sourceSpbClassifGate, classif, c.ParseTheatreData,
+			toInfra(w, t, datasetTheatre)),
+		ds(datasetPharmacy, sourceSpbClassifGate, classif, c.ParsePharmacyData,
+			toInfra(w, t, datasetPharmacy)),
+		ds(datasetSubway, sourceSubwayFile, subway, c.ParseSubwayData,
+			toInfra(w, t, datasetSubway)),
+
+		// TODO: тип зависит от категории объекта, а не от датасета
+		// ds(datasetKidsPlace, sourceYazzhGate, yazzh, c.ParseKidsPlaceData, discard),
+
+		// TODO: нет координат, нужен геокодинг до записи
+		// ds(datasetProperty, sourceSpbClassifGate, classif, c.ParsePropertyData, discard),
+
+		// TODO: запись в /internal/v1/events
+		// ds(datasetVisit, sourceEgsGate, egs, c.ParseVisitData, discard),
+		// ds(datasetStreetMusician, sourceEgsGate, egs, c.ParseStreetMusiciansData, discard),
 	}
 }
 
