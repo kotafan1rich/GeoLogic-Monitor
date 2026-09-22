@@ -2,7 +2,7 @@ package job
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 	"sync/atomic"
 	"time"
@@ -68,6 +68,7 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		g         errgroup.Group
 		succeeded atomic.Int64
 		failed    atomic.Int64
+		errs      []error
 	)
 
 	for _, ds := range datasets {
@@ -86,6 +87,7 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 			count, err := ds.parse(ctx)
 			if err != nil {
 				failed.Add(1)
+				errs = append(errs, err)
 
 				log.ErrorContext(ctx, "dataset parsing failed",
 					slog.String("dataset", ds.name),
@@ -96,7 +98,7 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 					slog.Any("error", err),
 				)
 
-				return fmt.Errorf("%s [%s]: %w", ds.name, ds.source, err)
+				return nil
 			}
 
 			succeeded.Add(1)
@@ -112,7 +114,7 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		})
 	}
 
-	err := g.Wait()
+	_ = g.Wait()
 
 	attrs := []any{
 		slog.Int64("succeeded", succeeded.Load()),
@@ -120,8 +122,12 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		slog.Duration("duration", time.Since(runStart)),
 	}
 
-	if err != nil {
-		log.ErrorContext(ctx, "parse run finished with errors", append(attrs, slog.Any("error", err))...)
+	if len(errs) > 0 {
+		log.ErrorContext(
+			ctx,
+			"parse run finished with errors",
+			append(attrs, slog.Any("error", errors.Join(errs...)))...,
+		)
 		return
 	}
 

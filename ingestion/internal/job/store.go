@@ -2,8 +2,8 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
@@ -35,10 +35,9 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 		}
 
 		var (
-			g        errgroup.Group
-			failed   atomic.Int64
-			once     sync.Once
-			firstErr error
+			g      errgroup.Group
+			failed atomic.Int64
+			errs   []error
 		)
 
 		g.SetLimit(infraWriteConcurrency)
@@ -46,10 +45,15 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 		for _, obj := range data {
 			obj.TypeID = typeID
 
+			if obj.Lat == 0 && obj.Lon == 0 {
+				failed.Add(1)
+				continue
+			}
+
 			g.Go(func() error {
 				if _, err := w.PutInfraObject(ctx, obj); err != nil {
 					failed.Add(1)
-					once.Do(func() { firstErr = err })
+					errs = append(errs, err)
 				}
 
 				return nil
@@ -58,8 +62,8 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 
 		_ = g.Wait()
 
-		if n := failed.Load(); n > 0 {
-			return fmt.Errorf("%w: %d/%d objects: %v", ErrStoreFailed, n, len(data), firstErr)
+		if n := failed.Load(); n > 0 && len(errs) > 0 {
+			return fmt.Errorf("%w: %d/%d objects: %v", ErrStoreFailed, n, len(data), errors.Join(errs...))
 		}
 
 		return nil
