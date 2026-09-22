@@ -81,6 +81,7 @@ func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 			d.GeoApiClient(),
 			d.TypeRegistry(),
 			d.GeoApiClient().Coordinates,
+			d.GeoApiClient().Address,
 		)
 
 		d.Logger().Info(
@@ -108,7 +109,7 @@ func (d *diContainer) InfraJob() *job.Job {
 	return d.infraJob
 }
 
-// TODO: Впоследствии добавить cudago (Опционально)
+// TODO: Впоследствии дополнить cudago (Опционально)
 func (d *diContainer) EventsJob() *job.Job {
 	if d.eventsJob == nil {
 		cfg := config.Get()

@@ -145,6 +145,75 @@ func mapToGeocodedInfraObjects[T any](
 	return mapped, nil
 }
 
+type CoordinatesConverter func(ctx context.Context, lat, lon float64) (address string, err error)
+
+func mapToAddressedInfraObjects[T any](
+	ctx context.Context, objs []T, typeID string, convert CoordinatesConverter, fn func(T) geoapi.InfraObjectInput,
+) ([]geoapi.InfraObjectInput, error) {
+	if convert == nil {
+		return nil, ErrInvalidCoordinatesConverter
+	}
+
+	mapped := mapToInfraObjects(objs, typeID, fn)
+
+	var (
+		g      errgroup.Group
+		failed atomic.Int64
+		mu     sync.Mutex
+		errs   []error
+	)
+
+	g.SetLimit(geocodeConcurrency)
+
+	for i := range mapped {
+		if ctx.Err() != nil {
+			break
+		}
+
+		if mapped[i].Address != "" || mapped[i].Lat == 0 && mapped[i].Lon == 0 {
+			continue
+		}
+
+		idx := i
+
+		g.Go(func() error {
+			if err := ctx.Err(); err != nil {
+				failed.Add(1)
+				return nil
+			}
+
+			address, err := convert(ctx, mapped[idx].Lat, mapped[idx].Lon)
+			if err != nil {
+				failed.Add(1)
+				mu.Lock()
+				errs = append(errs, err)
+				mu.Unlock()
+				return nil
+			}
+
+			mapped[idx].Address = address
+
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+
+	if failed.Load() > 0 && len(errs) > 0 {
+		slog.Error(
+			"coordinates converting finished with errors",
+			slog.Int64("failed", failed.Load()),
+			slog.Any("error", errors.Join(errs...)),
+		)
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return mapped, nil
+}
+
 func mapToEvents[T any](objs []T, fn func(T) geoapi.EventInput) []geoapi.EventInput {
 	mapped := make([]geoapi.EventInput, 0, len(objs))
 
@@ -202,49 +271,48 @@ func mapSubway(o Subway) geoapi.InfraObjectInput {
 	}
 }
 
-// TODO: потом нужно конвертировать координаты в строковый адрес
 func mapKidsPlaceLibrary(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetLibrary, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetLibrary, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlaceZoo(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetZoo, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetZoo, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlaceGameCenter(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetGameCenter, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetGameCenter, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlaceCamp(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetCamp, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetCamp, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlaceMuseum(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetMuseum, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetMuseum, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlaceEducationCenter(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetEducationCenter, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetEducationCenter, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlacePark(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetPark, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetPark, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlacePlayground(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetPlayground, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetPlayground, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlaceSportsCenter(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetSportsCenter, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetSportsCenter, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlacekidsPlaceTheatre(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetTheatre, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetTheatre, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlacekidsOther(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetOther, o.ID, "test", o.Title, o.Coordinates)
+	return infraObject(datasetOther, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapKidsPlace(o KidsPlace) geoapi.InfraObjectInput {

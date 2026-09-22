@@ -134,7 +134,9 @@ func (c *Client) ParseVetClinicData(
 	return mappedData, nil
 }
 
-func (c *Client) ParseKidsPlaceData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
+func (c *Client) ParseKidsPlaceData(
+	ctx context.Context, src a.URL, convert CoordinatesConverter,
+) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseKidsPlaceData"
 
 	data, err := fetchYazzhGate[KidsPlace](ctx, c, src, kidsPlaceEndpoint, op)
@@ -142,7 +144,10 @@ func (c *Client) ParseKidsPlaceData(ctx context.Context, src a.URL) ([]geoapi.In
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[KidsPlace](data, "", mapKidsPlace)
+	mappedData, err := mapToAddressedInfraObjects[KidsPlace](ctx, data, "", convert, mapKidsPlace)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
 	return mappedData, nil
 }

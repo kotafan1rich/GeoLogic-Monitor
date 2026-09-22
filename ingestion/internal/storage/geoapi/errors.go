@@ -20,4 +20,5 @@ var (
 	ErrUnknownInfraType   = errors.New("unknown infra type slug")
 	ErrEmptyTypeID        = errors.New("infra type id is empty in response")
 	ErrEmptyAddressList   = errors.New("address list is empty")
+	ErrEmptyAddress       = errors.New("address is empty in response")
 )

@@ -43,6 +43,7 @@ type DigitalSpb struct {
 	writer  DigitalSpbWriter
 	types   TypeResolver
 	convert digitalspb.AddressConverter
+	address digitalspb.CoordinatesConverter
 }
 
 func NewDigitalSpb(
@@ -51,6 +52,7 @@ func NewDigitalSpb(
 	writer DigitalSpbWriter,
 	types TypeResolver,
 	convert digitalspb.AddressConverter,
+	address digitalspb.CoordinatesConverter,
 ) *DigitalSpb {
 	files := make(map[string]a.File, len(staticFiles))
 	for key, path := range staticFiles {
@@ -63,12 +65,13 @@ func NewDigitalSpb(
 		writer:  writer,
 		types:   types,
 		convert: convert,
+		address: address,
 	}
 }
 
 func (j *DigitalSpb) InfraDatasets() []dataset {
 	c := j.client
-	w, t, conv := j.writer, j.types, j.convert
+	w, t, conv, addr := j.writer, j.types, j.convert, j.address
 
 	classif := j.url(sourceSpbClassifGate)
 	yazzh := j.url(sourceYazzhGate)
@@ -95,7 +98,7 @@ func (j *DigitalSpb) InfraDatasets() []dataset {
 			toInfra(w, t, datasetCinema)),
 		ds(datasetVetClinic, sourceSpbClassifGate, classif, geocoded(c.ParseVetClinicData, conv),
 			toInfra(w, t, datasetVetClinic)),
-		ds(datasetKidsPlace, sourceYazzhGate, yazzh, c.ParseKidsPlaceData,
+		ds(datasetKidsPlace, sourceYazzhGate, yazzh, geocoded(c.ParseKidsPlaceData, addr),
 			toInfra(w, t, datasetKidsPlace)),
 	}
 }
@@ -112,9 +115,9 @@ func (j *DigitalSpb) EventDatasets() []dataset {
 	}
 }
 
-func geocoded[S a.Source](
-	fetch func(context.Context, S, digitalspb.AddressConverter) ([]geoapi.InfraObjectInput, error),
-	convert digitalspb.AddressConverter,
+func geocoded[S a.Source, C digitalspb.AddressConverter | digitalspb.CoordinatesConverter](
+	fetch func(context.Context, S, C) ([]geoapi.InfraObjectInput, error),
+	convert C,
 ) func(context.Context, S) ([]geoapi.InfraObjectInput, error) {
 	return func(ctx context.Context, src S) ([]geoapi.InfraObjectInput, error) {
 		return fetch(ctx, src, convert)
