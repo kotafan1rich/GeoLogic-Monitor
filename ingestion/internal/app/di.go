@@ -78,6 +78,7 @@ func (d *diContainer) DSJob() *job.DigitalSpb {
 			cfg.Aggregator.DigitalSpb.StaticFiles,
 			d.GeoApiClient(),
 			d.TypeRegistry(),
+			d.GeoApiClient().Coordinates,
 		)
 
 		d.Logger().Info(
