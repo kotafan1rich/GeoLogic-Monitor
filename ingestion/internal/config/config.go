@@ -41,6 +41,14 @@ type GeoApiConfig struct {
 	RequestTimeout      time.Duration `yaml:"request_timeout"`
 	AttemptTimeout      time.Duration `yaml:"attempt_timeout"`
 	MaxRetries          uint          `yaml:"max_retries"`
+	InfraTypes          []InfraType   `yaml:"infra_types"`
+}
+
+type InfraType struct {
+	Slug      string `yaml:"slug"`
+	Name      string `yaml:"name"`
+	Weight    int    `yaml:"weight"`
+	MaxRadius int    `yaml:"max_radius"`
 }
 
 var config *Config
