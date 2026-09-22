@@ -32,6 +32,8 @@ geo-api:
       - { slug: restaurant, name: "Ресторан", weight: 3, max_radius: 300 }
       - { slug: exhibition_hall, name: "Выставочный зал", weight: 2, max_radius: 500 }
       - { slug: pharmacy, name: "Аптека", weight: 2, max_radius: 300 }
+      - { slug: cinema, name: "Кинотеатр", weight: 3, max_radius: 500 }
+      - { slug: vet_clinic, name: "Ветклиника", weight: 2, max_radius: 500 }
 
 logger:
   level: debug

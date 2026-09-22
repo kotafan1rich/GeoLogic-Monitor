@@ -3,6 +3,12 @@ package geoapi
 import "time"
 
 type (
+	AddressComponent struct {
+		Address string  `json:"address"`
+		Lat     float64 `json:"lat"`
+		Lon     float64 `json:"lon"`
+	}
+
 	InfraTypeInput struct {
 		Slug      string `json:"slug"`
 		Name      string `json:"name"`
@@ -21,20 +27,20 @@ type (
 	InfraObjectInput struct {
 		ExternalID string  `json:"external_id"`
 		TypeID     string  `json:"type_id"`
+		Name       *string `json:"name,omitempty"`
 		Address    string  `json:"address"`
 		Lat        float64 `json:"lat"`
 		Lon        float64 `json:"lon"`
-		Name       *string `json:"name,omitempty"`
 	}
 
 	InfraObject struct {
 		ID         string  `json:"id"`
 		ExternalID string  `json:"external_id"`
 		TypeID     string  `json:"type_id"`
+		Name       *string `json:"name,omitempty"`
 		Address    string  `json:"address"`
 		Lat        float64 `json:"lat"`
 		Lon        float64 `json:"lon"`
-		Name       *string `json:"name,omitempty"`
 	}
 
 	Event struct {

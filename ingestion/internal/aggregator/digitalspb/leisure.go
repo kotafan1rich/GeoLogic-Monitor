@@ -2,6 +2,7 @@ package digitalspb
 
 import (
 	"context"
+	"fmt"
 
 	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
@@ -45,19 +46,23 @@ func (c *Client) ParseHotelData(ctx context.Context, src a.URL) ([]geoapi.InfraO
 	return mappedData, nil
 }
 
-// Не отдает координаты
-// func (c *Client) ParseCinemaData(ctx context.Context, src a.URL) ([]geoapi.InfraObject, error) {
-// 	const op = "digitalspb.Client.ParseCinemaData"
+func (c *Client) ParseCinemaData(
+	ctx context.Context, src a.URL, convert AddressConverter,
+) ([]geoapi.InfraObjectInput, error) {
+	const op = "digitalspb.Client.ParseCinemaData"
 
-// 	data, err := fetchSpbClassifGate[Cinema](ctx, c, src, cinemaEndpoint, op)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	data, err := fetchSpbClassifGate[Cinema](ctx, c, src, cinemaEndpoint, op)
+	if err != nil {
+		return nil, err
+	}
 
-// 	// mappedData := mapToInfraObjects[Cinema](data, "")
+	mappedData, err := mapToGeocodedInfraObjects[Cinema](ctx, data, "", convert, mapCinema)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
-// 	return mappedData, nil
-// }
+	return mappedData, nil
+}
 
 func (c *Client) ParseMuseumData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseMuseumData"
@@ -111,19 +116,23 @@ func (c *Client) ParsePharmacyData(ctx context.Context, src a.URL) ([]geoapi.Inf
 	return mappedData, nil
 }
 
-// Не отдает координаты
-// func (c *Client) ParseVetClinicData(ctx context.Context, src a.URL) ([]geoapi.InfraObject, error) {
-// 	const op = "digitalspb.Client.ParseVetClinicData"
+func (c *Client) ParseVetClinicData(
+	ctx context.Context, src a.URL, convert AddressConverter,
+) ([]geoapi.InfraObjectInput, error) {
+	const op = "digitalspb.Client.ParseVetClinicData"
 
-// 	data, err := fetchSpbClassifGate[VetClinic](ctx, c, src, vetClinicEndpoint, op)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	data, err := fetchSpbClassifGate[VetClinic](ctx, c, src, vetClinicEndpoint, op)
+	if err != nil {
+		return nil, err
+	}
 
-// 	mappedData := mapToInfraObjects[Pharmacy](data, "", mapPharmacy)
+	mappedData, err := mapToGeocodedInfraObjects[VetClinic](ctx, data, "", convert, mapVetClinic)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
-// 	return data, nil
-// }
+	return mappedData, nil
+}
 
 // func (c *Client) ParseKidsPlaceData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 // 	const op = "digitalspb.Client.ParseKidsPlaceData"

@@ -7,6 +7,7 @@ import (
 
 	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
 const DigitalSpbName = "digitalspb"
@@ -29,6 +30,8 @@ const (
 	datasetExhibitionHall = "exhibition_hall"
 	datasetTheatre        = "theatre"
 	datasetPharmacy       = "pharmacy"
+	datasetCinema         = "cinema"
+	datasetVetClinic      = "vet_clinic"
 	datasetProperty       = "property"
 	datasetKidsPlace      = "kids_place"
 	datasetVisit          = "visit"
@@ -43,6 +46,7 @@ type DigitalSpb struct {
 	files    map[string]a.File
 	writer   InfraWriter
 	types    TypeResolver
+	convert  digitalspb.AddressConverter
 }
 
 func NewDigitalSpb(
@@ -52,6 +56,7 @@ func NewDigitalSpb(
 	staticFiles map[string]string,
 	writer InfraWriter,
 	types TypeResolver,
+	convert digitalspb.AddressConverter,
 ) *DigitalSpb {
 	files := make(map[string]a.File, len(staticFiles))
 	for key, path := range staticFiles {
@@ -65,6 +70,7 @@ func NewDigitalSpb(
 		files:    files,
 		writer:   writer,
 		types:    types,
+		convert:  convert,
 	}
 }
 
@@ -82,7 +88,7 @@ func (j *DigitalSpb) Run(ctx context.Context) {
 
 func (j *DigitalSpb) datasets() []dataset {
 	c := j.client
-	w, t := j.writer, j.types
+	w, t, conv := j.writer, j.types, j.convert
 
 	classif := j.url(sourceSpbClassifGate)
 	// egs := j.url(sourceEgsGate)
@@ -106,6 +112,10 @@ func (j *DigitalSpb) datasets() []dataset {
 			toInfra(w, t, datasetPharmacy)),
 		ds(datasetSubway, sourceSubwayFile, subway, c.ParseSubwayData,
 			toInfra(w, t, datasetSubway)),
+		ds(datasetCinema, sourceSpbClassifGate, classif, geocoded(c.ParseCinemaData, conv),
+			toInfra(w, t, datasetCinema)),
+		ds(datasetVetClinic, sourceSpbClassifGate, classif, geocoded(c.ParseVetClinicData, conv),
+			toInfra(w, t, datasetVetClinic)),
 
 		// TODO: тип зависит от категории объекта, а не от датасета
 		// ds(datasetKidsPlace, sourceYazzhGate, yazzh, c.ParseKidsPlaceData, discard),
@@ -116,6 +126,15 @@ func (j *DigitalSpb) datasets() []dataset {
 		// TODO: запись в /internal/v1/events
 		// ds(datasetVisit, sourceEgsGate, egs, c.ParseVisitData, discard),
 		// ds(datasetStreetMusician, sourceEgsGate, egs, c.ParseStreetMusiciansData, discard),
+	}
+}
+
+func geocoded[S a.Source](
+	fetch func(context.Context, S, digitalspb.AddressConverter) ([]geoapi.InfraObjectInput, error),
+	convert digitalspb.AddressConverter,
+) func(context.Context, S) ([]geoapi.InfraObjectInput, error) {
+	return func(ctx context.Context, src S) ([]geoapi.InfraObjectInput, error) {
+		return fetch(ctx, src, convert)
 	}
 }
 

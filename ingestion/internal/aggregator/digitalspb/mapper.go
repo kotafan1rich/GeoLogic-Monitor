@@ -1,12 +1,20 @@
 package digitalspb
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"sync/atomic"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
 const providerPrefix = "digitalspb"
+
+const geocodeConcurrency = 8
 
 const (
 	datasetRailwayStation = "railway_station"
@@ -17,6 +25,8 @@ const (
 	datasetExhibitionHall = "exhibition_hall"
 	datasetTheatre        = "theatre"
 	datasetPharmacy       = "pharmacy"
+	datasetCinema         = "cinema"
+	datasetVetClinic      = "vet_clinic"
 	// datasetKidsPlace          = "kids_place"
 	datasetLibrary         = "library"
 	datasetZoo             = "zoo"
@@ -42,6 +52,72 @@ func mapToInfraObjects[T any](
 	}
 
 	return mapped
+}
+
+type AddressConverter func(ctx context.Context, address string) (lat, lon float64, err error)
+
+func mapToGeocodedInfraObjects[T any](
+	ctx context.Context, objs []T, typeID string, convert AddressConverter, fn func(T) geoapi.InfraObjectInput,
+) ([]geoapi.InfraObjectInput, error) {
+	if convert == nil {
+		return nil, ErrInvalidAddressConverter
+	}
+
+	mapped := mapToInfraObjects(objs, typeID, fn)
+
+	var (
+		g      errgroup.Group
+		failed atomic.Int64
+		errs   []error
+	)
+
+	g.SetLimit(geocodeConcurrency)
+
+	for i := range mapped {
+		if ctx.Err() != nil {
+			break
+		}
+
+		if mapped[i].Address == "" {
+			continue
+		}
+
+		idx := i
+
+		g.Go(func() error {
+			if err := ctx.Err(); err != nil {
+				failed.Add(1)
+				return nil
+			}
+
+			lat, lon, err := convert(ctx, mapped[idx].Address)
+			if err != nil {
+				failed.Add(1)
+				errs = append(errs, err)
+				return nil
+			}
+
+			mapped[idx].Lat, mapped[idx].Lon = lat, lon
+
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+
+	if failed.Load() > 0 && len(errs) > 0 {
+		slog.Error(
+			"addresses converting finished with errors",
+			slog.Int64("failed", failed.Load()),
+			slog.Any("error", errors.Join(errs...)),
+		)
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return mapped, nil
 }
 
 func mapRailwayStation(o RailwayStation) geoapi.InfraObjectInput {
@@ -70,6 +146,14 @@ func mapTheatre(o Theatre) geoapi.InfraObjectInput {
 
 func mapPharmacy(o Pharmacy) geoapi.InfraObjectInput {
 	return infraObject(datasetPharmacy, o.Number, o.Address, o.Name, o.Coordinates)
+}
+
+func mapCinema(o Cinema) geoapi.InfraObjectInput {
+	return infraObject(datasetCinema, o.Number, o.Address, o.Name, nil)
+}
+
+func mapVetClinic(o VetClinic) geoapi.InfraObjectInput {
+	return infraObject(datasetVetClinic, o.Number, o.Address, o.Name, nil)
 }
 
 func mapSubway(o Subway) geoapi.InfraObjectInput {
