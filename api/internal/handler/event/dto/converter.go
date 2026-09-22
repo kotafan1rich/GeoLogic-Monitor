@@ -2,7 +2,7 @@ package dto
 
 import "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 
-func ToResponse(event domain.Event) *EventResponse {
+func ToResponse(event *domain.Event) *EventResponse {
 	return &EventResponse{
 		ID:         event.ID,
 		Provider:   event.Provider,
@@ -15,7 +15,7 @@ func ToResponse(event domain.Event) *EventResponse {
 	}
 }
 
-func ToResponseList(events []domain.Event) []*EventResponse {
+func ToResponseList(events []*domain.Event) []*EventResponse {
 	result := make([]*EventResponse, 0, len(events))
 	for _, event := range events {
 		result = append(result, ToResponse(event))

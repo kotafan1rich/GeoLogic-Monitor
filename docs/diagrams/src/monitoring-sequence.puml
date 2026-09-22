@@ -52,8 +52,10 @@ W -> P : конкуренты за вчера
 P --> W : новые конкуренты
 W -> IDB : временный кэш 24 часа
 loop каждая точка
- W -> R : маршрут к конкуренту / событию
- R --> W : метры / секунды
+ W -> A : POST internal/routes/walking-distances\nsource + 1..99 destinations
+ A -> R : Table API: source, затем destinations
+ R --> A : метры / null / ошибка
+ A --> W : distances в порядке destinations / 503
  W -> K : сигнал + маршрут + причины
 end
 W -> A : отметить событие после публикации всем точкам
@@ -65,5 +67,6 @@ B -> K : commit offset
 note over W,K
  Нет общей транзакции БД/Kafka.
  При сбоях возможны пропуски и дубли.
+ null пропускает одну цель; 503 — весь пакет.
 end note
 @enduml

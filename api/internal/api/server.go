@@ -20,6 +20,7 @@ type httpHandler struct {
 	businessTypeHandler    handler.BusinessTypeHandler
 	infraHandler           handler.InfraHandler
 	eventHandler           handler.EventHandler
+	routesHandler          handler.RoutesHandler
 	maxBotToken            string
 	miniAppInitDataMaxAge  time.Duration
 	botServiceToken        string
@@ -35,6 +36,7 @@ func NewHandler(
 	businessTypeHandler handler.BusinessTypeHandler,
 	infraHandler handler.InfraHandler,
 	eventHandler handler.EventHandler,
+	routesHandler handler.RoutesHandler,
 	maxBotToken string,
 	miniAppInitDataMaxAge time.Duration,
 	botServiceToken string,
@@ -49,6 +51,7 @@ func NewHandler(
 		businessTypeHandler:    businessTypeHandler,
 		infraHandler:           infraHandler,
 		eventHandler:           eventHandler,
+		routesHandler:          routesHandler,
 		maxBotToken:            maxBotToken,
 		miniAppInitDataMaxAge:  miniAppInitDataMaxAge,
 		botServiceToken:        botServiceToken,
@@ -68,6 +71,7 @@ func (h *httpHandler) Routes() http.Handler {
 		h.businessTypeHandler,
 		h.infraHandler,
 		h.eventHandler,
+		h.routesHandler,
 		h.maxBotToken,
 		h.miniAppInitDataMaxAge,
 		h.botServiceToken,

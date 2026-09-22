@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: GeoLogic Monitor API
-  version: 0.6.0
+  version: 0.7.0
   description: >
     Текущий HTTP-контракт MVP, только Санкт-Петербург. Пользовательские и внутренние
     методы, доступ Mini App и история рейтинга реализованы; плановый пересчёт
-    не является HTTP-операцией и пока не подключён в API-процессе.
+    не является HTTP-операцией и пока не подключён в API-процессе. Внутренний метод
+    walking-distances проксирует пакетный расчёт пешеходных расстояний через OSRM.
     Mini App передаёт подписанные MAX initData; bot регистрирует чат с сервисным
     токеном и X-Max-User-Id. Внутренние методы требуют отдельного ingestion token.
 servers:
@@ -181,6 +182,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /internal/v1/routes/walking-distances:
+    post:
+      operationId: calculateWalkingDistancesForIngestion
+      summary: Рассчитать пешеходные расстояния для ingestion
+      description: >
+        API передаёт в OSRM сначала source, затем destinations в исходном
+        порядке. Каждый элемент distances соответствует destination с тем же
+        индексом. null означает, что пешеходный маршрут не найден; заменять
+        его прямым расстоянием нельзя.
+      security:
+        - IngestionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalkingDistancesRequest"
+            example:
+              source: { lat: 59.939095, lon: 30.315868 }
+              destinations:
+                - { lat: 59.934280, lon: 30.335098 }
+                - { lat: 59.936000, lon: 30.327000 }
+      responses:
+        "200":
+          description: >
+            Расстояния в метрах; длина и порядок массива совпадают с destinations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalkingDistancesResponse"
+              example:
+                distances: [1557.6, null]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/ProviderUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/tracked-locations:
     post:
       operationId: createTrackedLocation
@@ -731,6 +772,41 @@ components:
         address: { type: string, minLength: 1 }
         lat: { type: number, minimum: -90, maximum: 90 }
         lon: { type: number, minimum: -180, maximum: 180 }
+    GeoPoint:
+      type: object
+      additionalProperties: false
+      required: [lat, lon]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+    WalkingDistancesRequest:
+      type: object
+      additionalProperties: false
+      required: [source, destinations]
+      properties:
+        source:
+          $ref: "#/components/schemas/GeoPoint"
+        destinations:
+          type: array
+          minItems: 1
+          maxItems: 99
+          items:
+            $ref: "#/components/schemas/GeoPoint"
+    WalkingDistancesResponse:
+      type: object
+      additionalProperties: false
+      required: [distances]
+      properties:
+        distances:
+          type: array
+          minItems: 1
+          maxItems: 99
+          description: >
+            Пешеходные расстояния в метрах. Длина и порядок массива совпадают
+            с destinations из запроса; null означает отсутствие пешеходного маршрута.
+          items:
+            type: [number, "null"]
+            minimum: 0
     User:
       type: object
       required: [id, max_user_id, max_chat_id]

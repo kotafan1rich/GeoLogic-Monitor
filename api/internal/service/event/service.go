@@ -21,14 +21,14 @@ const (
 type EventRepository interface {
 	Upsert(ctx context.Context, event *domain.Event) (*domain.Event, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Event, error)
-	GetUnnotifiedByPeriod(ctx context.Context, from, to time.Time) ([]domain.Event, error)
+	GetUnnotifiedByPeriod(ctx context.Context, from, to time.Time) ([]*domain.Event, error)
 	GetUnnotifiedNear(
 		ctx context.Context,
 		geoPoint *domain.GeoPoint,
 		radius uint16,
 		from *time.Time,
 		to *time.Time,
-	) ([]domain.Event, error)
+	) ([]*domain.Event, error)
 	MarkNotified(ctx context.Context, id uuid.UUID) error
 }
 
@@ -87,7 +87,7 @@ func (s *eventService) GetUnnotifiedByPeriod(
 	ctx context.Context,
 	from time.Time,
 	to time.Time,
-) ([]domain.Event, error) {
+) ([]*domain.Event, error) {
 	events, err := s.repo.GetUnnotifiedByPeriod(ctx, from, to)
 	if err != nil {
 		s.log.ErrorContext(ctx,
@@ -106,7 +106,7 @@ func (s *eventService) GetUnnotifiedNear(
 	radius *uint16,
 	from *time.Time,
 	to *time.Time,
-) ([]domain.Event, error) {
+) ([]*domain.Event, error) {
 	finalRadius := defaultRadius
 	if radius != nil {
 		finalRadius = *radius

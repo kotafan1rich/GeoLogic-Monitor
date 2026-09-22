@@ -22,14 +22,14 @@ const dateLayout = "2006-01-02"
 type EventService interface {
 	Upsert(ctx context.Context, provider string, externalID string, lat float64, lng float64, date time.Time, info *string) (*domain.Event, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Event, error)
-	GetUnnotifiedByPeriod(ctx context.Context, from, to time.Time) ([]domain.Event, error)
+	GetUnnotifiedByPeriod(ctx context.Context, from, to time.Time) ([]*domain.Event, error)
 	GetUnnotifiedNear(
 		ctx context.Context,
 		geoPoint *domain.GeoPoint,
 		radius *uint16,
 		from *time.Time,
 		to *time.Time,
-	) ([]domain.Event, error)
+	) ([]*domain.Event, error)
 	MarkNotified(ctx context.Context, id uuid.UUID) error
 }
 
@@ -76,7 +76,7 @@ func (h *handler) Upsert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, dto.ToResponse(*event))
+	response.WriteJSON(w, http.StatusOK, dto.ToResponse(event))
 }
 
 func (h *handler) ListUnnotified(w http.ResponseWriter, r *http.Request) {
@@ -156,7 +156,7 @@ func (h *handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.WriteJSON(w, http.StatusOK, dto.ToResponse(*event))
+	response.WriteJSON(w, http.StatusOK, dto.ToResponse(event))
 }
 
 func (h *handler) MarkNotified(w http.ResponseWriter, r *http.Request) {
