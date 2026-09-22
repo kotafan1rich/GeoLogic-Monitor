@@ -81,6 +81,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /internal/v1/geocoding/suggestions:
+    get:
+      operationId: suggestAddressesForIngestion
+      summary: Найти варианты адреса для ingestion
+      description: >
+        Внутренний вариант поиска адресов в Санкт-Петербурге. Пустой результат
+        возвращается как пустой массив.
+      security:
+        - IngestionToken: []
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 500 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 5, default: 5 }
+      responses:
+        "200":
+          description: Варианты адреса
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Address"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/v1/tracked-locations:
     post:
       operationId: createTrackedLocation

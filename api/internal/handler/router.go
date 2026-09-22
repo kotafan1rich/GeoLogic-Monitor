@@ -107,6 +107,13 @@ func RegisterRoutes(
 			http.HandlerFunc(businessTypeHandler.Upsert),
 		),
 	)
+	mux.Handle(
+		"GET /internal/v1/geocoding/suggestions",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(geocodingHandler.Suggest),
+		),
+	)
 	infraRoutes := []struct {
 		pattern string
 		handler http.HandlerFunc
