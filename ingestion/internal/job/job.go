@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -68,6 +69,7 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		g         errgroup.Group
 		succeeded atomic.Int64
 		failed    atomic.Int64
+		mu        sync.Mutex
 		errs      []error
 	)
 
@@ -87,7 +89,9 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 			count, err := ds.parse(ctx)
 			if err != nil {
 				failed.Add(1)
+				mu.Lock()
 				errs = append(errs, err)
+				mu.Unlock()
 
 				log.ErrorContext(ctx, "dataset parsing failed",
 					slog.String("dataset", ds.name),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
@@ -37,6 +38,7 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 		var (
 			g      errgroup.Group
 			failed atomic.Int64
+			mu     sync.Mutex
 			errs   []error
 		)
 
@@ -53,7 +55,9 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 			g.Go(func() error {
 				if _, err := w.PutInfraObject(ctx, obj); err != nil {
 					failed.Add(1)
+					mu.Lock()
 					errs = append(errs, err)
+					mu.Unlock()
 				}
 
 				return nil

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
@@ -68,6 +69,7 @@ func mapToGeocodedInfraObjects[T any](
 	var (
 		g      errgroup.Group
 		failed atomic.Int64
+		mu     sync.Mutex
 		errs   []error
 	)
 
@@ -93,7 +95,9 @@ func mapToGeocodedInfraObjects[T any](
 			lat, lon, err := convert(ctx, mapped[idx].Address)
 			if err != nil {
 				failed.Add(1)
+				mu.Lock()
 				errs = append(errs, err)
+				mu.Unlock()
 				return nil
 			}
 
