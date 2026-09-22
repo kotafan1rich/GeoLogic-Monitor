@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/config"
 )
 
@@ -72,7 +71,7 @@ func (a *App) gracefullShutdown() error {
 	return nil
 }
 
-func (a *App) Run() error {
+func (a *App) Run(ctx context.Context) error {
 	log := a.diContainer.Log()
 	log.Info(
 		"server started",
@@ -91,6 +90,26 @@ func (a *App) Run() error {
 			errChan <- err
 		}
 		close(errChan)
+	}()
+
+	go func() {
+		result, err := a.diContainer.MAXClient().Subscriptions.Subscribe(
+			ctx,
+			a.cfg.Security.WebhookUrl,
+			a.cfg.Security.WebhookSecret,
+			[]string{"message_created", "bot_started"},
+			"",
+		)
+		if err != nil {
+			errChan <- fmt.Errorf("subscribe MAX webhook: %w", err)
+			close(errChan)
+			return
+		}
+		if !result.Success {
+			errChan <- fmt.Errorf("MAX rejected webhook: %s", result.Message)
+			close(errChan)
+			return
+		}
 	}()
 
 	select {

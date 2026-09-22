@@ -10,7 +10,7 @@ type User struct {
 
 func NewUser(maxUserId, maxChatId int64) *User {
 	return &User{
-		MaxUserId: maxChatId,
+		MaxUserId: maxUserId,
 		MaxChatId: maxChatId,
 	}
 }

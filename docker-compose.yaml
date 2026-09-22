@@ -36,8 +36,14 @@ services:
     build: ./bot
     env_file:
       - bot/.env
+    environment:
+      API_BASE_URL: http://api:8080
+    ports:
+      - "8082:8082"
     networks:
       - geo_logic_net
+    depends_on:
+      - api
 
   api-db:
     image: postgis/postgis:18-3.6

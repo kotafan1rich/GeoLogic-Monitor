@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -17,24 +18,24 @@ type clientApi struct {
 }
 
 const (
-	BotTokenHaeder  = "BotToken"
-	MaxUserIdHeader = "MaxUserId"
+	AuthorizationHeader = "Authorization"
+	MaxUserIDHeader     = "X-Max-User-Id"
 )
 
 func New(client *http.Client, baseUrl string, botToken string) *clientApi {
 	return &clientApi{
 		httpClient: client,
 		baseUrl:    baseUrl,
+		botToken:   botToken,
 	}
 }
 
 func (c *clientApi) PutUser(ctx context.Context, maxUserID, maxChatID int64) (*domain.User, error) {
 	path := "/api/v1/users/me"
-	user := User{
-		MaxUserId: maxUserID,
+	request := UpsertUserRequest{
 		MaxChatId: maxChatID,
 	}
-	jsonBody, err := json.Marshal(user)
+	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
@@ -47,16 +48,18 @@ func (c *clientApi) PutUser(ctx context.Context, maxUserID, maxChatID int64) (*d
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set(MaxUserIdHeader, strconv.Itoa(int(maxUserID)))
-	req.Header.Set(BotTokenHaeder, c.botToken)
+	req.Header.Set(MaxUserIDHeader, strconv.FormatInt(maxUserID, 10))
+	req.Header.Set(AuthorizationHeader, "Bearer "+c.botToken)
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil
+		return nil, fmt.Errorf("upsert user: unexpected status %s", resp.Status)
 	}
+	var user User
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package bot
+package main
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := app.Run(); err != nil {
+	if err := app.Run(ctx); err != nil {
 		slog.Error("app error", "err", err)
 		os.Exit(1)
 	}

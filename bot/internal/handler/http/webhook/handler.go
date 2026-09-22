@@ -2,13 +2,12 @@ package webhook
 
 import (
 	"context"
-	"net/http"
 
-	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/domain"
+	"github.com/max-messenger/max-bot-api-client-go/v2/model"
 )
 
 type Dispatcher interface {
-	Dispatch(ctx context.Context, update domain.Update) error
+	Dispatch(ctx context.Context, update model.Update)
 }
 
 type handler struct {
@@ -21,6 +20,6 @@ func NewHandler(dispatcher Dispatcher) *handler {
 	}
 }
 
-func (h *handler) Handle(w http.Response, r *http.Request) {
-
+func (h *handler) Handle(ctx context.Context, update model.Update) {
+	h.dispatcher.Dispatch(ctx, update)
 }
