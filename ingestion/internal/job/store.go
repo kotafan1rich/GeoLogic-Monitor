@@ -15,6 +15,7 @@ import (
 
 const (
 	infraWriteConcurrency = 8
+	eventWriteConcurrency = 8
 
 	datasetSep   = ";"
 	otherDataset = "other"
@@ -22,15 +23,16 @@ const (
 
 type storeFunc[T any] = func(ctx context.Context, data []T) error
 
-type InfraWriter interface {
+type DigitalSpbWriter interface {
 	PutInfraObject(ctx context.Context, obj geoapi.InfraObjectInput) (geoapi.InfraObject, error)
+	PutEvent(ctx context.Context, obj geoapi.EventInput) (geoapi.Event, error)
 }
 
 type TypeResolver interface {
 	TypeID(ctx context.Context, slug string) (string, error)
 }
 
-func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.InfraObjectInput] {
+func toInfra(w DigitalSpbWriter, types TypeResolver, slug string) storeFunc[geoapi.InfraObjectInput] {
 	return func(ctx context.Context, data []geoapi.InfraObjectInput) error {
 		if len(data) == 0 {
 			return nil
@@ -87,7 +89,54 @@ func toInfra(w InfraWriter, types TypeResolver, slug string) storeFunc[geoapi.In
 		_ = g.Wait()
 
 		if n := failed.Load(); n > 0 && len(errs) > 0 {
-			return fmt.Errorf("%w: %d/%d objects: %v", ErrStoreFailed, n, len(data), errors.Join(errs...))
+			return fmt.Errorf(
+				"%w: %d/%d infra objects: %v", ErrStoreFailed, n, len(data), errors.Join(errs...),
+			)
+		}
+
+		return nil
+	}
+}
+
+func toEvent(w DigitalSpbWriter) storeFunc[geoapi.EventInput] {
+	return func(ctx context.Context, data []geoapi.EventInput) error {
+		if len(data) == 0 {
+			return nil
+		}
+
+		var (
+			g      errgroup.Group
+			failed atomic.Int64
+			mu     sync.Mutex
+			errs   []error
+		)
+
+		g.SetLimit(infraWriteConcurrency)
+
+		for _, obj := range data {
+			if obj.Lat == 0 && obj.Lon == 0 || obj.Date.IsZero() {
+				failed.Add(1)
+				continue
+			}
+
+			g.Go(func() error {
+				if _, err := w.PutEvent(ctx, obj); err != nil {
+					failed.Add(1)
+					mu.Lock()
+					errs = append(errs, err)
+					mu.Unlock()
+				}
+
+				return nil
+			})
+		}
+
+		_ = g.Wait()
+
+		if n := failed.Load(); n > 0 && len(errs) > 0 {
+			return fmt.Errorf(
+				"%w: %d/%d events: %v", ErrStoreFailed, n, len(data), errors.Join(errs...),
+			)
 		}
 
 		return nil
@@ -113,7 +162,3 @@ func extractDataset(externalID string) string {
 	}
 	return raw[1]
 }
-
-// func discard[T any](_ context.Context, _ []T) error {
-// 	return nil
-// }

@@ -43,12 +43,23 @@ type (
 		Lon        float64 `json:"lon"`
 	}
 
-	Event struct {
+	EventInput struct {
 		Provider   string    `json:"provider"`
 		ExternalID string    `json:"external_id"`
 		Lat        float64   `json:"lat"`
 		Lon        float64   `json:"lon"`
 		Date       time.Time `json:"date"`
 		Info       *string   `json:"info,omitempty"`
+	}
+
+	Event struct {
+		ID         string    `json:"id"`
+		Provider   string    `json:"provider"`
+		ExternalID string    `json:"external_id"`
+		Lat        float64   `json:"lat"`
+		Lon        float64   `json:"lon"`
+		Date       time.Time `json:"date"`
+		Info       *string   `json:"info,omitempty"`
+		NotifiedAt time.Time `json:"notified_at"`
 	}
 )

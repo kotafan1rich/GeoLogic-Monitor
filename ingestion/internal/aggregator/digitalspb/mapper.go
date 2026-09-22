@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -49,6 +52,13 @@ const (
 	kidsPlaceSportsCenter    = "Спортивные центры"
 	kidsPlaceTheatre         = "Театры"
 	kidsPlaceOther           = "Другое"
+
+	sourceEgsGate = "egs_gate"
+
+	datasetVisit          = "visit"
+	datasetStreetMusician = "street_musicians"
+
+	coordSep = ","
 )
 
 func mapToInfraObjects[T any](
@@ -133,6 +143,17 @@ func mapToGeocodedInfraObjects[T any](
 	}
 
 	return mapped, nil
+}
+
+func mapToEvents[T any](objs []T, fn func(T) geoapi.EventInput) []geoapi.EventInput {
+	mapped := make([]geoapi.EventInput, 0, len(objs))
+
+	for _, obj := range objs {
+		in := fn(obj)
+		mapped = append(mapped, in)
+	}
+
+	return mapped
 }
 
 func mapRailwayStation(o RailwayStation) geoapi.InfraObjectInput {
@@ -253,6 +274,18 @@ func mapKidsPlace(o KidsPlace) geoapi.InfraObjectInput {
 	}
 }
 
+func mapStreetPerformance(o StreetPerformance) geoapi.EventInput {
+	return Event(
+		datasetStreetMusician, sourceEgsGate, o.Address, o.ID, o.Coordinates, extractDate(o.StartDate),
+	)
+}
+
+func mapCultureEvent(o CultureEvent) geoapi.EventInput {
+	return Event(
+		datasetVisit, sourceEgsGate, o.Name, o.ID, extractCoords(o.Map), extractDate(o.Start),
+	)
+}
+
 func infraObject[I int | int64 | string](
 	dataset string, id I, address, name string, coord []float64,
 ) geoapi.InfraObjectInput {
@@ -267,6 +300,28 @@ func infraObject[I int | int64 | string](
 	}
 }
 
+func Event[I int | int64 | string, C string | []float64](
+	dataset, provider, info string, id I, coord C, date time.Time,
+) geoapi.EventInput {
+	var extractedCoord []float64
+
+	switch v := any(coord).(type) {
+	case string:
+		extractedCoord = extractCoords(v)
+	case []float64:
+		extractedCoord = v
+	}
+
+	return geoapi.EventInput{
+		Provider:   provider,
+		ExternalID: externalID(dataset, id),
+		Lat:        extractedCoord[0],
+		Lon:        extractedCoord[1],
+		Date:       date,
+		Info:       optional(info),
+	}
+}
+
 func externalID[I int | int64 | string](dataset string, id I) string {
 	return fmt.Sprintf("%s:%s:%v", providerPrefix, dataset, id)
 }
@@ -277,6 +332,40 @@ func coords(c []float64) (lat, lon float64) {
 	}
 
 	return c[0], c[1]
+}
+
+func extractCoords(c string) []float64 {
+	raw := strings.Split(c, coordSep)
+	if len(raw) < 2 {
+		return []float64{0, 0}
+	}
+
+	lat, err := strconv.ParseFloat(raw[0], 64)
+	if err != nil {
+		return []float64{0, 0}
+	}
+
+	lon, err := strconv.ParseFloat(raw[0], 64)
+	if err != nil {
+		return []float64{0, 0}
+	}
+
+	return []float64{lat, lon}
+}
+
+func extractDate(d string) time.Time {
+	layouts := []string{
+		"02.01.2006 15:04:05", time.RFC3339, time.RFC3339Nano,
+		"2006-01-02 15:04:05", "2006-01-02", "02.01.2006",
+	}
+
+	for _, l := range layouts {
+		if date, err := time.Parse(l, d); err == nil {
+			return date
+		}
+	}
+
+	return time.Time{}
 }
 
 func optional(s string) *string {

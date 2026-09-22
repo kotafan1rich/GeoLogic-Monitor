@@ -44,7 +44,7 @@ type DigitalSpb struct {
 	client   *digitalspb.Client
 	interval time.Duration
 	files    map[string]a.File
-	writer   InfraWriter
+	writer   DigitalSpbWriter
 	types    TypeResolver
 	convert  digitalspb.AddressConverter
 }
@@ -54,7 +54,7 @@ func NewDigitalSpb(
 	client *digitalspb.Client,
 	interval time.Duration,
 	staticFiles map[string]string,
-	writer InfraWriter,
+	writer DigitalSpbWriter,
 	types TypeResolver,
 	convert digitalspb.AddressConverter,
 ) *DigitalSpb {
@@ -91,7 +91,7 @@ func (j *DigitalSpb) datasets() []dataset {
 	w, t, conv := j.writer, j.types, j.convert
 
 	classif := j.url(sourceSpbClassifGate)
-	// egs := j.url(sourceEgsGate)
+	egs := j.url(sourceEgsGate)
 	yazzh := j.url(sourceYazzhGate)
 	subway := j.file(sourceSubwayFile)
 
@@ -118,9 +118,8 @@ func (j *DigitalSpb) datasets() []dataset {
 			toInfra(w, t, datasetVetClinic)),
 		ds(datasetKidsPlace, sourceYazzhGate, yazzh, c.ParseKidsPlaceData,
 			toInfra(w, t, datasetKidsPlace)),
-		// TODO: запись в /internal/v1/events
-		// ds(datasetVisit, sourceEgsGate, egs, c.ParseVisitData, discard),
-		// ds(datasetStreetMusician, sourceEgsGate, egs, c.ParseStreetMusiciansData, discard),
+		ds(datasetVisit, sourceEgsGate, egs, c.ParseVisitData, toEvent(w)),
+		ds(datasetStreetMusician, sourceEgsGate, egs, c.ParseStreetMusiciansData, toEvent(w)),
 	}
 }
 
