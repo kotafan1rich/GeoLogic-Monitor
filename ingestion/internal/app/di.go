@@ -15,13 +15,17 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
+const schedulerName = "ingestion"
+
 type diContainer struct {
-	log   *slog.Logger
-	dsc   *digitalspb.Client
-	dsJob *job.DigitalSpb
-	s     *scheduler.Scheduler
-	gc    *geoapi.Client
-	tr    *geoapi.TypeRegistry
+	log       *slog.Logger
+	dsc       *digitalspb.Client
+	ds        *job.DigitalSpb
+	infraJob  *job.Job
+	eventsJob *job.Job
+	s         *scheduler.Scheduler
+	gc        *geoapi.Client
+	tr        *geoapi.TypeRegistry
 }
 
 func newDIContainer() *diContainer {
@@ -67,14 +71,12 @@ func (d *diContainer) DSClient() *digitalspb.Client {
 	return d.dsc
 }
 
-func (d *diContainer) DSJob() *job.DigitalSpb {
-	if d.dsJob == nil {
+func (d *diContainer) DigitalSpb() *job.DigitalSpb {
+	if d.ds == nil {
 		cfg := config.Get()
 
-		d.dsJob = job.NewDigitalSpb(
-			d.Logger(),
+		d.ds = job.NewDigitalSpb(
 			d.DSClient(),
-			cfg.Aggregator.DigitalSpb.JobInterval,
 			cfg.Aggregator.DigitalSpb.StaticFiles,
 			d.GeoApiClient(),
 			d.TypeRegistry(),
@@ -82,19 +84,62 @@ func (d *diContainer) DSJob() *job.DigitalSpb {
 		)
 
 		d.Logger().Info(
-			"job initialized",
-			slog.String("job", d.dsJob.Name()),
-			slog.Duration("interval", d.dsJob.Interval()),
+			"datasets source initialized",
+			slog.String("source", job.DigitalSpbName),
 			slog.Int("static_files", len(cfg.Aggregator.DigitalSpb.StaticFiles)),
 		)
 	}
-	return d.dsJob
+	return d.ds
 }
 
-// TODO: Впоследствии дополнить 2ГИС (будет слайс / мапа с планировщиками под digitalspb и 2ГИС)
+func (d *diContainer) InfraJob() *job.Job {
+	if d.infraJob == nil {
+		cfg := config.Get()
+
+		d.infraJob = job.New(
+			job.InfraName,
+			cfg.Scheduler.Infra,
+			d.Logger(),
+			d.DigitalSpb().InfraDatasets,
+		)
+
+		d.logJob(d.infraJob)
+	}
+	return d.infraJob
+}
+
+// TODO: Впоследствии добавить cudago (Опционально)
+func (d *diContainer) EventsJob() *job.Job {
+	if d.eventsJob == nil {
+		cfg := config.Get()
+
+		d.eventsJob = job.New(
+			job.EventsName,
+			cfg.Scheduler.Events,
+			d.Logger(),
+			d.DigitalSpb().EventDatasets,
+		)
+
+		d.logJob(d.eventsJob)
+	}
+	return d.eventsJob
+}
+
+func (d *diContainer) Jobs() []scheduler.Job {
+	return []scheduler.Job{d.InfraJob(), d.EventsJob()}
+}
+
+func (d *diContainer) logJob(j *job.Job) {
+	d.Logger().Info(
+		"job initialized",
+		slog.String("job", j.Name()),
+		slog.String("schedule", j.Schedule()),
+	)
+}
+
 func (d *diContainer) Scheduler() *scheduler.Scheduler {
 	if d.s == nil {
-		s := scheduler.MustNew(d.DSJob().Name(), d.Logger())
+		s := scheduler.MustNew(schedulerName, d.Logger())
 
 		d.Logger().Info(
 			"scheduler initialized",

@@ -14,7 +14,42 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
 )
 
+const (
+	InfraName  = "infra"
+	EventsName = "events"
+)
+
 type parseFunc func(ctx context.Context) (int, error)
+
+type datasetsFunc func() []dataset
+
+type Job struct {
+	name     string
+	schedule string
+	log      *slog.Logger
+	sources  []datasetsFunc
+}
+
+func New(name, schedule string, log *slog.Logger, sources ...datasetsFunc) *Job {
+	return &Job{name: name, schedule: schedule, log: log, sources: sources}
+}
+
+func (j *Job) Name() string {
+	return j.name
+}
+
+func (j *Job) Schedule() string {
+	return j.schedule
+}
+
+func (j *Job) Run(ctx context.Context) {
+	datasets := make([]dataset, 0, len(j.sources))
+	for _, source := range j.sources {
+		datasets = append(datasets, source()...)
+	}
+
+	runDatasets(ctx, j.log, j.name, datasets)
+}
 
 type dataset struct {
 	name   string

@@ -7,8 +7,14 @@ import (
 
 type Config struct {
 	Logger     LoggerConfig     `yaml:"logger"`
+	Scheduler  SchedulerConfig  `yaml:"scheduler"`
 	Aggregator AggregatorConfig `yaml:"aggregator"`
 	GeoApi     GeoApiConfig     `yaml:"geo-api"`
+}
+
+type SchedulerConfig struct {
+	Infra  string `yaml:"infra"`
+	Events string `yaml:"events"`
 }
 
 type LoggerConfig struct {
@@ -27,7 +33,6 @@ type DigitalSpbConfig struct {
 	RequestTimeout      time.Duration     `yaml:"request_timeout"`
 	AttemptTimeout      time.Duration     `yaml:"attempt_timeout"`
 	MaxRetries          uint              `yaml:"max_retries"`
-	JobInterval         time.Duration     `yaml:"job_interval"`
 	BaseURLMap          map[string]string `yaml:"base_urls"`
 	StaticFiles         map[string]string `yaml:"static_files"`
 }

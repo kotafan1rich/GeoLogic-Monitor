@@ -1,3 +1,12 @@
+scheduler:
+  # для прода
+  # infra: "0 3 1 * *"   # раз в месяц, 1-го числа в 03:00
+  # events: "0 4 * * 1"  # раз в неделю, по понедельникам в 04:00
+
+  # для дебага
+  infra: "@every 1m"   # раз в минуту
+  events: "@every 30s"  # раз в 30 секунд
+
 aggregator:
   digitalspb:
     max_idle_conns: 20
@@ -6,7 +15,6 @@ aggregator:
     request_timeout: 30s
     attempt_timeout: 5s
     max_retries: 3
-    job_interval: 30s
     base_urls:
       spb_classif_gate: "https://spb-classif.gate.petersburg.ru/api/v2/"
       egs_gate: "https://egs.gate.petersburg.ru/egs/"

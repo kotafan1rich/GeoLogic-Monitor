@@ -11,10 +11,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 )
 
-const (
-	closeDuration      = 10 * time.Second
-	digitalSpbInterval = 30 * time.Second
-)
+const closeDuration = 10 * time.Second
 
 type App struct {
 	di *diContainer
@@ -34,10 +31,16 @@ func (a *App) Run(ctx context.Context) error {
 
 	log.InfoContext(stopCtx, "application is starting")
 
-	err := a.di.Scheduler().Register(ctx, a.di.DSJob())
-	if err != nil {
-		log.ErrorContext(ctx, "failed to register job", slog.Any("error", err))
-		return fmt.Errorf("%s: %w", op, err)
+	for _, j := range a.di.Jobs() {
+		if err := a.di.Scheduler().Register(ctx, j); err != nil {
+			log.ErrorContext(
+				ctx,
+				"failed to register job",
+				slog.String("job", j.Name()),
+				slog.Any("error", err),
+			)
+			return fmt.Errorf("%s: %w", op, err)
+		}
 	}
 
 	go func() { a.di.Scheduler().Start() }()
