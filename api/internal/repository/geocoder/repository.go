@@ -10,6 +10,7 @@ import (
 
 type Client interface {
 	Autocomplete(ctx context.Context, search string) ([]geocoderintegration.Autocomplete, error)
+	Reverse(ctx context.Context, longitude, latitude float64) (*geocoderintegration.Geocode, error)
 }
 
 type repository struct {
@@ -39,6 +40,18 @@ func (r *repository) Suggestions(ctx context.Context, query string) ([]domain.Ad
 	}
 
 	return addresses, nil
+}
+
+func (r *repository) Reverse(ctx context.Context, lat, lon float64) (*domain.Address, error) {
+	result, err := r.client.Reverse(ctx, lon, lat)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.Address{
+		Address: result.Address,
+		Lat:     result.Center.Y,
+		Lon:     result.Center.X,
+	}, nil
 }
 
 func formatAddress(name, buildingName string) string {

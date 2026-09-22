@@ -81,6 +81,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /api/v1/geocoding/address:
+    get:
+      operationId: getAddressByCoordinates
+      summary: Получить адрес по координатам в Санкт-Петербурге
+      description: Возвращает ближайший адрес и координаты найденного адреса.
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lon
+          in: query
+          required: true
+          schema: { type: number, minimum: -180, maximum: 180 }
+      responses:
+        "200":
+          description: Ближайший адрес
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /internal/v1/geocoding/suggestions:
     get:
       operationId: suggestAddressesForIngestion
@@ -107,6 +138,39 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Address"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /internal/v1/geocoding/address:
+    get:
+      operationId: getAddressByCoordinatesForIngestion
+      summary: Получить адрес по координатам для ingestion
+      description: Внутренний вариант получения ближайшего адреса в Санкт-Петербурге.
+      security:
+        - IngestionToken: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lon
+          in: query
+          required: true
+          schema: { type: number, minimum: -180, maximum: 180 }
+      responses:
+        "200":
+          description: Ближайший адрес
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":

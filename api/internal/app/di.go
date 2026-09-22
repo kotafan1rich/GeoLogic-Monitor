@@ -79,7 +79,7 @@ type diContainer struct {
 	userRepository            userservice.UserRepository
 	osrmRepository            trackedlocationservice.OSRMRepository
 	geocoderRepository        geocodingservice.Repository
-	geocodingService          geocodingservice.Service
+	geocodingService          geocodinghandler.GeocodingService
 	ratingService             ratingservice.Service
 	ratingHistoryService      ratinghistoryservice.Service
 	trackedLocationService    trackedLocationService
@@ -212,7 +212,7 @@ func (d *diContainer) GeocoderRepository() geocodingservice.Repository {
 	return d.geocoderRepository
 }
 
-func (d *diContainer) GeocodingService() geocodingservice.Service {
+func (d *diContainer) GeocodingService() geocodinghandler.GeocodingService {
 	if d.geocodingService == nil {
 		d.geocodingService = geocodingservice.NewService(d.GeocoderRepository(), d.Log())
 	}

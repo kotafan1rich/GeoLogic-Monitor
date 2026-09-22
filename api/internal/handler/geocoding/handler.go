@@ -3,6 +3,7 @@ package geocoding
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -16,6 +17,7 @@ const defaultLimit = 5
 
 type GeocodingService interface {
 	Suggest(ctx context.Context, query string) ([]domain.Address, error)
+	Reverse(ctx context.Context, geopoint *domain.GeoPoint) (*domain.Address, error)
 }
 
 type handler struct {
@@ -47,4 +49,41 @@ func (h *handler) Suggest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, dto.ToResponseList(addresses))
+}
+
+func (h *handler) Address(w http.ResponseWriter, r *http.Request) {
+	lat, err := parseFloat(r.URL.Query().Get("lat"), "lat")
+	if err != nil {
+		response.WriteError(w, app.ValidationError(err))
+		return
+	}
+	lon, err := parseFloat(r.URL.Query().Get("lon"), "lon")
+	if err != nil {
+		response.WriteError(w, app.ValidationError(err))
+		return
+	}
+
+	geopoint, err := domain.NewGeoPoint(lat, lon)
+	if err != nil {
+		response.WriteError(w, app.ValidationError(err))
+		return
+	}
+	address, err := h.service.Reverse(r.Context(), geopoint)
+	if err != nil {
+		response.WriteServiceError(w, err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, dto.ToResponse(address))
+}
+
+func parseFloat(value, name string) (float64, error) {
+	if value == "" {
+		return 0, errors.New(name + " is required")
+	}
+
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil || math.IsNaN(parsed) || math.IsInf(parsed, 0) {
+		return 0, errors.New("invalid " + name)
+	}
+	return parsed, nil
 }
