@@ -56,10 +56,51 @@ func TestSuggestionsPreservesClientError(t *testing.T) {
 	}
 }
 
+func TestReverse(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeClient{geocode: &geocoderintegration.Geocode{
+		Address: "Невский проспект, 6",
+		Center: geocoderintegration.GeocodeCenter{
+			X: 30.32,
+			Y: 59.94,
+		},
+	}}
+	repository := New(client)
+
+	result, err := repository.Reverse(context.Background(), 59.94, 30.32)
+	if err != nil {
+		t.Fatalf("Reverse returned an error: %v", err)
+	}
+	if client.latitude != 59.94 || client.longitude != 30.32 {
+		t.Fatalf(
+			"client coordinates: got lat=%v lon=%v, want lat=59.94 lon=30.32",
+			client.latitude,
+			client.longitude,
+		)
+	}
+	if result.Address != "Невский проспект, 6" || result.Lat != 59.94 || result.Lon != 30.32 {
+		t.Fatalf("unexpected address: %+v", result)
+	}
+}
+
+func TestReversePreservesClientError(t *testing.T) {
+	t.Parallel()
+
+	clientErr := errors.New("geocoder unavailable")
+	_, err := New(&fakeClient{err: clientErr}).Reverse(context.Background(), 59.94, 30.32)
+	if !errors.Is(err, clientErr) {
+		t.Fatalf("error: got %v, want %v", err, clientErr)
+	}
+}
+
 type fakeClient struct {
-	result []geocoderintegration.Autocomplete
-	err    error
-	query  string
+	result    []geocoderintegration.Autocomplete
+	geocode   *geocoderintegration.Geocode
+	err       error
+	query     string
+	longitude float64
+	latitude  float64
 }
 
 func (c *fakeClient) Autocomplete(
@@ -68,4 +109,13 @@ func (c *fakeClient) Autocomplete(
 ) ([]geocoderintegration.Autocomplete, error) {
 	c.query = search
 	return c.result, c.err
+}
+
+func (c *fakeClient) Reverse(
+	_ context.Context,
+	longitude, latitude float64,
+) (*geocoderintegration.Geocode, error) {
+	c.longitude = longitude
+	c.latitude = latitude
+	return c.geocode, c.err
 }
