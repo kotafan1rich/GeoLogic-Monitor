@@ -45,7 +45,7 @@ func TestReverse(t *testing.T) {
 			t.Errorf("y = %q, want %q", got, "59.94")
 		}
 
-		return jsonResponse(http.StatusOK, `{"id":20,"address":"Невский проспект, 6","center":[30.32,59.94],"distance":5}`), nil
+		return jsonResponse(http.StatusOK, `{"id":20,"address":"Невский проспект, 6","center":{"x":30.32,"y":59.94},"distance":5.25}`), nil
 	})}
 
 	client := New(httpClient, "https://geocoder.example")
@@ -53,7 +53,7 @@ func TestReverse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reverse returned an error: %v", err)
 	}
-	if result.Address != "Невский проспект, 6" || len(result.Center) != 2 {
+	if result.Address != "Невский проспект, 6" || result.Center.X != 30.32 || result.Center.Y != 59.94 || result.Distance != 5.25 {
 		t.Fatalf("unexpected geocode: %+v", result)
 	}
 }

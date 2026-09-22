@@ -12,10 +12,15 @@ type Address struct {
 }
 
 type Geocode struct {
-	ID       int       `json:"id"`
-	Address  string    `json:"address"`
-	Center   []float64 `json:"center"`
-	Distance int       `json:"distance"`
+	ID       int           `json:"id"`
+	Address  string        `json:"address"`
+	Center   GeocodeCenter `json:"center"`
+	Distance float64       `json:"distance"`
+}
+
+type GeocodeCenter struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 type EASAddress struct {

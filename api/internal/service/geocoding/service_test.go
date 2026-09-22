@@ -71,17 +71,72 @@ func TestSuggestMapsClientError(t *testing.T) {
 	}
 }
 
+func TestReverse(t *testing.T) {
+	t.Parallel()
+
+	want := &domain.Address{
+		Address: "Невский проспект, 6",
+		Lat:     59.94,
+		Lon:     30.32,
+	}
+	repo := &fakeRepository{address: want}
+	service := NewService(repo, testLogger())
+
+	result, err := service.Reverse(context.Background(), &domain.GeoPoint{Lat: 59.94, Lng: 30.32})
+	if err != nil {
+		t.Fatalf("Reverse returned an error: %v", err)
+	}
+	if repo.lat != 59.94 || repo.lon != 30.32 {
+		t.Fatalf(
+			"repository coordinates: got lat=%v lon=%v, want lat=59.94 lon=30.32",
+			repo.lat,
+			repo.lon,
+		)
+	}
+	if result != want {
+		t.Fatalf("result: got %+v, want %+v", result, want)
+	}
+}
+
+func TestReverseMapsClientError(t *testing.T) {
+	t.Parallel()
+
+	repositoryErr := errors.New("geocoder unavailable")
+	service := NewService(&fakeRepository{err: repositoryErr}, testLogger())
+
+	_, err := service.Reverse(context.Background(), &domain.GeoPoint{Lat: 59.94, Lng: 30.32})
+	var appErr *apperrs.Error
+	if !errors.As(err, &appErr) || appErr.Code != "provider_unavailable" {
+		t.Fatalf("error: got %v, want provider_unavailable", err)
+	}
+	if !errors.Is(err, repositoryErr) {
+		t.Fatal("repository error is not preserved")
+	}
+}
+
 type fakeRepository struct {
-	result []domain.Address
-	err    error
-	query  string
-	calls  int
+	result  []domain.Address
+	address *domain.Address
+	err     error
+	query   string
+	calls   int
+	lat     float64
+	lon     float64
 }
 
 func (r *fakeRepository) Suggestions(_ context.Context, query string) ([]domain.Address, error) {
 	r.calls++
 	r.query = query
 	return r.result, r.err
+}
+
+func (r *fakeRepository) Reverse(
+	_ context.Context,
+	lat, lon float64,
+) (*domain.Address, error) {
+	r.lat = lat
+	r.lon = lon
+	return r.address, r.err
 }
 
 func testLogger() *logger.Logger {
