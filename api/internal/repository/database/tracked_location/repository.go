@@ -25,21 +25,16 @@ func NewRepository(db database.DBTX) *repository {
 
 func (r *repository) Create(ctx context.Context, location *domain.TrackedLocation) (*domain.TrackedLocation, error) {
 	locationModel := dto.ToModel(*location)
-	err := r.db.QueryRow(
-		ctx,
-		query.Create,
-		locationModel.UserID,
-		locationModel.BusinessTypeID,
-		locationModel.Address,
-		locationModel.Location,
-	).Scan(
-		&locationModel.ID,
-		&locationModel.UserID,
-		&locationModel.BusinessTypeID,
-		&locationModel.Address,
-		&locationModel.Location,
-		&locationModel.CreatedAt,
-		&locationModel.UpdatedAt,
+	err := scanTrackedLocation(
+		r.db.QueryRow(
+			ctx,
+			query.Create,
+			locationModel.UserID,
+			locationModel.BusinessTypeID,
+			locationModel.Address,
+			locationModel.Location,
+		),
+		locationModel,
 	)
 
 	if err != nil {
@@ -56,19 +51,7 @@ func (r *repository) Create(ctx context.Context, location *domain.TrackedLocatio
 
 func (r *repository) GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error) {
 	locationModel := model.TrackedLocation{}
-	err := r.db.QueryRow(
-		ctx,
-		query.GetByID,
-		id,
-	).Scan(
-		&locationModel.ID,
-		&locationModel.UserID,
-		&locationModel.BusinessTypeID,
-		&locationModel.Address,
-		&locationModel.Location,
-		&locationModel.CreatedAt,
-		&locationModel.UpdatedAt,
-	)
+	err := scanTrackedLocation(r.db.QueryRow(ctx, query.GetByID, id), &locationModel)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -93,15 +76,7 @@ func (r *repository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]domai
 	locations := make([]domain.TrackedLocation, 0)
 	for rows.Next() {
 		locationModel := model.TrackedLocation{}
-		if err := rows.Scan(
-			&locationModel.ID,
-			&locationModel.UserID,
-			&locationModel.BusinessTypeID,
-			&locationModel.Address,
-			&locationModel.Location,
-			&locationModel.CreatedAt,
-			&locationModel.UpdatedAt,
-		); err != nil {
+		if err := scanTrackedLocationWithRating(rows, &locationModel); err != nil {
 			return nil, err
 		}
 
@@ -143,22 +118,12 @@ func (r *repository) GetAllForMonitoring(ctx context.Context) ([]domain.Monitori
 	locations := make([]domain.MonitoringLocation, 0)
 	for rows.Next() {
 		locationModel := model.TrackedLocation{}
-		var maxChatID int64
-		if err := rows.Scan(
-			&locationModel.ID,
-			&locationModel.UserID,
-			&locationModel.BusinessTypeID,
-			&locationModel.Address,
-			&locationModel.Location,
-			&maxChatID,
-			&locationModel.CreatedAt,
-			&locationModel.UpdatedAt,
-		); err != nil {
+		if err := scanTrackedLocation(rows, &locationModel); err != nil {
 			return nil, err
 		}
 
 		location := dto.ToDomain(locationModel)
-		locations = append(locations, *domain.NewMonitoringLocation(location, maxChatID))
+		locations = append(locations, *domain.NewMonitoringLocation(location, location.User.MaxChatID))
 	}
 
 	if err := rows.Err(); err != nil {
@@ -166,4 +131,44 @@ func (r *repository) GetAllForMonitoring(ctx context.Context) ([]domain.Monitori
 	}
 
 	return locations, nil
+}
+
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanTrackedLocation(row scanner, location *model.TrackedLocation) error {
+	return row.Scan(
+		&location.ID,
+		&location.UserID,
+		&location.BusinessTypeID,
+		&location.Address,
+		&location.Location,
+		&location.CreatedAt,
+		&location.UpdatedAt,
+		&location.User.ID,
+		&location.User.MaxUserID,
+		&location.User.MaxChatID,
+		&location.User.CreatedAt,
+		&location.User.UpdatedAt,
+	)
+}
+
+func scanTrackedLocationWithRating(row scanner, location *model.TrackedLocation) error {
+	return row.Scan(
+		&location.ID,
+		&location.UserID,
+		&location.BusinessTypeID,
+		&location.Address,
+		&location.Location,
+		&location.CreatedAt,
+		&location.UpdatedAt,
+		&location.User.ID,
+		&location.User.MaxUserID,
+		&location.User.MaxChatID,
+		&location.User.CreatedAt,
+		&location.User.UpdatedAt,
+		&location.LatestRating,
+		&location.RatingCalculatedAt,
+	)
 }

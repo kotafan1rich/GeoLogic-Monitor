@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 	"github.com/pressly/goose/v3"
 )
 
@@ -87,7 +88,10 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 		WriteTimeout: a.cfg.HttpServer.WriteTimeout,
 		IdleTimeout:  a.cfg.HttpServer.IdleTimeout,
 
-		Handler: a.diContainer.Handler(ctx).Routes(),
+		Handler: middleware.LoggerMiddleware(
+			a.diContainer.Log(),
+			a.diContainer.Handler(ctx).Routes(),
+		),
 	}
 	return nil
 }

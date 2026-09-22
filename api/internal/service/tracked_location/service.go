@@ -12,12 +12,8 @@ import (
 	domainerrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
 	apperrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
-	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/calculate"
 )
-
-type RatingService interface {
-	Calculate(ctx context.Context, features domain.LocationFeatures) (*domain.CalculatedRating, error)
-}
 
 type InfraService interface {
 	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error)
@@ -36,6 +32,15 @@ type TrackedLocationRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.TrackedLocation, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetAllForMonitoring(ctx context.Context) ([]domain.MonitoringLocation, error)
+}
+
+type RatingService interface {
+	Calculate(ctx context.Context, features domain.LocationFeatures) (*domain.CalculatedRating, error)
+	Create(
+		ctx context.Context,
+		trackedLocationID uuid.UUID,
+		rating *domain.CalculatedRating,
+	) (*domain.LocationRating, error)
 }
 
 type service struct {
@@ -123,11 +128,14 @@ func (s *service) Create(
 		if err != nil {
 			return err
 		}
-		features := rating.BuildLocationFeatures(businessType, infraWithDistance)
+		features := calculate.BuildLocationFeatures(businessType, infraWithDistance)
 
 		ratingResult, err := s.ratingService.Calculate(ctx, *features)
 		if err != nil {
 			return apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
+		}
+		if _, err := s.ratingService.Create(ctx, location.ID, ratingResult); err != nil {
+			return err
 		}
 
 		createdLocation = location

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 	"uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
@@ -21,6 +22,7 @@ func TestCreateUsesCurrentUser(t *testing.T) {
 	handler := New(
 		fakeUserService{user: &domain.User{ID: userID, MaxUserID: 42}},
 		locationService,
+		&fakeRatingHistoryService{},
 	)
 	body := `{"business_type_id":"` + businessTypeID.String() +
 		`","address":"address","lat":59.93,"lon":30.32}`
@@ -45,7 +47,7 @@ func TestCreateUsesCurrentUser(t *testing.T) {
 func TestGetAllForMonitoringReturnsEmptyArray(t *testing.T) {
 	t.Parallel()
 
-	handler := New(fakeUserService{}, &fakeTrackedLocationService{})
+	handler := New(fakeUserService{}, &fakeTrackedLocationService{}, &fakeRatingHistoryService{})
 	request := httptest.NewRequest(http.MethodGet, "/internal/v1/tracked-locations", nil)
 	response := httptest.NewRecorder()
 
@@ -56,6 +58,73 @@ func TestGetAllForMonitoringReturnsEmptyArray(t *testing.T) {
 	}
 	if got := response.Body.String(); got != "[]\n" {
 		t.Fatalf("body: got %q, want empty JSON array", got)
+	}
+}
+
+func TestGetRatingHistoryUsesDefaultMonths(t *testing.T) {
+	t.Parallel()
+
+	locationID := uuid.New()
+	calculatedAt := time.Date(2026, time.September, 20, 10, 0, 0, 0, time.UTC)
+	historyService := &fakeRatingHistoryService{
+		history: &domain.LocationRatingHistory{
+			TrackedLocationID: locationID,
+			History: []*domain.CalculatedRating{
+				{Value: 8, CalculatedAt: calculatedAt},
+			},
+		},
+	}
+	handler := New(fakeUserService{}, &fakeTrackedLocationService{}, historyService)
+	request := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/tracked-locations/"+locationID.String()+"/rating-history",
+		nil,
+	)
+	request.SetPathValue("id", locationID.String())
+	request.Header.Set("X-Max-User-Id", "42")
+	response := httptest.NewRecorder()
+
+	middleware.MaxUserID(http.HandlerFunc(handler.GetRatingHistory)).ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", response.Code, http.StatusOK)
+	}
+	if historyService.maxUserID != 42 || historyService.locationID != locationID || historyService.months != 3 {
+		t.Fatalf(
+			"service arguments: got maxUserID=%d locationID=%s months=%d",
+			historyService.maxUserID,
+			historyService.locationID,
+			historyService.months,
+		)
+	}
+	wantBody := "[{\"value\":8,\"calculated_at\":\"2026-09-20T10:00:00Z\"}]\n"
+	if got := response.Body.String(); got != wantBody {
+		t.Fatalf("body: got %q, want %q", got, wantBody)
+	}
+}
+
+func TestGetRatingHistoryRejectsInvalidMonths(t *testing.T) {
+	t.Parallel()
+
+	historyService := &fakeRatingHistoryService{}
+	handler := New(fakeUserService{}, &fakeTrackedLocationService{}, historyService)
+	locationID := uuid.New()
+	request := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/tracked-locations/"+locationID.String()+"/rating-history?months=0",
+		nil,
+	)
+	request.SetPathValue("id", locationID.String())
+	request.Header.Set("X-Max-User-Id", "42")
+	response := httptest.NewRecorder()
+
+	middleware.MaxUserID(http.HandlerFunc(handler.GetRatingHistory)).ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d", response.Code, http.StatusBadRequest)
+	}
+	if historyService.calls != 0 {
+		t.Fatalf("service calls: got %d, want 0", historyService.calls)
 	}
 }
 
@@ -70,6 +139,30 @@ func (s fakeUserService) GetByMaxUserID(context.Context, int64) (*domain.User, e
 type fakeTrackedLocationService struct {
 	createdUserID         uuid.UUID
 	createdBusinessTypeID uuid.UUID
+}
+
+type fakeRatingHistoryService struct {
+	history    *domain.LocationRatingHistory
+	maxUserID  int64
+	locationID uuid.UUID
+	months     uint
+	calls      int
+}
+
+func (s *fakeRatingHistoryService) GetHistory(
+	_ context.Context,
+	maxUserID int64,
+	locationID uuid.UUID,
+	months uint,
+) (*domain.LocationRatingHistory, error) {
+	s.calls++
+	s.maxUserID = maxUserID
+	s.locationID = locationID
+	s.months = months
+	if s.history == nil {
+		return &domain.LocationRatingHistory{History: make([]*domain.CalculatedRating, 0)}, nil
+	}
+	return s.history, nil
 }
 
 func (s *fakeTrackedLocationService) Create(

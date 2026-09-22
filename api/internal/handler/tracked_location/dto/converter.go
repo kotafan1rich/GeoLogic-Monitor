@@ -12,10 +12,17 @@ func ToResponse(location domain.TrackedLocation) TrackedLocationResponse {
 	}
 }
 
-func ToResponseList(locations []domain.TrackedLocation) []TrackedLocationResponse {
-	result := make([]TrackedLocationResponse, 0, len(locations))
+func ToResponseList(locations []domain.TrackedLocation) []UserTrackedLocationResponse {
+	result := make([]UserTrackedLocationResponse, 0, len(locations))
 	for _, location := range locations {
-		result = append(result, ToResponse(location))
+		response := UserTrackedLocationResponse{
+			TrackedLocationResponse: ToResponse(location),
+		}
+		if location.LatestRating != nil {
+			response.Rating = &location.LatestRating.Value
+			response.RatingCalculatedAt = &location.LatestRating.CalculatedAt
+		}
+		result = append(result, response)
 	}
 	return result
 }
@@ -24,7 +31,23 @@ func ToCreatedResponse(location domain.TrackedLocationRating) *CreatedTrackedLoc
 	return &CreatedTrackedLocationResponse{
 		TrackedLocationResponse: ToResponse(location.TrackedLocation),
 		Rating:                  location.Value,
+		RatingCalculatedAt:      location.CalculatedAt,
 	}
+}
+
+func ToRatingHistoryResponse(history *domain.LocationRatingHistory) []RatingHistoryEntryResponse {
+	if history == nil {
+		return []RatingHistoryEntryResponse{}
+	}
+
+	result := make([]RatingHistoryEntryResponse, 0, len(history.History))
+	for _, rating := range history.History {
+		result = append(result, RatingHistoryEntryResponse{
+			Value:        rating.Value,
+			CalculatedAt: rating.CalculatedAt,
+		})
+	}
+	return result
 }
 
 func ToMonitoringResponseList(locations []domain.MonitoringLocation) []MonitoringLocationResponse {
