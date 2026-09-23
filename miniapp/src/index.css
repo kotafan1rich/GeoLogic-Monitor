@@ -115,16 +115,16 @@ h1 {
 }
 
 @media (hover: hover) {
-  .button:hover {
+  .button:not(:disabled):hover {
     background: #edf2fa;
   }
 
-  .button-primary:hover {
+  .button-primary:not(:disabled):hover {
     background: #264cd0;
   }
 }
 
-.button:active {
+.button:not(:disabled):active {
   transform: translateY(1px);
 }
 
@@ -429,4 +429,27 @@ dd {
 .info-card {
   border-color: #dce6ff;
   background: #eaf0ff;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #ad2634;
+}
+
+.address-suggestions {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.address-suggestions .button {
+  justify-content: flex-start;
+  text-align: left;
+  font-weight: 400;
 }
