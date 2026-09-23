@@ -30,6 +30,7 @@ import (
 	userrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/user"
 	geocoderrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/geocoder"
 	osrmrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/osrm"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/scheduler"
 	businesstypeservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/business_type"
 	calculateservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/calculate"
 	eventservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/event"
@@ -58,6 +59,7 @@ type infraService interface {
 }
 
 type trackedLocationService interface {
+	scheduler.RatingService
 	ratinghistoryservice.TrackedLocationService
 	trackedlocationhandler.TrackedLocationService
 }
@@ -114,6 +116,10 @@ func NewDIContainer(cfg *config.Config) *diContainer {
 	return &diContainer{
 		cfg: cfg,
 	}
+}
+
+func (d *diContainer) RatingScheduler(ctx context.Context) (*scheduler.Rating, error) {
+	return scheduler.NewRating(ctx, d.cfg.Rating.RecalcCron, d.TrackedLocationService(ctx), d.Log())
 }
 
 func (d *diContainer) DB(ctx context.Context) database.DBTX {
