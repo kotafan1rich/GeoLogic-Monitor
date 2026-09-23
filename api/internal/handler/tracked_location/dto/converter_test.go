@@ -12,6 +12,7 @@ func TestToCreatedResponseIncludesCalculationTime(t *testing.T) {
 
 	calculatedAt := time.Date(2026, time.September, 20, 10, 0, 0, 0, time.UTC)
 	response := ToCreatedResponse(domain.TrackedLocationRating{
+		TrackedLocation: domain.TrackedLocation{Name: "Кофейня на Невском"},
 		CalculatedRating: domain.CalculatedRating{
 			Value:        8,
 			CalculatedAt: calculatedAt,
@@ -20,6 +21,9 @@ func TestToCreatedResponseIncludesCalculationTime(t *testing.T) {
 
 	if response.Rating != 8 {
 		t.Fatalf("rating: got %v, want 8", response.Rating)
+	}
+	if response.Name != "Кофейня на Невском" {
+		t.Fatalf("name: got %q, want %q", response.Name, "Кофейня на Невском")
 	}
 	if !response.RatingCalculatedAt.Equal(calculatedAt) {
 		t.Fatalf("calculation time: got %v, want %v", response.RatingCalculatedAt, calculatedAt)

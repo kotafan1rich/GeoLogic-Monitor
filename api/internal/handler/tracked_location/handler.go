@@ -24,6 +24,7 @@ type TrackedLocationService interface {
 		ctx context.Context,
 		userID uuid.UUID,
 		businessTypeID uuid.UUID,
+		name string,
 		address string,
 		lat float64,
 		lng float64,
@@ -66,8 +67,8 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, app.ValidationError(err))
 		return
 	}
-	if body.BusinessTypeID == nil || body.Address == nil || body.Lat == nil || body.Lon == nil {
-		response.WriteError(w, app.ValidationError(errors.New("business_type_id, address, lat and lon are required")))
+	if body.Name == nil || body.BusinessTypeID == nil || body.Address == nil || body.Lat == nil || body.Lon == nil {
+		response.WriteError(w, app.ValidationError(errors.New("name, business_type_id, address, lat and lon are required")))
 		return
 	}
 
@@ -79,6 +80,7 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		user.ID,
 		*body.BusinessTypeID,
+		*body.Name,
 		*body.Address,
 		*body.Lat,
 		*body.Lon,

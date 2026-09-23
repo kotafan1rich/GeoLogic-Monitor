@@ -11,6 +11,7 @@ type TrackedLocation struct {
 	model.Base
 	UserID             uuid.UUID
 	BusinessTypeID     uuid.UUID
+	Name               string
 	Address            string
 	Location           model.GeoPoint
 	User               User

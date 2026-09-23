@@ -52,6 +52,7 @@ components:
             max_chat_id: 123456
             tracked_location:
               id: 11111111-1111-4111-8111-111111111111
+              name: Кофейня на Невском
               address: Санкт-Петербург, Невский проспект, 28
               business_type_id: 22222222-2222-4222-8222-222222222222
             subject:
@@ -70,6 +71,7 @@ components:
             max_chat_id: 123456
             tracked_location:
               id: 11111111-1111-4111-8111-111111111111
+              name: Кофейня на Невском
               address: Санкт-Петербург, Невский проспект, 28
               business_type_id: 22222222-2222-4222-8222-222222222222
             subject:
@@ -89,9 +91,10 @@ components:
         max_chat_id: {type: integer}
         tracked_location:
           type: object
-          required: [id, address, business_type_id]
+          required: [id, name, address, business_type_id]
           properties:
             id: {type: string, format: uuid}
+            name: {type: string, minLength: 1}
             address: {type: string}
             business_type_id: {type: string, format: uuid}
         subject:

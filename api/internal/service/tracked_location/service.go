@@ -83,10 +83,14 @@ func (s *service) Create(
 	ctx context.Context,
 	userID uuid.UUID,
 	businessTypeID uuid.UUID,
+	name string,
 	address string,
 	lat float64,
 	lng float64,
 ) (*domain.TrackedLocationRating, error) {
+	if strings.TrimSpace(name) == "" {
+		return nil, apperrs.ValidationError(domainerrs.ErrInvalidName)
+	}
 	if strings.TrimSpace(address) == "" {
 		return nil, apperrs.ValidationError(domainerrs.ErrInvalidAddress)
 	}
@@ -100,7 +104,7 @@ func (s *service) Create(
 	var createdLocation *domain.TrackedLocation
 
 	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		location := domain.NewTrackedLocation(userID, businessTypeID, address, geoPoint)
+		location := domain.NewTrackedLocation(userID, businessTypeID, name, address, geoPoint)
 		location, err := s.repo.Create(ctx, location)
 		if err != nil {
 			if errors.Is(err, domainerrs.ErrBusinessTypeNotFound) {

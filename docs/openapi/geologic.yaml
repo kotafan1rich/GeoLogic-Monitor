@@ -242,13 +242,15 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [business_type_id, address, lat, lon]
+              required: [name, business_type_id, address, lat, lon]
               properties:
+                name: { type: string, minLength: 1 }
                 business_type_id: { type: string, format: uuid }
                 address: { type: string, minLength: 1 }
                 lat: { type: number, minimum: -90, maximum: 90 }
                 lon: { type: number, minimum: -180, maximum: 180 }
             example:
+              name: Кофейня на Невском
               business_type_id: 22222222-2222-4222-8222-222222222222
               address: Санкт-Петербург, Невский проспект, 28
               lat: 59.9358
@@ -818,9 +820,10 @@ components:
       allOf:
         - $ref: "#/components/schemas/Address"
         - type: object
-          required: [id, business_type_id]
+          required: [id, name, business_type_id]
           properties:
             id: { type: string, format: uuid }
+            name: { type: string, minLength: 1 }
             business_type_id: { type: string, format: uuid }
     RatingHistoryEntry:
       type: object
