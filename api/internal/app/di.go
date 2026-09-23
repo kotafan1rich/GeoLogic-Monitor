@@ -386,6 +386,7 @@ func (d *diContainer) Handler(ctx context.Context) api.Handler {
 			d.cfg.Security.BotServiceToken,
 			d.cfg.Security.IngestionServiceToken,
 			d.cfg.Security.CORSAllowedOrigin,
+			d.cfg.Docs.DocsDir,
 		)
 	}
 	return d.handler

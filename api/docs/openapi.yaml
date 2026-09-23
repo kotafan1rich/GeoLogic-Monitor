@@ -10,8 +10,8 @@ info:
     Mini App передаёт подписанные MAX initData; bot регистрирует чат с сервисным
     токеном и X-Max-User-Id. Внутренние методы требуют отдельного ingestion token.
 servers:
-  - url: http://localhost:8080
-    description: Локальный API
+  - url: /
+    description: Текущий хост 
 security:
   - MiniAppInitData: []
 paths:

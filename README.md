@@ -82,7 +82,7 @@ docker compose up --build -d osrm
 - [Архитектура и структура каталогов](docs/architecture.md)
 - [Модель данных](docs/data-model.md)
 - [Рейтинг окружения](docs/impact-engine.md)
-- [OpenAPI](docs/openapi/geologic.yaml)
+- [OpenAPI](api/docs/openapi.yaml)
 - [AsyncAPI](docs/asyncapi/notifications.yaml)
 - [Локальная разработка](docs/local-development.md)
 - [Локальный OSRM](osrm/README.md)

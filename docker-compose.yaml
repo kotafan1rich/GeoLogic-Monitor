@@ -17,15 +17,6 @@ services:
       retries: 5
       start_period: 10s
 
-  swagger:
-    image: docker.swagger.io/swaggerapi/swagger-ui:v5.32.11
-    ports:
-      - "8081:8080"
-    environment:
-      SWAGGER_JSON: /spec/geologic.yaml
-    volumes:
-      - ./docs/openapi/geologic.yaml:/spec/geologic.yaml:ro
-
   ingestion:
     build: ./ingestion
     env_file:
