@@ -26,16 +26,6 @@ tasks:
     cmds:
       - docker compose stop api
 
-  swagger:up:
-    desc: "Запустить Swagger UI"
-    cmds:
-      - docker compose up -d swagger
-
-  swagger:down:
-    desc: "Остановить Swagger UI"
-    cmds:
-      - docker compose stop swagger
-
   ingestion:up:
     desc: "Собрать и запустить ingestion"
     cmds:

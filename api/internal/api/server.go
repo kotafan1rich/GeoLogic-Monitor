@@ -26,6 +26,7 @@ type httpHandler struct {
 	botServiceToken        string
 	ingestionServiceToken  string
 	corsAllowedOrigin      string
+	docsDir                string
 }
 
 func NewHandler(
@@ -42,6 +43,7 @@ func NewHandler(
 	botServiceToken string,
 	ingestionServiceToken string,
 	corsAllowedOrigin string,
+	docsDir string,
 ) Handler {
 	return &httpHandler{
 		healthHandler:          healthHandler,
@@ -57,11 +59,20 @@ func NewHandler(
 		botServiceToken:        botServiceToken,
 		ingestionServiceToken:  ingestionServiceToken,
 		corsAllowedOrigin:      corsAllowedOrigin,
+		docsDir:                docsDir,
 	}
 }
 
 func (h *httpHandler) Routes() http.Handler {
 	mux := http.NewServeMux()
+
+	mux.Handle(
+		"GET /docs/",
+		http.StripPrefix(
+			"/docs/",
+			http.FileServer(http.Dir(h.docsDir))),
+	)
+
 	handler.RegisterRoutes(
 		mux,
 		h.healthHandler,

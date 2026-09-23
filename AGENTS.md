@@ -43,7 +43,7 @@
 ## Источники истины
 
 - Архитектура и границы модулей: `docs/architecture.md`.
-- HTTP-контракт: `docs/openapi/geologic.yaml`.
+- HTTP-контракт: `api/docs/openapi.yaml`.
 - Kafka-контракт: `docs/asyncapi/notifications.yaml`.
 - Локальные команды: `Taskfile.yaml`.
 - Состав контейнеров: `docker-compose.yaml`.
