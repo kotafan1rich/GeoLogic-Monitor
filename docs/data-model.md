@@ -37,6 +37,7 @@
 | `id` | PRIMARY KEY; внутренний идентификатор. | Нет | `gen_random_uuid()` |
 | `user_id` | FK → users.id; владелец точки. | Нет | — |
 | `business_type_id` | FK → business_types.id; тип бизнеса. | Нет | — |
+| `name` | CHECK btrim(name) <> ''; пользовательское название точки. | Нет | — |
 | `address` | CHECK btrim(address) <> ''; адрес точки. | Нет | — |
 | `location` | Координаты точки. | Нет | — |
 | `created_at` | Время создания записи. | Нет | `now()` |

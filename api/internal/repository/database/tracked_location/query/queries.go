@@ -3,13 +3,13 @@ package query
 const (
 	Create = `
 		WITH created_location AS (
-			INSERT INTO tracked_locations (user_id, business_type_id, address, location)
-			VALUES ($1, $2, $3, ST_GeomFromEWKT($4))
-			RETURNING id, user_id, business_type_id, address, location,
+			INSERT INTO tracked_locations (user_id, business_type_id, name, address, location)
+			VALUES ($1, $2, $3, $4, ST_GeomFromEWKT($5))
+			RETURNING id, user_id, business_type_id, name, address, location,
 				created_at, updated_at
 		)
 		SELECT created_location.id, created_location.user_id,
-			created_location.business_type_id, created_location.address,
+			created_location.business_type_id, created_location.name, created_location.address,
 			ST_AsEWKB(created_location.location), created_location.created_at,
 			created_location.updated_at, users.id, users.max_user_id,
 			users.max_chat_id, users.created_at, users.updated_at
@@ -19,7 +19,7 @@ const (
 
 	GetByID = `
 		SELECT tracked_locations.id, tracked_locations.user_id,
-			tracked_locations.business_type_id, tracked_locations.address,
+			tracked_locations.business_type_id, tracked_locations.name, tracked_locations.address,
 			ST_AsEWKB(tracked_locations.location), tracked_locations.created_at,
 			tracked_locations.updated_at, users.id, users.max_user_id,
 			users.max_chat_id, users.created_at, users.updated_at
@@ -30,7 +30,7 @@ const (
 
 	GetByUserID = `
 		SELECT tracked_locations.id, tracked_locations.user_id,
-			tracked_locations.business_type_id, tracked_locations.address,
+			tracked_locations.business_type_id, tracked_locations.name, tracked_locations.address,
 			ST_AsEWKB(tracked_locations.location), tracked_locations.created_at,
 			tracked_locations.updated_at, users.id, users.max_user_id,
 			users.max_chat_id, users.created_at, users.updated_at,
@@ -50,7 +50,7 @@ const (
 
 	GetAllForMonitoring = `
 		SELECT tracked_locations.id, tracked_locations.user_id,
-			tracked_locations.business_type_id, tracked_locations.address,
+			tracked_locations.business_type_id, tracked_locations.name, tracked_locations.address,
 			ST_AsEWKB(tracked_locations.location), tracked_locations.created_at,
 			tracked_locations.updated_at, users.id, users.max_user_id,
 			users.max_chat_id, users.created_at, users.updated_at

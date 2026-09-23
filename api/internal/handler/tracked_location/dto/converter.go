@@ -5,6 +5,7 @@ import "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 func ToResponse(location domain.TrackedLocation) TrackedLocationResponse {
 	return TrackedLocationResponse{
 		ID:             location.ID,
+		Name:           location.Name,
 		BusinessTypeID: location.BusinessTypeID,
 		Address:        location.Address,
 		Lat:            location.GeoPoint.Lat,
