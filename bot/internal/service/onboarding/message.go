@@ -1,5 +1,5 @@
 package onboarding
 
 var (
-	OnboardingMessage string = "Hey"
+	OnboardingMessage string = "Привет! Это GeoLogic 👋\nЗдесь можно оценить свою бизнес-точку и не пропустить важные изменения вокруг неё.\n\nВ Mini App вы увидите Smart Score своей локации, а я буду присылать сюда уведомления о новых конкурентах и событиях рядом.\n\nНачнём?"
 )
