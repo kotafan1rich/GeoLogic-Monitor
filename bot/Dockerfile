@@ -16,8 +16,11 @@ FROM alpine:3.22
 
 RUN apk add --no-cache ca-certificates
 
+COPY certs/russian_trusted_root_ca.crt /usr/local/share/ca-certificates/russian_trusted_root_ca.crt
+RUN update-ca-certificates
+
 WORKDIR /app
 
-COPY --from=builder /app/bot .
+COPY --from=builder --chmod=0755 /app/bot .
 
 CMD ["./bot"]

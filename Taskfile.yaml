@@ -40,6 +40,11 @@ tasks:
     desc: "Собрать и запустить бота"
     cmds:
       - docker compose up -d --build bot
+  
+  bot:tunel:
+    desc: "Запустить тунель для https"
+    cmds:
+      - cloudflared tunnel --url http://localhost:8082
 
   bot:down:
     desc: "Остановить бота"
