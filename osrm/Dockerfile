@@ -1,6 +1,6 @@
 FROM ghcr.io/project-osrm/osrm-backend:v26.9.0-debian
 
-ARG PBF_URL=https://download.bbbike.org/osm/bbbike/SanktPetersburg/SanktPetersburg.osm.pbf
+ARG PBF_URL=https://www.osmlab.ru/regions/RU-SPE.pbf
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
