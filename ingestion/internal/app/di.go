@@ -17,6 +17,12 @@ import (
 
 const schedulerName = "ingestion"
 
+const (
+	digitalSpbClient      = "digitalspb"
+	geoAPIWriteClient     = "geo-api:write"
+	geoAPIGeocodingClient = "geo-api:geocoding"
+)
+
 type diContainer struct {
 	log       *slog.Logger
 	dsc       *digitalspb.Client
@@ -45,28 +51,46 @@ func (d *diContainer) Logger() *slog.Logger {
 	return d.log
 }
 
+func (d *diContainer) requester(
+	name string, cfg config.HTTPClientConfig, authToken string, requireAuth bool,
+) *infra.Requester {
+	hc := infra.MustNewHTTPClient(infra.HTTPOptions{
+		Name:                name,
+		AuthToken:           authToken,
+		RequireAuth:         requireAuth,
+		MaxIdleConns:        cfg.MaxIdleConns,
+		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     cfg.MaxConnsPerHost,
+		RequestTimeout:      cfg.RequestTimeout,
+		RateLimit: infra.RateLimit{
+			RPS:   cfg.RateLimit.RPS,
+			Burst: cfg.RateLimit.Burst,
+		},
+	})
+
+	d.Logger().Info("http client initialized",
+		slog.String("client", name),
+		slog.Duration("request_timeout", cfg.RequestTimeout),
+		slog.Duration("attempt_timeout", cfg.AttemptTimeout),
+		slog.Uint64("max_retries", uint64(cfg.MaxRetries)),
+		slog.Float64("rate_limit_rps", cfg.RateLimit.RPS),
+		slog.Int("rate_limit_burst", cfg.RateLimit.Burst),
+	)
+
+	return infra.MustNewRequester(name, hc, cfg.AttemptTimeout, cfg.MaxRetries, infra.RetryTransient)
+}
+
 func (d *diContainer) DSClient() *digitalspb.Client {
 	if d.dsc == nil {
 		cfg := config.Get()
-		log := d.Logger()
 
-		httpClient := infra.NewDigitalSpbHTTPClient(
-			cfg.Aggregator.DigitalSpb.MaxIdleConns,
-			cfg.Aggregator.DigitalSpb.MaxIdleConnsPerHost,
-			cfg.Aggregator.DigitalSpb.MaxConnsPerHost,
-			cfg.Aggregator.DigitalSpb.RequestTimeout,
+		req := d.requester(digitalSpbClient, cfg.Aggregator.DigitalSpb.HTTP, "", false)
+
+		d.dsc = digitalspb.MustNew(d.Logger(), req, cfg.Aggregator.DigitalSpb.BaseURLMap)
+
+		d.Logger().Info("digital-spb client initialized",
+			slog.Int("base_urls", len(cfg.Aggregator.DigitalSpb.BaseURLMap)),
 		)
-
-		log.Info("digital-spb http client initialized")
-
-		d.dsc = digitalspb.MustNew(
-			httpClient,
-			cfg.Aggregator.DigitalSpb.BaseURLMap,
-			cfg.Aggregator.DigitalSpb.AttemptTimeout,
-			cfg.Aggregator.DigitalSpb.MaxRetries,
-		)
-
-		log.Info("digital-spb client initialized")
 	}
 	return d.dsc
 }
@@ -76,18 +100,21 @@ func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 		cfg := config.Get()
 
 		d.ds = job.NewDigitalSpb(
+			d.Logger(),
 			d.DSClient(),
 			cfg.Aggregator.DigitalSpb.StaticFiles,
 			d.GeoApiClient(),
 			d.TypeRegistry(),
 			d.GeoApiClient().Coordinates,
 			d.GeoApiClient().Address,
+			cfg.GeoApi.WriteConcurrency,
 		)
 
 		d.Logger().Info(
 			"datasets source initialized",
 			slog.String("source", job.DigitalSpbName),
 			slog.Int("static_files", len(cfg.Aggregator.DigitalSpb.StaticFiles)),
+			slog.Int("write_concurrency", cfg.GeoApi.WriteConcurrency),
 		)
 	}
 	return d.ds
@@ -159,26 +186,13 @@ func (d *diContainer) Scheduler() *scheduler.Scheduler {
 func (d *diContainer) GeoApiClient() *geoapi.Client {
 	if d.gc == nil {
 		cfg := config.Get()
-		log := d.Logger()
 
-		httpClient := infra.MustNewGeoAPIHTTPClient(
-			cfg.GeoApi.AuthToken,
-			cfg.GeoApi.MaxIdleConns,
-			cfg.GeoApi.MaxIdleConnsPerHost,
-			cfg.GeoApi.MaxConnsPerHost,
-			cfg.GeoApi.RequestTimeout,
-		)
+		write := d.requester(geoAPIWriteClient, cfg.GeoApi.Write, cfg.GeoApi.AuthToken, true)
+		geocoding := d.requester(geoAPIGeocodingClient, cfg.GeoApi.Geocoding, cfg.GeoApi.AuthToken, true)
 
-		log.Info("geo-api http client initialized")
+		d.gc = geoapi.MustNew(cfg.GeoApi.URL, write, geocoding)
 
-		d.gc = geoapi.MustNew(
-			httpClient,
-			cfg.GeoApi.URL,
-			cfg.GeoApi.AttemptTimeout,
-			cfg.GeoApi.MaxRetries,
-		)
-
-		log.Info("geo-api client initialized")
+		d.Logger().Info("geo-api client initialized", slog.String("url", cfg.GeoApi.URL))
 	}
 	return d.gc
 }

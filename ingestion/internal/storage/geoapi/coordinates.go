@@ -7,19 +7,19 @@ import (
 	"strconv"
 )
 
-const geocodeEndpoint = "internal/v1/geocoding/suggestions"
-const reverseGeocodeEndpoint = "internal/v1/geocoding/address"
+const (
+	geocodeEndpoint        = "internal/v1/geocoding/suggestions"
+	reverseGeocodeEndpoint = "internal/v1/geocoding/address"
+)
 
 func (c *Client) Coordinates(ctx context.Context, address string) (float64, float64, error) {
 	const op = "geoapi.Client.Coordinates"
 
-	query := url.Values{
-		"query": {address},
-	}
+	query := url.Values{"query": {address}}
 
 	var raw []AddressComponent
 
-	if err := c.do(ctx, c.baseURL, geocodeEndpoint, query, nil, &raw); err != nil {
+	if err := c.get(ctx, geocodeEndpoint, query, &raw); err != nil {
 		return 0, 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -40,7 +40,7 @@ func (c *Client) Address(ctx context.Context, lat, lon float64) (string, error) 
 
 	var raw AddressComponent
 
-	if err := c.do(ctx, c.baseURL, reverseGeocodeEndpoint, query, nil, &raw); err != nil {
+	if err := c.get(ctx, reverseGeocodeEndpoint, query, &raw); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 

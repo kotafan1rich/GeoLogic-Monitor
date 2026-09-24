@@ -3,7 +3,6 @@ package geoapi
 import (
 	"context"
 	"fmt"
-	"net/url"
 )
 
 const eventEndpoint = "internal/v1/events"
@@ -13,8 +12,7 @@ func (c *Client) PutEvent(ctx context.Context, obj EventInput) (Event, error) {
 
 	var raw Event
 
-	err := c.do(ctx, c.baseURL, eventEndpoint, url.Values{}, obj, &raw)
-	if err != nil {
+	if err := c.put(ctx, eventEndpoint, obj, &raw); err != nil {
 		return Event{}, fmt.Errorf("%s: %w", op, err)
 	}
 

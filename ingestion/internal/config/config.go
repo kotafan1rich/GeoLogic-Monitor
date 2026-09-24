@@ -22,31 +22,38 @@ type LoggerConfig struct {
 	Format string `yaml:"format"`
 }
 
+type RateLimitConfig struct {
+	RPS   float64 `yaml:"rps"`
+	Burst int     `yaml:"burst"`
+}
+
+type HTTPClientConfig struct {
+	MaxIdleConns        int             `yaml:"max_idle_conns"`
+	MaxIdleConnsPerHost int             `yaml:"max_idle_conns_per_host"`
+	MaxConnsPerHost     int             `yaml:"max_conns_per_host"`
+	RequestTimeout      time.Duration   `yaml:"request_timeout"`
+	AttemptTimeout      time.Duration   `yaml:"attempt_timeout"`
+	MaxRetries          uint            `yaml:"max_retries"`
+	RateLimit           RateLimitConfig `yaml:"rate_limit"`
+}
+
 type AggregatorConfig struct {
 	DigitalSpb DigitalSpbConfig `yaml:"digitalspb"`
 }
 
 type DigitalSpbConfig struct {
-	MaxIdleConns        int               `yaml:"max_idle_conns"`
-	MaxIdleConnsPerHost int               `yaml:"max_idle_conns_per_host"`
-	MaxConnsPerHost     int               `yaml:"max_conns_per_host"`
-	RequestTimeout      time.Duration     `yaml:"request_timeout"`
-	AttemptTimeout      time.Duration     `yaml:"attempt_timeout"`
-	MaxRetries          uint              `yaml:"max_retries"`
-	BaseURLMap          map[string]string `yaml:"base_urls"`
-	StaticFiles         map[string]string `yaml:"static_files"`
+	HTTP        HTTPClientConfig  `yaml:"http"`
+	BaseURLMap  map[string]string `yaml:"base_urls"`
+	StaticFiles map[string]string `yaml:"static_files"`
 }
 
 type GeoApiConfig struct {
-	URL                 string        `yaml:"url"`
-	AuthToken           string        `env:"INGESTION_SERVICE_TOKEN" env-required:"true"`
-	MaxIdleConns        int           `yaml:"max_idle_conns"`
-	MaxIdleConnsPerHost int           `yaml:"max_idle_conns_per_host"`
-	MaxConnsPerHost     int           `yaml:"max_conns_per_host"`
-	RequestTimeout      time.Duration `yaml:"request_timeout"`
-	AttemptTimeout      time.Duration `yaml:"attempt_timeout"`
-	MaxRetries          uint          `yaml:"max_retries"`
-	InfraTypes          []InfraType   `yaml:"infra_types"`
+	URL              string           `yaml:"url"`
+	AuthToken        string           `env:"INGESTION_SERVICE_TOKEN" env-required:"true"`
+	Write            HTTPClientConfig `yaml:"write"`
+	Geocoding        HTTPClientConfig `yaml:"geocoding"`
+	WriteConcurrency int              `yaml:"write_concurrency"`
+	InfraTypes       []InfraType      `yaml:"infra_types"`
 }
 
 type InfraType struct {

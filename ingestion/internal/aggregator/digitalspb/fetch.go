@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
 )
 
 const (
@@ -112,7 +113,7 @@ func fetchStatic[T any](ctx context.Context, src a.File, op string) ([]T, error)
 
 	var raw []T
 
-	if err := json.NewDecoder(io.LimitReader(f, maxBodySize)).Decode(&raw); err != nil {
+	if err := json.NewDecoder(io.LimitReader(f, infra.MaxBodySize)).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("%s: %w [%s]: %v", op, ErrDecodeData, src, err)
 	}
 
