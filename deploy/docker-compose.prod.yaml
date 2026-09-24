@@ -4,6 +4,11 @@ services:
   caddy:
     image: caddy:2.11.4-alpine
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
     env_file:
       - ./env/caddy.env
     ports:
@@ -23,6 +28,11 @@ services:
   api:
     image: ${DOCKERHUB_OWNER}/geologic-monitor-api:${IMAGE_TAG}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
     env_file:
       - ./env/api.env
     depends_on:
@@ -46,6 +56,11 @@ services:
   ingestion:
     image: ${DOCKERHUB_OWNER}/geologic-monitor-ingestion:${IMAGE_TAG}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
     env_file:
       - ./env/ingestion.env
     depends_on:
@@ -57,6 +72,11 @@ services:
   bot:
     image: ${DOCKERHUB_OWNER}/geologic-monitor-bot:${IMAGE_TAG}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
     env_file:
       - ./env/bot.env
     depends_on:
@@ -70,6 +90,11 @@ services:
   api-db:
     image: postgis/postgis:18-3.6
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 384M
     env_file:
       - ./env/api-db.env
     volumes:
@@ -89,6 +114,11 @@ services:
   osrm:
     image: ${DOCKERHUB_OWNER}/geologic-monitor-osrm:${IMAGE_TAG}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
     volumes:
       - osrm_graph:/data
     networks:
@@ -97,6 +127,11 @@ services:
   miniapp:
     image: ${DOCKERHUB_OWNER}/geologic-monitor-miniapp:${IMAGE_TAG}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
     depends_on:
       api:
         condition: service_healthy
