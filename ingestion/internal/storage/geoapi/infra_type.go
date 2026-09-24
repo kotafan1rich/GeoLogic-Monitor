@@ -3,7 +3,6 @@ package geoapi
 import (
 	"context"
 	"fmt"
-	"net/url"
 )
 
 const infraTypeEndpoint = "internal/v1/infra-types"
@@ -13,7 +12,7 @@ func (c *Client) PutInfraType(ctx context.Context, obj InfraTypeInput) (InfraTyp
 
 	var raw InfraType
 
-	if err := c.do(ctx, c.baseURL, infraTypeEndpoint, url.Values{}, obj, &raw); err != nil {
+	if err := c.put(ctx, infraTypeEndpoint, obj, &raw); err != nil {
 		return InfraType{}, fmt.Errorf("%s: %w", op, err)
 	}
 

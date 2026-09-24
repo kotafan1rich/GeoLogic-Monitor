@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"log/slog"
 
 	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
@@ -16,9 +17,7 @@ const (
 	sourceYazzhGate      = "yazzh_gate"
 )
 
-const (
-	sourceSubwayFile = "subway"
-)
+const sourceSubwayFile = "subway"
 
 const (
 	datasetRailwayStation = "railway_station"
@@ -30,7 +29,6 @@ const (
 	datasetPharmacy       = "pharmacy"
 	datasetCinema         = "cinema"
 	datasetVetClinic      = "vet_clinic"
-	datasetProperty       = "property"
 	datasetKidsPlace      = "kids_place"
 	datasetVisit          = "visit"
 	datasetStreetMusician = "street_musicians"
@@ -40,19 +38,20 @@ const (
 type DigitalSpb struct {
 	client  *digitalspb.Client
 	files   map[string]a.File
-	writer  DigitalSpbWriter
-	types   TypeResolver
+	store   *store
 	convert digitalspb.AddressConverter
 	address digitalspb.CoordinatesConverter
 }
 
 func NewDigitalSpb(
+	log *slog.Logger,
 	client *digitalspb.Client,
 	staticFiles map[string]string,
 	writer DigitalSpbWriter,
 	types TypeResolver,
 	convert digitalspb.AddressConverter,
 	address digitalspb.CoordinatesConverter,
+	writeConcurrency int,
 ) *DigitalSpb {
 	files := make(map[string]a.File, len(staticFiles))
 	for key, path := range staticFiles {
@@ -60,10 +59,14 @@ func NewDigitalSpb(
 	}
 
 	return &DigitalSpb{
-		client:  client,
-		files:   files,
-		writer:  writer,
-		types:   types,
+		client: client,
+		files:  files,
+		store: &store{
+			log:         log.With(slog.String("source", DigitalSpbName)),
+			writer:      writer,
+			types:       types,
+			concurrency: writeConcurrency,
+		},
 		convert: convert,
 		address: address,
 	}
@@ -71,7 +74,7 @@ func NewDigitalSpb(
 
 func (j *DigitalSpb) InfraDatasets() []dataset {
 	c := j.client
-	w, t, conv, addr := j.writer, j.types, j.convert, j.address
+	s, conv, addr := j.store, j.convert, j.address
 
 	classif := j.url(sourceSpbClassifGate)
 	yazzh := j.url(sourceYazzhGate)
@@ -79,39 +82,40 @@ func (j *DigitalSpb) InfraDatasets() []dataset {
 
 	return []dataset{
 		ds(datasetRailwayStation, sourceSpbClassifGate, classif, c.ParseRailwayStationData,
-			toInfra(w, t, datasetRailwayStation)),
+			s.infra(datasetRailwayStation)),
 		ds(datasetRestaurant, sourceSpbClassifGate, classif, c.ParseRestaurantData,
-			toInfra(w, t, datasetRestaurant)),
+			s.infra(datasetRestaurant)),
 		ds(datasetHotel, sourceSpbClassifGate, classif, c.ParseHotelData,
-			toInfra(w, t, datasetHotel)),
+			s.infra(datasetHotel)),
 		ds(datasetMuseum, sourceSpbClassifGate, classif, c.ParseMuseumData,
-			toInfra(w, t, datasetMuseum)),
+			s.infra(datasetMuseum)),
 		ds(datasetExhibitionHall, sourceSpbClassifGate, classif, c.ParseExhibitionHallData,
-			toInfra(w, t, datasetExhibitionHall)),
+			s.infra(datasetExhibitionHall)),
 		ds(datasetTheatre, sourceSpbClassifGate, classif, c.ParseTheatreData,
-			toInfra(w, t, datasetTheatre)),
+			s.infra(datasetTheatre)),
 		ds(datasetPharmacy, sourceSpbClassifGate, classif, c.ParsePharmacyData,
-			toInfra(w, t, datasetPharmacy)),
+			s.infra(datasetPharmacy)),
 		ds(datasetSubway, sourceSubwayFile, subway, c.ParseSubwayData,
-			toInfra(w, t, datasetSubway)),
+			s.infra(datasetSubway)),
 		ds(datasetCinema, sourceSpbClassifGate, classif, geocoded(c.ParseCinemaData, conv),
-			toInfra(w, t, datasetCinema)),
+			s.infra(datasetCinema)),
 		ds(datasetVetClinic, sourceSpbClassifGate, classif, geocoded(c.ParseVetClinicData, conv),
-			toInfra(w, t, datasetVetClinic)),
+			s.infra(datasetVetClinic)),
 		ds(datasetKidsPlace, sourceYazzhGate, yazzh, geocoded(c.ParseKidsPlaceData, addr),
-			toInfra(w, t, datasetKidsPlace)),
+			s.infra(datasetKidsPlace)),
 	}
 }
 
 func (j *DigitalSpb) EventDatasets() []dataset {
 	c := j.client
-	w := j.writer
+	s := j.store
 
 	egs := j.url(sourceEgsGate)
 
 	return []dataset{
-		ds(datasetVisit, sourceEgsGate, egs, c.ParseVisitData, toEvent(w)),
-		ds(datasetStreetMusician, sourceEgsGate, egs, c.ParseStreetMusiciansData, toEvent(w)),
+		ds(datasetVisit, sourceEgsGate, egs, c.ParseVisitData, s.events(datasetVisit)),
+		ds(datasetStreetMusician, sourceEgsGate, egs, c.ParseStreetMusiciansData,
+			s.events(datasetStreetMusician)),
 	}
 }
 

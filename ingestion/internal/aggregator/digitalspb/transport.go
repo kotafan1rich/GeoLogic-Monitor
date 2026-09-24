@@ -17,7 +17,7 @@ func (c *Client) ParseRailwayStationData(ctx context.Context, src a.URL) ([]geoa
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[RailwayStation](data, "", mapRailwayStation)
+	mappedData := mapToInfraObjects(data, mapRailwayStation)
 
 	return mappedData, nil
 }
@@ -30,7 +30,7 @@ func (c *Client) ParseSubwayData(ctx context.Context, src a.File) ([]geoapi.Infr
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[Subway](data, "", mapSubway)
+	mappedData := mapToInfraObjects(data, mapSubway)
 
 	return mappedData, nil
 }

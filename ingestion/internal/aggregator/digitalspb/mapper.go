@@ -2,23 +2,19 @@ package digitalspb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/errs"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
 const providerPrefix = "digitalspb"
 
-const geocodeConcurrency = 8
+const geocodeLogEvery = 250
 
 const (
 	datasetRailwayStation  = "railway_station"
@@ -31,6 +27,7 @@ const (
 	datasetPharmacy        = "pharmacy"
 	datasetCinema          = "cinema"
 	datasetVetClinic       = "vet_clinic"
+	datasetKidsPlace       = "kids_place"
 	datasetLibrary         = "library"
 	datasetZoo             = "zoo"
 	datasetGameCenter      = "game_center"
@@ -51,7 +48,6 @@ const (
 	kidsPlacePlayground      = "Площадки"
 	kidsPlaceSportsCenter    = "Спортивные центры"
 	kidsPlaceTheatre         = "Театры"
-	kidsPlaceOther           = "Другое"
 
 	sourceEgsGate = "egs_gate"
 
@@ -61,16 +57,11 @@ const (
 	coordSep = ","
 )
 
-func mapToInfraObjects[T any](
-	objs []T, typeID string, fn func(T) geoapi.InfraObjectInput,
-) []geoapi.InfraObjectInput {
+func mapToInfraObjects[T any](objs []T, fn func(T) geoapi.InfraObjectInput) []geoapi.InfraObjectInput {
 	mapped := make([]geoapi.InfraObjectInput, 0, len(objs))
 
 	for _, obj := range objs {
-		in := fn(obj)
-		in.TypeID = typeID
-
-		mapped = append(mapped, in)
+		mapped = append(mapped, fn(obj))
 	}
 
 	return mapped
@@ -78,148 +69,171 @@ func mapToInfraObjects[T any](
 
 type AddressConverter func(ctx context.Context, address string) (lat, lon float64, err error)
 
+type CoordinatesConverter func(ctx context.Context, lat, lon float64) (address string, err error)
+
 func mapToGeocodedInfraObjects[T any](
-	ctx context.Context, objs []T, typeID string, convert AddressConverter, fn func(T) geoapi.InfraObjectInput,
+	ctx context.Context,
+	log *slog.Logger,
+	dataset string,
+	objs []T,
+	convert AddressConverter,
+	fn func(T) geoapi.InfraObjectInput,
 ) ([]geoapi.InfraObjectInput, error) {
 	if convert == nil {
 		return nil, ErrInvalidAddressConverter
 	}
 
-	mapped := mapToInfraObjects(objs, typeID, fn)
+	mapped := mapToInfraObjects(objs, fn)
 
-	var (
-		g      errgroup.Group
-		failed atomic.Int64
-		mu     sync.Mutex
-		errs   []error
-	)
-
-	g.SetLimit(geocodeConcurrency)
-
-	for i := range mapped {
-		if ctx.Err() != nil {
-			break
-		}
-
-		if mapped[i].Address == "" {
-			continue
-		}
-
-		idx := i
-
-		g.Go(func() error {
-			if err := ctx.Err(); err != nil {
-				failed.Add(1)
-				return nil
-			}
-
-			lat, lon, err := convert(ctx, mapped[idx].Address)
+	err := geocode(
+		ctx, log, dataset, "address_to_coordinates", mapped,
+		func(o geoapi.InfraObjectInput) bool {
+			return o.Address != "" && o.Lat == 0 && o.Lon == 0
+		},
+		func(ctx context.Context, o *geoapi.InfraObjectInput) error {
+			lat, lon, err := convert(ctx, o.Address)
 			if err != nil {
-				failed.Add(1)
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
-				return nil
+				return err
 			}
 
-			mapped[idx].Lat, mapped[idx].Lon = lat, lon
+			o.Lat, o.Lon = lat, lon
 
 			return nil
-		})
-	}
-
-	_ = g.Wait()
-
-	if failed.Load() > 0 && len(errs) > 0 {
-		slog.Error(
-			"addresses converting finished with errors",
-			slog.Int64("failed", failed.Load()),
-			slog.Any("error", errors.Join(errs...)),
-		)
-	}
-
-	if err := ctx.Err(); err != nil {
+		},
+	)
+	if err != nil {
 		return nil, err
 	}
 
 	return mapped, nil
 }
 
-type CoordinatesConverter func(ctx context.Context, lat, lon float64) (address string, err error)
-
 func mapToAddressedInfraObjects[T any](
-	ctx context.Context, objs []T, typeID string, convert CoordinatesConverter, fn func(T) geoapi.InfraObjectInput,
+	ctx context.Context,
+	log *slog.Logger,
+	dataset string,
+	objs []T,
+	convert CoordinatesConverter,
+	fn func(T) geoapi.InfraObjectInput,
 ) ([]geoapi.InfraObjectInput, error) {
 	if convert == nil {
 		return nil, ErrInvalidCoordinatesConverter
 	}
 
-	mapped := mapToInfraObjects(objs, typeID, fn)
+	mapped := mapToInfraObjects(objs, fn)
 
-	var (
-		g      errgroup.Group
-		failed atomic.Int64
-		mu     sync.Mutex
-		errs   []error
-	)
-
-	g.SetLimit(geocodeConcurrency)
-
-	for i := range mapped {
-		if ctx.Err() != nil {
-			break
-		}
-
-		if mapped[i].Address != "" || mapped[i].Lat == 0 && mapped[i].Lon == 0 {
-			continue
-		}
-
-		idx := i
-
-		g.Go(func() error {
-			if err := ctx.Err(); err != nil {
-				failed.Add(1)
-				return nil
-			}
-
-			address, err := convert(ctx, mapped[idx].Lat, mapped[idx].Lon)
+	err := geocode(
+		ctx, log, dataset, "coordinates_to_address", mapped,
+		func(o geoapi.InfraObjectInput) bool {
+			return o.Address == "" && (o.Lat != 0 || o.Lon != 0)
+		},
+		func(ctx context.Context, o *geoapi.InfraObjectInput) error {
+			address, err := convert(ctx, o.Lat, o.Lon)
 			if err != nil {
-				failed.Add(1)
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
-				return nil
+				return err
 			}
 
-			mapped[idx].Address = address
+			o.Address = address
 
 			return nil
-		})
-	}
-
-	_ = g.Wait()
-
-	if failed.Load() > 0 && len(errs) > 0 {
-		slog.Error(
-			"coordinates converting finished with errors",
-			slog.Int64("failed", failed.Load()),
-			slog.Any("error", errors.Join(errs...)),
-		)
-	}
-
-	if err := ctx.Err(); err != nil {
+		},
+	)
+	if err != nil {
 		return nil, err
 	}
 
 	return mapped, nil
+}
+
+func geocode(
+	ctx context.Context,
+	log *slog.Logger,
+	dataset, direction string,
+	objs []geoapi.InfraObjectInput,
+	needs func(geoapi.InfraObjectInput) bool,
+	fill func(context.Context, *geoapi.InfraObjectInput) error,
+) error {
+	total := 0
+
+	for i := range objs {
+		if needs(objs[i]) {
+			total++
+		}
+	}
+
+	if total == 0 {
+		return nil
+	}
+
+	log = log.With(
+		slog.String("dataset", dataset),
+		slog.String("direction", direction),
+	)
+
+	log.DebugContext(ctx, "geocoding started", slog.Int("objects", total))
+
+	var (
+		start     = time.Now()
+		collector = errs.NewCollector(errs.DefaultSampleSize)
+		processed int
+		resolved  int
+	)
+
+	for i := range objs {
+		if !needs(objs[i]) {
+			continue
+		}
+
+		if err := ctx.Err(); err != nil {
+			log.WarnContext(ctx, "geocoding interrupted",
+				slog.Int("processed", processed),
+				slog.Int("objects", total),
+			)
+
+			return err
+		}
+
+		processed++
+
+		if err := fill(ctx, &objs[i]); err != nil {
+			collector.Add(err)
+			continue
+		}
+
+		resolved++
+
+		if processed%geocodeLogEvery == 0 {
+			log.DebugContext(ctx, "geocoding in progress",
+				slog.Int("processed", processed),
+				slog.Int("objects", total),
+				slog.Int("failed", collector.Total()),
+			)
+		}
+	}
+
+	attrs := []any{
+		slog.Int("objects", total),
+		slog.Int("resolved", resolved),
+		slog.Int("failed", collector.Total()),
+		slog.Duration("duration", time.Since(start)),
+	}
+
+	if collector.Total() > 0 {
+		log.WarnContext(ctx, "geocoding finished with errors", append(attrs, collector.Attr())...)
+
+		return nil
+	}
+
+	log.DebugContext(ctx, "geocoding finished", attrs...)
+
+	return nil
 }
 
 func mapToEvents[T any](objs []T, fn func(T) geoapi.EventInput) []geoapi.EventInput {
 	mapped := make([]geoapi.EventInput, 0, len(objs))
 
 	for _, obj := range objs {
-		in := fn(obj)
-		mapped = append(mapped, in)
+		mapped = append(mapped, fn(obj))
 	}
 
 	return mapped
@@ -271,87 +285,34 @@ func mapSubway(o Subway) geoapi.InfraObjectInput {
 	}
 }
 
-func mapKidsPlaceLibrary(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetLibrary, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlaceZoo(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetZoo, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlaceGameCenter(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetGameCenter, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlaceCamp(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetCamp, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlaceMuseum(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetMuseum, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlaceEducationCenter(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetEducationCenter, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlacePark(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetPark, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlacePlayground(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetPlayground, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlaceSportsCenter(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetSportsCenter, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlacekidsPlaceTheatre(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetTheatre, o.ID, "", o.Title, o.Coordinates)
-}
-
-func mapKidsPlacekidsOther(o KidsPlace) geoapi.InfraObjectInput {
-	return infraObject(datasetOther, o.ID, "", o.Title, o.Coordinates)
+var kidsPlaceDatasets = map[string]string{
+	kidsPlaceLibrary:         datasetLibrary,
+	kidsPlaceZoo:             datasetZoo,
+	kidsPlaceGameCenter:      datasetGameCenter,
+	kidsPlaceCamp:            datasetCamp,
+	kidsPlaceMuseum:          datasetMuseum,
+	kidsPlaceEducationCenter: datasetEducationCenter,
+	kidsPlacePark:            datasetPark,
+	kidsPlacePlayground:      datasetPlayground,
+	kidsPlaceSportsCenter:    datasetSportsCenter,
+	kidsPlaceTheatre:         datasetTheatre,
 }
 
 func mapKidsPlace(o KidsPlace) geoapi.InfraObjectInput {
-	switch o.CategoriesName {
-	case kidsPlaceLibrary:
-		return mapKidsPlaceLibrary(o)
-	case kidsPlaceZoo:
-		return mapKidsPlaceZoo(o)
-	case kidsPlaceGameCenter:
-		return mapKidsPlaceGameCenter(o)
-	case kidsPlaceCamp:
-		return mapKidsPlaceCamp(o)
-	case kidsPlaceMuseum:
-		return mapKidsPlaceMuseum(o)
-	case kidsPlaceEducationCenter:
-		return mapKidsPlaceEducationCenter(o)
-	case kidsPlacePark:
-		return mapKidsPlacePark(o)
-	case kidsPlacePlayground:
-		return mapKidsPlacePlayground(o)
-	case kidsPlaceSportsCenter:
-		return mapKidsPlaceSportsCenter(o)
-	case kidsPlaceTheatre:
-		return mapKidsPlacekidsPlaceTheatre(o)
-	default:
-		return mapKidsPlacekidsOther(o)
+	dataset, ok := kidsPlaceDatasets[o.CategoriesName]
+	if !ok {
+		dataset = datasetOther
 	}
+
+	return infraObject(dataset, o.ID, "", o.Title, o.Coordinates)
 }
 
 func mapStreetPerformance(o StreetPerformance) geoapi.EventInput {
-	return Event(
-		datasetStreetMusician, sourceEgsGate, o.Address, o.ID, o.Coordinates, extractDate(o.StartDate),
-	)
+	return event(datasetStreetMusician, sourceEgsGate, o.Address, o.ID, o.Coordinates, extractDate(o.StartDate))
 }
 
 func mapCultureEvent(o CultureEvent) geoapi.EventInput {
-	return Event(
-		datasetVisit, sourceEgsGate, o.Name, o.ID, extractCoords(o.Map), extractDate(o.Start),
-	)
+	return event(datasetVisit, sourceEgsGate, o.Name, o.ID, extractCoords(o.Map), extractDate(o.Start))
 }
 
 func infraObject[I int | int64 | string](
@@ -368,23 +329,16 @@ func infraObject[I int | int64 | string](
 	}
 }
 
-func Event[I int | int64 | string, C string | []float64](
-	dataset, provider, info string, id I, coord C, date time.Time,
+func event[I int | int64 | string](
+	dataset, provider, info string, id I, coord []float64, date time.Time,
 ) geoapi.EventInput {
-	var extractedCoord []float64
-
-	switch v := any(coord).(type) {
-	case string:
-		extractedCoord = extractCoords(v)
-	case []float64:
-		extractedCoord = v
-	}
+	lat, lon := coords(coord)
 
 	return geoapi.EventInput{
 		Provider:   provider,
 		ExternalID: externalID(dataset, id),
-		Lat:        extractedCoord[0],
-		Lon:        extractedCoord[1],
+		Lat:        lat,
+		Lon:        lon,
 		Date:       date,
 		Info:       optional(info),
 	}
@@ -405,17 +359,17 @@ func coords(c []float64) (lat, lon float64) {
 func extractCoords(c string) []float64 {
 	raw := strings.Split(c, coordSep)
 	if len(raw) < 2 {
-		return []float64{0, 0}
+		return nil
 	}
 
-	lat, err := strconv.ParseFloat(raw[0], 64)
+	lat, err := strconv.ParseFloat(strings.TrimSpace(raw[0]), 64)
 	if err != nil {
-		return []float64{0, 0}
+		return nil
 	}
 
-	lon, err := strconv.ParseFloat(raw[0], 64)
+	lon, err := strconv.ParseFloat(strings.TrimSpace(raw[1]), 64)
 	if err != nil {
-		return []float64{0, 0}
+		return nil
 	}
 
 	return []float64{lat, lon}
