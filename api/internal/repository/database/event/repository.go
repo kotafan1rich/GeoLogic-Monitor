@@ -25,7 +25,7 @@ func NewRepository(db database.DBTX) *repository {
 }
 
 func (r *repository) Upsert(ctx context.Context, event *domain.Event) (*domain.Event, error) {
-	eventModel := dto.ToModel(*event)
+	eventModel := dto.ToModel(event)
 	err := scanEvent(
 		r.db.QueryRow(
 			ctx,
@@ -42,7 +42,7 @@ func (r *repository) Upsert(ctx context.Context, event *domain.Event) (*domain.E
 		return nil, err
 	}
 
-	return dto.ToDomain(*eventModel), nil
+	return dto.ToDomain(eventModel), nil
 }
 
 func (r *repository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Event, error) {
@@ -55,14 +55,14 @@ func (r *repository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Event, 
 		return nil, err
 	}
 
-	return dto.ToDomain(eventModel), nil
+	return dto.ToDomain(&eventModel), nil
 }
 
 func (r *repository) GetUnnotifiedByPeriod(
 	ctx context.Context,
 	from time.Time,
 	to time.Time,
-) ([]domain.Event, error) {
+) ([]*domain.Event, error) {
 	return r.getMany(ctx, query.GetUnnotifiedByPeriod, from, to)
 }
 
@@ -72,7 +72,7 @@ func (r *repository) GetUnnotifiedNear(
 	radius uint16,
 	from *time.Time,
 	to *time.Time,
-) ([]domain.Event, error) {
+) ([]*domain.Event, error) {
 	location := basemodel.GeoPoint(*geopoint)
 	return r.getMany(ctx, query.GetUnnotifiedNear, location, radius, from, to)
 }
@@ -93,20 +93,20 @@ func (r *repository) getMany(
 	ctx context.Context,
 	queryString string,
 	args ...any,
-) ([]domain.Event, error) {
+) ([]*domain.Event, error) {
 	rows, err := r.db.Query(ctx, queryString, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	events := make([]domain.Event, 0)
+	events := make([]*domain.Event, 0)
 	for rows.Next() {
 		eventModel := model.Event{}
 		if err := scanEvent(rows, &eventModel); err != nil {
 			return nil, err
 		}
-		events = append(events, *dto.ToDomain(eventModel))
+		events = append(events, dto.ToDomain(&eventModel))
 	}
 
 	if err := rows.Err(); err != nil {

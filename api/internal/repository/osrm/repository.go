@@ -22,13 +22,13 @@ func New(client OSRMClient) *repository {
 	}
 }
 
-func (r *repository) FilterWalkingDistance(
+func (r *repository) WalkingDistances(
 	ctx context.Context,
 	src *domain.GeoPoint,
-	dst []*domain.InfraObject,
-) ([]*domain.InfraObjectDistance, error) {
+	dst []*domain.GeoPoint,
+) ([]*float64, error) {
 	if len(dst) == 0 {
-		return []*domain.InfraObjectDistance{}, nil
+		return []*float64{}, nil
 	}
 
 	distances, err := r.osrmClient.GetWalkingDistances(
@@ -39,17 +39,5 @@ func (r *repository) FilterWalkingDistance(
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*domain.InfraObjectDistance, 0, len(distances))
-	for indx, dist := range distances {
-		if dist == nil {
-			continue
-		}
-		if *dist <= float64(dst[indx].Type.MaxRadius) {
-			result = append(result, &domain.InfraObjectDistance{
-				Object:         dst[indx],
-				DistanceMeters: *dist,
-			})
-		}
-	}
-	return result, nil
+	return distances, nil
 }

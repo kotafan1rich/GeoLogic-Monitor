@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/go-co-op/gocron/v2"
 )
 
 type Job interface {
 	Name() string
-	Interval() time.Duration
+	Schedule() string
 	Run(ctx context.Context)
 }
 
@@ -49,7 +48,7 @@ func (s *Scheduler) Register(ctx context.Context, job Job) error {
 	const op = "scheduler.Scheduler.Register"
 
 	j, err := s.inner.NewJob(
-		gocron.DurationJob(job.Interval()),
+		gocron.CronJob(job.Schedule(), false),
 		gocron.NewTask(job.Run),
 		gocron.WithContext(ctx),
 		gocron.WithName(job.Name()),
@@ -66,7 +65,7 @@ func (s *Scheduler) Register(ctx context.Context, job Job) error {
 		slog.String("scheduler", s.name),
 		slog.String("job", job.Name()),
 		slog.String("job_id", j.ID().String()),
-		slog.Duration("interval", job.Interval()),
+		slog.String("schedule", job.Schedule()),
 	)
 
 	return nil

@@ -2,8 +2,10 @@ package digitalspb
 
 import (
 	"context"
+	"fmt"
 
 	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
 const (
@@ -18,7 +20,7 @@ const (
 	kidsPlaceEndpoint      = "iparent/places/all/"
 )
 
-func (c *Client) ParseRestaurantData(ctx context.Context, src a.URL) ([]Restaurant, error) {
+func (c *Client) ParseRestaurantData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseRestaurantData"
 
 	data, err := fetchSpbClassifGate[Restaurant](ctx, c, src, restaurantEndpoint, op)
@@ -26,10 +28,12 @@ func (c *Client) ParseRestaurantData(ctx context.Context, src a.URL) ([]Restaura
 		return nil, err
 	}
 
-	return data, nil
+	mappedData := mapToInfraObjects[Restaurant](data, "", mapRestaurant)
+
+	return mappedData, nil
 }
 
-func (c *Client) ParseHotelData(ctx context.Context, src a.URL) ([]Hotel, error) {
+func (c *Client) ParseHotelData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseHotelData"
 
 	data, err := fetchSpbClassifGate[Hotel](ctx, c, src, hotelEndpoint, op)
@@ -37,10 +41,14 @@ func (c *Client) ParseHotelData(ctx context.Context, src a.URL) ([]Hotel, error)
 		return nil, err
 	}
 
-	return data, nil
+	mappedData := mapToInfraObjects[Hotel](data, "", mapHotel)
+
+	return mappedData, nil
 }
 
-func (c *Client) ParseCinemaData(ctx context.Context, src a.URL) ([]Cinema, error) {
+func (c *Client) ParseCinemaData(
+	ctx context.Context, src a.URL, convert AddressConverter,
+) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseCinemaData"
 
 	data, err := fetchSpbClassifGate[Cinema](ctx, c, src, cinemaEndpoint, op)
@@ -48,10 +56,15 @@ func (c *Client) ParseCinemaData(ctx context.Context, src a.URL) ([]Cinema, erro
 		return nil, err
 	}
 
-	return data, nil
+	mappedData, err := mapToGeocodedInfraObjects[Cinema](ctx, data, "", convert, mapCinema)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return mappedData, nil
 }
 
-func (c *Client) ParseMuseumData(ctx context.Context, src a.URL) ([]Museum, error) {
+func (c *Client) ParseMuseumData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseMuseumData"
 
 	data, err := fetchSpbClassifGate[Museum](ctx, c, src, museumEndpoint, op)
@@ -59,10 +72,12 @@ func (c *Client) ParseMuseumData(ctx context.Context, src a.URL) ([]Museum, erro
 		return nil, err
 	}
 
-	return data, nil
+	mappedData := mapToInfraObjects[Museum](data, "", mapMuseum)
+
+	return mappedData, nil
 }
 
-func (c *Client) ParseExhibitionHallData(ctx context.Context, src a.URL) ([]ExhibitionHall, error) {
+func (c *Client) ParseExhibitionHallData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseExhibitionHallData"
 
 	data, err := fetchSpbClassifGate[ExhibitionHall](ctx, c, src, exhibitionHallEndpoint, op)
@@ -70,10 +85,12 @@ func (c *Client) ParseExhibitionHallData(ctx context.Context, src a.URL) ([]Exhi
 		return nil, err
 	}
 
-	return data, nil
+	mappedData := mapToInfraObjects[ExhibitionHall](data, "", mapExhibitionHall)
+
+	return mappedData, nil
 }
 
-func (c *Client) ParseTheatreData(ctx context.Context, src a.URL) ([]Theatre, error) {
+func (c *Client) ParseTheatreData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseTheatreData"
 
 	data, err := fetchSpbClassifGate[Theatre](ctx, c, src, theatreEndpoint, op)
@@ -81,10 +98,12 @@ func (c *Client) ParseTheatreData(ctx context.Context, src a.URL) ([]Theatre, er
 		return nil, err
 	}
 
-	return data, nil
+	mappedData := mapToInfraObjects[Theatre](data, "", mapTheatre)
+
+	return mappedData, nil
 }
 
-func (c *Client) ParsePharmacyData(ctx context.Context, src a.URL) ([]Pharmacy, error) {
+func (c *Client) ParsePharmacyData(ctx context.Context, src a.URL) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParsePharmacyData"
 
 	data, err := fetchSpbClassifGate[Pharmacy](ctx, c, src, pharmacyEndpoint, op)
@@ -92,10 +111,14 @@ func (c *Client) ParsePharmacyData(ctx context.Context, src a.URL) ([]Pharmacy, 
 		return nil, err
 	}
 
-	return data, nil
+	mappedData := mapToInfraObjects[Pharmacy](data, "", mapPharmacy)
+
+	return mappedData, nil
 }
 
-func (c *Client) ParseVetClinicData(ctx context.Context, src a.URL) ([]VetClinic, error) {
+func (c *Client) ParseVetClinicData(
+	ctx context.Context, src a.URL, convert AddressConverter,
+) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseVetClinicData"
 
 	data, err := fetchSpbClassifGate[VetClinic](ctx, c, src, vetClinicEndpoint, op)
@@ -103,10 +126,17 @@ func (c *Client) ParseVetClinicData(ctx context.Context, src a.URL) ([]VetClinic
 		return nil, err
 	}
 
-	return data, nil
+	mappedData, err := mapToGeocodedInfraObjects[VetClinic](ctx, data, "", convert, mapVetClinic)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return mappedData, nil
 }
 
-func (c *Client) ParseKidsPlaceData(ctx context.Context, src a.URL) ([]KidsPlace, error) {
+func (c *Client) ParseKidsPlaceData(
+	ctx context.Context, src a.URL, convert CoordinatesConverter,
+) ([]geoapi.InfraObjectInput, error) {
 	const op = "digitalspb.Client.ParseKidsPlaceData"
 
 	data, err := fetchYazzhGate[KidsPlace](ctx, c, src, kidsPlaceEndpoint, op)
@@ -114,5 +144,10 @@ func (c *Client) ParseKidsPlaceData(ctx context.Context, src a.URL) ([]KidsPlace
 		return nil, err
 	}
 
-	return data, nil
+	mappedData, err := mapToAddressedInfraObjects[KidsPlace](ctx, data, "", convert, mapKidsPlace)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return mappedData, nil
 }

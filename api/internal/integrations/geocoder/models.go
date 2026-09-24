@@ -1,36 +1,49 @@
 package geocoder
 
-type Address struct {
-	BuildingID int     `json:"Building_ID"`
-	ID         int     `json:"ID"`
-	Name       string  `json:"Name"`
-	Longitude  float64 `json:"Longitude"`
-	Latitude   float64 `json:"Latitude"`
-	DistrictID int     `json:"District_ID"`
-	District   string  `json:"District"`
-	Flat       string  `json:"Flat"`
+type suggestRequest struct {
+	Query         string            `json:"query"`
+	Count         int               `json:"count"`
+	Locations     []suggestLocation `json:"locations"`
+	RestrictValue bool              `json:"restrict_value"`
 }
 
-type Geocode struct {
-	ID       int       `json:"id"`
-	Address  string    `json:"address"`
-	Center   []float64 `json:"center"`
-	Distance int       `json:"distance"`
+type suggestLocation struct {
+	City string `json:"city"`
 }
 
-type EASAddress struct {
-	BuildingID int     `json:"Building_ID"`
-	ID         int     `json:"ID"`
-	Name       string  `json:"Name"`
-	Longitude  float64 `json:"Longitude"`
-	Latitude   float64 `json:"Latitude"`
+type geolocateRequest struct {
+	Lat   float64 `json:"lat"`
+	Lon   float64 `json:"lon"`
+	Count int     `json:"count"`
+}
+
+type suggestionsResponse struct {
+	Suggestions []suggestion `json:"suggestions"`
+}
+
+type suggestion struct {
+	Value string         `json:"value"`
+	Data  suggestionData `json:"data"`
+}
+
+type suggestionData struct {
+	GeoLat float64 `json:"geo_lat,string"`
+	GeoLon float64 `json:"geo_lon,string"`
 }
 
 type Autocomplete struct {
-	AddressID    int     `json:"address_id"`
-	Name         string  `json:"Name"`
-	BuildingID   int     `json:"building_id"`
-	BuildingName string  `json:"building_name"`
-	Longitude    float64 `json:"Longitude"`
-	Latitude     float64 `json:"Latitude"`
+	Name         string
+	BuildingName string
+	Longitude    float64
+	Latitude     float64
+}
+
+type Geocode struct {
+	Address string
+	Center  GeocodeCenter
+}
+
+type GeocodeCenter struct {
+	X float64
+	Y float64
 }

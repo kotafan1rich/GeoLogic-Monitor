@@ -1,0 +1,164 @@
+package job
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"sync"
+	"sync/atomic"
+
+	"golang.org/x/sync/errgroup"
+
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
+)
+
+const (
+	infraWriteConcurrency = 8
+	eventWriteConcurrency = 8
+
+	datasetSep   = ";"
+	otherDataset = "other"
+)
+
+type storeFunc[T any] = func(ctx context.Context, data []T) error
+
+type DigitalSpbWriter interface {
+	PutInfraObject(ctx context.Context, obj geoapi.InfraObjectInput) (geoapi.InfraObject, error)
+	PutEvent(ctx context.Context, obj geoapi.EventInput) (geoapi.Event, error)
+}
+
+type TypeResolver interface {
+	TypeID(ctx context.Context, slug string) (string, error)
+}
+
+func toInfra(w DigitalSpbWriter, types TypeResolver, slug string) storeFunc[geoapi.InfraObjectInput] {
+	return func(ctx context.Context, data []geoapi.InfraObjectInput) error {
+		if len(data) == 0 {
+			return nil
+		}
+
+		var (
+			typeID string
+			err    error
+		)
+
+		if slug != datasetKidsPlace {
+			typeID, err = types.TypeID(ctx, slug)
+			if err != nil {
+				return fmt.Errorf("%w [%s]: %v", ErrResolveType, slug, err)
+			}
+		}
+
+		var (
+			g      errgroup.Group
+			failed atomic.Int64
+			mu     sync.Mutex
+			errs   []error
+		)
+
+		g.SetLimit(infraWriteConcurrency)
+
+		for _, obj := range data {
+			if slug == datasetKidsPlace {
+				dataset := extractDataset(obj.ExternalID)
+				typeID, err = types.TypeID(ctx, dataset)
+				if err != nil {
+					return fmt.Errorf("%w [%s]: %v", ErrResolveType, dataset, err)
+				}
+			}
+			obj.TypeID = typeID
+
+			if obj.Lat == 0 && obj.Lon == 0 {
+				failed.Add(1)
+				continue
+			}
+
+			g.Go(func() error {
+				if _, err := w.PutInfraObject(ctx, obj); err != nil {
+					failed.Add(1)
+					mu.Lock()
+					errs = append(errs, err)
+					mu.Unlock()
+				}
+
+				return nil
+			})
+		}
+
+		_ = g.Wait()
+
+		if n := failed.Load(); n > 0 && len(errs) > 0 {
+			return fmt.Errorf(
+				"%w: %d/%d infra objects: %v", ErrStoreFailed, n, len(data), errors.Join(errs...),
+			)
+		}
+
+		return nil
+	}
+}
+
+func toEvent(w DigitalSpbWriter) storeFunc[geoapi.EventInput] {
+	return func(ctx context.Context, data []geoapi.EventInput) error {
+		if len(data) == 0 {
+			return nil
+		}
+
+		var (
+			g      errgroup.Group
+			failed atomic.Int64
+			mu     sync.Mutex
+			errs   []error
+		)
+
+		g.SetLimit(infraWriteConcurrency)
+
+		for _, obj := range data {
+			if obj.Lat == 0 && obj.Lon == 0 || obj.Date.IsZero() {
+				failed.Add(1)
+				continue
+			}
+
+			g.Go(func() error {
+				if _, err := w.PutEvent(ctx, obj); err != nil {
+					failed.Add(1)
+					mu.Lock()
+					errs = append(errs, err)
+					mu.Unlock()
+				}
+
+				return nil
+			})
+		}
+
+		_ = g.Wait()
+
+		if n := failed.Load(); n > 0 && len(errs) > 0 {
+			return fmt.Errorf(
+				"%w: %d/%d events: %v", ErrStoreFailed, n, len(data), errors.Join(errs...),
+			)
+		}
+
+		return nil
+	}
+}
+
+func all[T any](stores ...storeFunc[T]) storeFunc[T] {
+	return func(ctx context.Context, data []T) error {
+		for _, store := range stores {
+			if err := store(ctx, data); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func extractDataset(externalID string) string {
+	raw := strings.Split(externalID, datasetSep)
+	if len(raw) < 2 {
+		return otherDataset
+	}
+	return raw[1]
+}

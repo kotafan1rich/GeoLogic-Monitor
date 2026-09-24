@@ -7,6 +7,7 @@ import (
 
 type TrackedLocationResponse struct {
 	ID             uuid.UUID `json:"id"`
+	Name           string    `json:"name"`
 	BusinessTypeID uuid.UUID `json:"business_type_id"`
 	Address        string    `json:"address"`
 	Lat            float64   `json:"lat"`

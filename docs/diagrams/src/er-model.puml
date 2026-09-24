@@ -16,6 +16,7 @@ entity tracked_locations {
  --
  * user_id : uuid <<FK>>
  * business_type_id : uuid <<FK>>
+ * name : text
  * address : text
  * location : geometry(Point,4326)
  * created_at : timestamptz

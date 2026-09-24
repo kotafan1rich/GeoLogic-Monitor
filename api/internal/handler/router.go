@@ -17,6 +17,7 @@ type UserHandler interface {
 
 type GeocodingHandler interface {
 	Suggest(w http.ResponseWriter, r *http.Request)
+	Address(w http.ResponseWriter, r *http.Request)
 }
 
 type TrackedLocationHandler interface {
@@ -46,6 +47,10 @@ type EventHandler interface {
 	MarkNotified(w http.ResponseWriter, r *http.Request)
 }
 
+type RoutesHandler interface {
+	WalkingDistances(w http.ResponseWriter, r *http.Request)
+}
+
 func RegisterRoutes(
 	mux *http.ServeMux,
 	healthHandler HealthHandler,
@@ -55,6 +60,7 @@ func RegisterRoutes(
 	businessTypeHandler BusinessTypeHandler,
 	infraHandler InfraHandler,
 	eventHandler EventHandler,
+	routesHandler RoutesHandler,
 	maxBotToken string,
 	miniAppInitDataMaxAge time.Duration,
 	botServiceToken string,
@@ -74,6 +80,7 @@ func RegisterRoutes(
 		handler http.HandlerFunc
 	}{
 		{"GET /api/v1/geocoding/suggestions", geocodingHandler.Suggest},
+		{"GET /api/v1/geocoding/address", geocodingHandler.Address},
 		{"POST /api/v1/tracked-locations", trackedLocationHandler.Create},
 		{"GET /api/v1/tracked-locations", trackedLocationHandler.GetMine},
 		{"GET /api/v1/tracked-locations/{id}/rating-history", trackedLocationHandler.GetRatingHistory},
@@ -107,6 +114,19 @@ func RegisterRoutes(
 			http.HandlerFunc(businessTypeHandler.Upsert),
 		),
 	)
+	mux.Handle(
+		"GET /internal/v1/geocoding/suggestions",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(geocodingHandler.Suggest),
+		),
+	)
+	mux.Handle(
+		"GET /internal/v1/geocoding/address",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(geocodingHandler.Address),
+		))
 	infraRoutes := []struct {
 		pattern string
 		handler http.HandlerFunc
@@ -138,4 +158,11 @@ func RegisterRoutes(
 			middleware.IngestionToken(ingestionServiceToken, route.handler),
 		)
 	}
+	mux.Handle(
+		"POST /internal/v1/routes/walking-distances",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(routesHandler.WalkingDistances),
+		),
+	)
 }

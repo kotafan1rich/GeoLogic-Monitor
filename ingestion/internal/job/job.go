@@ -2,8 +2,9 @@ package job
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,7 +14,42 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
 )
 
+const (
+	InfraName  = "infra"
+	EventsName = "events"
+)
+
 type parseFunc func(ctx context.Context) (int, error)
+
+type datasetsFunc func() []dataset
+
+type Job struct {
+	name     string
+	schedule string
+	log      *slog.Logger
+	sources  []datasetsFunc
+}
+
+func New(name, schedule string, log *slog.Logger, sources ...datasetsFunc) *Job {
+	return &Job{name: name, schedule: schedule, log: log, sources: sources}
+}
+
+func (j *Job) Name() string {
+	return j.name
+}
+
+func (j *Job) Schedule() string {
+	return j.schedule
+}
+
+func (j *Job) Run(ctx context.Context) {
+	datasets := make([]dataset, 0, len(j.sources))
+	for _, source := range j.sources {
+		datasets = append(datasets, source()...)
+	}
+
+	runDatasets(ctx, j.log, j.name, datasets)
+}
 
 type dataset struct {
 	name   string
@@ -24,30 +60,33 @@ type dataset struct {
 }
 
 func ds[S a.Source, T any](
-	name, source string, src S, fn func(context.Context, S) ([]T, error),
+	name, source string, src S, fetch func(context.Context, S) ([]T, error), store storeFunc[T],
 ) dataset {
 	return dataset{
 		name:   name,
 		source: source,
 		kind:   src.Kind(),
 		target: src.String(),
-		parse:  collect(src, fn),
+		parse:  collect(src, fetch, store),
 	}
 }
 
-func collect[S a.Source, T any](src S, fn func(context.Context, S) ([]T, error)) parseFunc {
+func collect[S a.Source, T any](
+	src S, fetch func(context.Context, S) ([]T, error), store storeFunc[T],
+) parseFunc {
 	return func(ctx context.Context) (int, error) {
 		if err := src.Validate(); err != nil {
 			return 0, err
 		}
 
-		data, err := fn(ctx, src)
+		data, err := fetch(ctx, src)
 		if err != nil {
 			return 0, err
 		}
 
-		// TODO: отдавать данные наружу (API сервиса-хранилища / kafka)
-		_ = data
+		if err := store(ctx, data); err != nil {
+			return len(data), err
+		}
 
 		return len(data), nil
 	}
@@ -65,6 +104,8 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		g         errgroup.Group
 		succeeded atomic.Int64
 		failed    atomic.Int64
+		mu        sync.Mutex
+		errs      []error
 	)
 
 	for _, ds := range datasets {
@@ -83,6 +124,9 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 			count, err := ds.parse(ctx)
 			if err != nil {
 				failed.Add(1)
+				mu.Lock()
+				errs = append(errs, err)
+				mu.Unlock()
 
 				log.ErrorContext(ctx, "dataset parsing failed",
 					slog.String("dataset", ds.name),
@@ -93,7 +137,7 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 					slog.Any("error", err),
 				)
 
-				return fmt.Errorf("%s [%s]: %w", ds.name, ds.source, err)
+				return nil
 			}
 
 			succeeded.Add(1)
@@ -109,7 +153,7 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		})
 	}
 
-	err := g.Wait()
+	_ = g.Wait()
 
 	attrs := []any{
 		slog.Int64("succeeded", succeeded.Load()),
@@ -117,8 +161,12 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 		slog.Duration("duration", time.Since(runStart)),
 	}
 
-	if err != nil {
-		log.ErrorContext(ctx, "parse run finished with errors", append(attrs, slog.Any("error", err))...)
+	if len(errs) > 0 {
+		log.ErrorContext(
+			ctx,
+			"parse run finished with errors",
+			append(attrs, slog.Any("error", errors.Join(errs...)))...,
+		)
 		return
 	}
 

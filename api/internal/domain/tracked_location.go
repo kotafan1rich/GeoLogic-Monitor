@@ -6,6 +6,7 @@ type TrackedLocation struct {
 	ID             uuid.UUID
 	UserID         uuid.UUID
 	BusinessTypeID uuid.UUID
+	Name           string
 	Address        string
 	GeoPoint       GeoPoint
 	User           User
@@ -15,12 +16,14 @@ type TrackedLocation struct {
 func NewTrackedLocation(
 	userID uuid.UUID,
 	businessTypeID uuid.UUID,
+	name string,
 	address string,
 	geopoint *GeoPoint,
 ) *TrackedLocation {
 	return &TrackedLocation{
 		UserID:         userID,
 		BusinessTypeID: businessTypeID,
+		Name:           name,
 		Address:        address,
 		GeoPoint:       *geopoint,
 	}

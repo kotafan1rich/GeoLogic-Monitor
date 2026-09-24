@@ -21,11 +21,22 @@ func TestServiceCreate(t *testing.T) {
 	userID := uuid.New()
 	businessTypeID := uuid.New()
 
-	result, err := service.Create(context.Background(), userID, businessTypeID, "address", 59.93, 30.32)
+	result, err := service.Create(
+		context.Background(),
+		userID,
+		businessTypeID,
+		"Кофейня на Невском",
+		"address",
+		59.93,
+		30.32,
+	)
 	if err != nil {
 		t.Fatalf("Create returned an error: %v", err)
 	}
-	if result.UserID != userID || result.BusinessTypeID != businessTypeID || result.Address != "address" {
+	if result.UserID != userID ||
+		result.BusinessTypeID != businessTypeID ||
+		result.Name != "Кофейня на Невском" ||
+		result.Address != "address" {
 		t.Fatalf("unexpected tracked location: %+v", result)
 	}
 	if result.Value != 5 {
@@ -42,7 +53,7 @@ func TestServiceCreateRejectsInvalidLatitude(t *testing.T) {
 	repo := &fakeTrackedLocationRepository{}
 	service := newTestService(repo)
 
-	_, err := service.Create(context.Background(), uuid.New(), uuid.New(), "address", 91, 30.32)
+	_, err := service.Create(context.Background(), uuid.New(), uuid.New(), "name", "address", 91, 30.32)
 	var appErr *apperrs.Error
 	if !errors.As(err, &appErr) {
 		t.Fatalf("error type: got %T, want *app.Error", err)
@@ -51,6 +62,28 @@ func TestServiceCreateRejectsInvalidLatitude(t *testing.T) {
 		t.Fatalf("error code: got %q, want validation_error", appErr.Code)
 	}
 	if !errors.Is(err, domainerrs.ErrInvalidLat) {
+		t.Fatal("domain validation error is not preserved")
+	}
+	if repo.createCalls != 0 {
+		t.Fatalf("repository create calls: got %d, want 0", repo.createCalls)
+	}
+}
+
+func TestServiceCreateRejectsBlankName(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeTrackedLocationRepository{}
+	service := newTestService(repo)
+
+	_, err := service.Create(context.Background(), uuid.New(), uuid.New(), "  ", "address", 59.93, 30.32)
+	var appErr *apperrs.Error
+	if !errors.As(err, &appErr) {
+		t.Fatalf("error type: got %T, want *app.Error", err)
+	}
+	if appErr.Code != "validation_error" {
+		t.Fatalf("error code: got %q, want validation_error", appErr.Code)
+	}
+	if !errors.Is(err, domainerrs.ErrInvalidName) {
 		t.Fatal("domain validation error is not preserved")
 	}
 	if repo.createCalls != 0 {
@@ -102,14 +135,14 @@ type fakeTrackedLocationRepository struct {
 	getByIDErr    error
 }
 
-type fakeOSRMRepository struct{}
+type fakeOSRMService struct{}
 
-func (*fakeOSRMRepository) FilterWalkingDistance(
+func (*fakeOSRMService) WalkingDistances(
 	context.Context,
 	*domain.GeoPoint,
-	[]*domain.InfraObject,
-) ([]*domain.InfraObjectDistance, error) {
-	return []*domain.InfraObjectDistance{}, nil
+	[]*domain.GeoPoint,
+) ([]*float64, error) {
+	return []*float64{}, nil
 }
 
 type fakeInfraService struct{}
@@ -156,7 +189,7 @@ func (fakeTxManager) WithTx(ctx context.Context, fn func(context.Context) error)
 func newTestService(repo TrackedLocationRepository) *service {
 	return NewTrackedLocationService(
 		repo,
-		&fakeOSRMRepository{},
+		&fakeOSRMService{},
 		&fakeInfraService{},
 		&fakeBusinessTypeService{},
 		&fakeRatingService{},

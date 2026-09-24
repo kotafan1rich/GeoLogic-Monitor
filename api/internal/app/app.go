@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,13 +14,15 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/scheduler"
 	"github.com/pressly/goose/v3"
 )
 
 type App struct {
-	cfg         *config.Config
-	diContainer *diContainer
-	httpServer  *http.Server
+	cfg             *config.Config
+	diContainer     *diContainer
+	httpServer      *http.Server
+	ratingScheduler *scheduler.Rating
 }
 
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
@@ -29,6 +32,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 	err := a.initDeps(ctx)
 	if err != nil {
+		if a.diContainer.db != nil {
+			a.diContainer.db.Close()
+		}
 		return nil, err
 	}
 
@@ -39,6 +45,7 @@ func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(ctx context.Context) error{
 		a.migrate,
 		a.initHTTPServer,
+		a.initRatingScheduler,
 	}
 
 	for _, fn := range inits {
@@ -96,23 +103,38 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	return nil
 }
 
+func (a *App) initRatingScheduler(ctx context.Context) error {
+	var err error
+	a.ratingScheduler, err = a.diContainer.RatingScheduler(ctx)
+	return err
+}
+
 func (a *App) gracefullShutdown() error {
 	log := a.diContainer.Log()
+	schedulerErr := a.ratingScheduler.Shutdown()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := a.httpServer.Shutdown(ctx); err != nil {
-		log.Error("HTTP server graceful shutdown failed", "err", err)
-		return fmt.Errorf("server shutdown failed: %w", err)
+	httpErr := a.httpServer.Shutdown(ctx)
+	if httpErr != nil {
+		log.Error("HTTP server graceful shutdown failed", "err", httpErr)
+		return errors.Join(schedulerErr, fmt.Errorf("server shutdown failed: %w", httpErr))
 	}
 
 	db := a.diContainer.DB(ctx)
 	db.Close()
-	return nil
+	return schedulerErr
 }
 
-func (a *App) Run() error {
+func (a *App) Run() (runErr error) {
+	defer func() {
+		runErr = errors.Join(runErr, a.gracefullShutdown())
+		if runErr == nil {
+			a.diContainer.Log().Info("server stopped cleanly")
+		}
+	}()
+	a.ratingScheduler.Start()
 	log := a.diContainer.Log()
 	log.Info(
 		"server started",
@@ -121,6 +143,7 @@ func (a *App) Run() error {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(quit)
 
 	errChan := make(chan error, 1)
 
@@ -136,11 +159,6 @@ func (a *App) Run() error {
 	select {
 	case sig := <-quit:
 		log.Info("shutdown signal received, starting graceful shutdown...", "signal", sig.String())
-		err := a.gracefullShutdown()
-		if err != nil {
-			return err
-		}
-		log.Info("server stopped cleanly")
 	case err := <-errChan:
 		return err
 	}

@@ -14,6 +14,8 @@ type Config struct {
 	OSRM       OSRM
 	Geocoder   Geocoder
 	Security   Security
+	Docs       Docs
+	Rating     Rating
 }
 
 func LoadConfig() (*Config, error) {

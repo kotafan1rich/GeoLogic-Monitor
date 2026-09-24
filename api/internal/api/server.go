@@ -20,11 +20,13 @@ type httpHandler struct {
 	businessTypeHandler    handler.BusinessTypeHandler
 	infraHandler           handler.InfraHandler
 	eventHandler           handler.EventHandler
+	routesHandler          handler.RoutesHandler
 	maxBotToken            string
 	miniAppInitDataMaxAge  time.Duration
 	botServiceToken        string
 	ingestionServiceToken  string
 	corsAllowedOrigin      string
+	docsDir                string
 }
 
 func NewHandler(
@@ -35,11 +37,13 @@ func NewHandler(
 	businessTypeHandler handler.BusinessTypeHandler,
 	infraHandler handler.InfraHandler,
 	eventHandler handler.EventHandler,
+	routesHandler handler.RoutesHandler,
 	maxBotToken string,
 	miniAppInitDataMaxAge time.Duration,
 	botServiceToken string,
 	ingestionServiceToken string,
 	corsAllowedOrigin string,
+	docsDir string,
 ) Handler {
 	return &httpHandler{
 		healthHandler:          healthHandler,
@@ -49,16 +53,26 @@ func NewHandler(
 		businessTypeHandler:    businessTypeHandler,
 		infraHandler:           infraHandler,
 		eventHandler:           eventHandler,
+		routesHandler:          routesHandler,
 		maxBotToken:            maxBotToken,
 		miniAppInitDataMaxAge:  miniAppInitDataMaxAge,
 		botServiceToken:        botServiceToken,
 		ingestionServiceToken:  ingestionServiceToken,
 		corsAllowedOrigin:      corsAllowedOrigin,
+		docsDir:                docsDir,
 	}
 }
 
 func (h *httpHandler) Routes() http.Handler {
 	mux := http.NewServeMux()
+
+	mux.Handle(
+		"GET /docs/",
+		http.StripPrefix(
+			"/docs/",
+			http.FileServer(http.Dir(h.docsDir))),
+	)
+
 	handler.RegisterRoutes(
 		mux,
 		h.healthHandler,
@@ -68,6 +82,7 @@ func (h *httpHandler) Routes() http.Handler {
 		h.businessTypeHandler,
 		h.infraHandler,
 		h.eventHandler,
+		h.routesHandler,
 		h.maxBotToken,
 		h.miniAppInitDataMaxAge,
 		h.botServiceToken,

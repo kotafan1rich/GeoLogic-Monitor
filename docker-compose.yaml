@@ -10,15 +10,12 @@ services:
     depends_on:
       api-db:
         condition: service_healthy
-
-  swagger:
-    image: docker.swagger.io/swaggerapi/swagger-ui:v5.32.11
-    ports:
-      - "8081:8080"
-    environment:
-      SWAGGER_JSON: /spec/geologic.yaml
-    volumes:
-      - ./docs/openapi/geologic.yaml:/spec/geologic.yaml:ro
+    healthcheck:
+      test: [ "CMD-SHELL", 'wget -q -O /dev/null "http://127.0.0.1:$${API_PORT:-8080}/health"' ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   ingestion:
     build: ./ingestion
@@ -27,6 +24,8 @@ services:
     networks:
       - geo_logic_net
     depends_on:
+      api:
+        condition: service_healthy
       ingestion-db:
         condition: service_healthy
       # kafka:
@@ -91,6 +90,13 @@ services:
     networks:
       - geo_logic_net
     restart: unless-stopped
+
+  miniapp:
+    build: ./miniapp
+    ports:
+      - "8082:80"
+    networks:
+      - geo_logic_net
 
 volumes:
   api_db_data:

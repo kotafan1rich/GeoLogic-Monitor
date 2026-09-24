@@ -234,16 +234,3 @@ type (
 		PlaceAddress string `json:"PLACE_ADDRESS"`
 	}
 )
-
-type (
-	MSPProperty struct {
-		ObjID           int64  `json:"obj_id"`
-		District        string `json:"district"`
-		Address         string `json:"address"`
-		Type            string `json:"type"`
-		CadastralNumber string `json:"cadastral_number"`
-		Area            string `json:"area"`
-		Status          string `json:"status"`
-		Document        string `json:"document"`
-	}
-)

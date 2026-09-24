@@ -11,6 +11,7 @@ func ToDomain(trackedLocation model.TrackedLocation) *domain.TrackedLocation {
 		ID:             trackedLocation.ID,
 		UserID:         trackedLocation.UserID,
 		BusinessTypeID: trackedLocation.BusinessTypeID,
+		Name:           trackedLocation.Name,
 		Address:        trackedLocation.Address,
 		GeoPoint:       domain.GeoPoint(trackedLocation.Location),
 		User: domain.User{
@@ -33,6 +34,7 @@ func ToModel(trackedLocation domain.TrackedLocation) *model.TrackedLocation {
 		ID:             trackedLocation.ID,
 		UserID:         trackedLocation.UserID,
 		BusinessTypeID: trackedLocation.BusinessTypeID,
+		Name:           trackedLocation.Name,
 		Address:        trackedLocation.Address,
 		Location: basemodel.GeoPoint{
 			Lat: trackedLocation.GeoPoint.Lat,

@@ -24,7 +24,7 @@ func TestCreateUsesCurrentUser(t *testing.T) {
 		locationService,
 		&fakeRatingHistoryService{},
 	)
-	body := `{"business_type_id":"` + businessTypeID.String() +
+	body := `{"name":"Кофейня на Невском","business_type_id":"` + businessTypeID.String() +
 		`","address":"address","lat":59.93,"lon":30.32}`
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/tracked-locations", strings.NewReader(body))
 	request.Header.Set("X-Max-User-Id", "42")
@@ -35,11 +35,14 @@ func TestCreateUsesCurrentUser(t *testing.T) {
 	if response.Code != http.StatusCreated {
 		t.Fatalf("status: got %d, want %d", response.Code, http.StatusCreated)
 	}
-	if locationService.createdUserID != userID || locationService.createdBusinessTypeID != businessTypeID {
+	if locationService.createdUserID != userID ||
+		locationService.createdBusinessTypeID != businessTypeID ||
+		locationService.createdName != "Кофейня на Невском" {
 		t.Fatalf(
-			"unexpected service IDs: user=%s businessType=%s",
+			"unexpected service arguments: user=%s businessType=%s name=%q",
 			locationService.createdUserID,
 			locationService.createdBusinessTypeID,
+			locationService.createdName,
 		)
 	}
 }
@@ -139,6 +142,7 @@ func (s fakeUserService) GetByMaxUserID(context.Context, int64) (*domain.User, e
 type fakeTrackedLocationService struct {
 	createdUserID         uuid.UUID
 	createdBusinessTypeID uuid.UUID
+	createdName           string
 }
 
 type fakeRatingHistoryService struct {
@@ -169,17 +173,20 @@ func (s *fakeTrackedLocationService) Create(
 	_ context.Context,
 	userID uuid.UUID,
 	businessTypeID uuid.UUID,
+	name string,
 	address string,
 	lat float64,
 	lng float64,
 ) (*domain.TrackedLocationRating, error) {
 	s.createdUserID = userID
 	s.createdBusinessTypeID = businessTypeID
+	s.createdName = name
 	return domain.NewTrackedLocationRating(
 		&domain.TrackedLocation{
 			ID:             uuid.New(),
 			UserID:         userID,
 			BusinessTypeID: businessTypeID,
+			Name:           name,
 			Address:        address,
 			GeoPoint:       domain.GeoPoint{Lat: lat, Lng: lng},
 		},
