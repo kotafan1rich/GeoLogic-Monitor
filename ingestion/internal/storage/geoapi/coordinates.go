@@ -7,8 +7,10 @@ import (
 	"strconv"
 )
 
-const geocodeEndpoint = "internal/v1/geocoding/suggestions"
-const reverseGeocodeEndpoint = "internal/v1/geocoding/address"
+const (
+	geocodeEndpoint        = "internal/v1/geocoding/suggestions"
+	reverseGeocodeEndpoint = "internal/v1/geocoding/address"
+)
 
 func (c *Client) Coordinates(ctx context.Context, address string) (float64, float64, error) {
 	const op = "geoapi.Client.Coordinates"

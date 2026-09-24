@@ -6,6 +6,7 @@ import (
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
@@ -37,7 +38,6 @@ func (r *repository) Create(ctx context.Context, location *domain.TrackedLocatio
 		),
 		locationModel,
 	)
-
 	if err != nil {
 		if pgerrors.IsUniqueViolation(err) {
 			return nil, errs.ErrTrackedLocationAlreadyExists
@@ -53,7 +53,6 @@ func (r *repository) Create(ctx context.Context, location *domain.TrackedLocatio
 func (r *repository) GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error) {
 	locationModel := model.TrackedLocation{}
 	err := scanTrackedLocation(r.db.QueryRow(ctx, query.GetByID, id), &locationModel)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.ErrTrackedLocationNotFound
@@ -98,7 +97,6 @@ func (r *repository) Delete(ctx context.Context, id uuid.UUID) error {
 		query.Delete,
 		id,
 	).Scan(&deletedID)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errs.ErrTrackedLocationNotFound

@@ -14,7 +14,6 @@ func NewLocationRating(
 	trackedLocationID uuid.UUID,
 	rating CalculatedRating,
 ) (*LocationRating, error) {
-
 	return &LocationRating{
 		TrackedLocationID: trackedLocationID,
 		CalculatedRating:  rating,

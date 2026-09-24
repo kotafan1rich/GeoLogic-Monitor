@@ -9,7 +9,7 @@ import (
 )
 
 type GeoPoint struct {
-	Lat  float64
+	Lat float64
 	Lng float64
 }
 
