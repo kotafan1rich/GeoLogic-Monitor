@@ -1,140 +1,64 @@
 package geoapi
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"time"
 
-	"github.com/cenkalti/backoff/v7"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
 )
 
-const maxBodySize = 64 << 20
-
+// Client общается с внутренним geo-api двумя независимыми каналами:
+//
+//	write   — запись инфраструктуры, событий и типов; допускает параллелизм;
+//	geocode — геокодинг, который за geo-api упирается в сторонний сервис,
+//	          поэтому ходит последовательно и под своим rate limiter'ом.
+//
+// Разделены именно транспорты (пул соединений, таймауты, лимиты), а не типы:
+// снаружи это по-прежнему один клиент с теми же методами.
 type Client struct {
-	httpClient     *http.Client
-	baseURL        *url.URL
-	attemptTimeout time.Duration
-	maxRetries     uint
-	newBackOff     func() backoff.BackOff
+	baseURL *url.URL
+	write   *infra.Requester
+	geocode *infra.Requester
 }
 
-func New(hc *http.Client, baseURL string, attemptTimeout time.Duration, maxRetries uint) (*Client, error) {
-	if hc == nil {
-		return nil, ErrInvalidHTTPClient
+func New(baseURL string, write, geocode *infra.Requester) (*Client, error) {
+	if write == nil || geocode == nil {
+		return nil, ErrInvalidRequester
 	}
-	parsedURL, err := url.Parse(baseURL)
+
+	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrParseURL, err)
 	}
-	if !validateURL(parsedURL) {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidURL, err)
+
+	if !validateURL(parsed) {
+		return nil, fmt.Errorf("%w [%s]", ErrInvalidURL, baseURL)
 	}
-	return &Client{
-		httpClient:     hc,
-		baseURL:        parsedURL,
-		attemptTimeout: attemptTimeout,
-		maxRetries:     maxRetries,
-		newBackOff: func() backoff.BackOff {
-			return backoff.NewExponentialBackOff()
-		},
-	}, nil
+
+	return &Client{baseURL: parsed, write: write, geocode: geocode}, nil
 }
 
-func MustNew(hc *http.Client, baseURL string, attemptTimeout time.Duration, maxRetries uint) *Client {
+func MustNew(baseURL string, write, geocode *infra.Requester) *Client {
 	const op = "geoapi.MustNew"
-	c, err := New(hc, baseURL, attemptTimeout, maxRetries)
+
+	c, err := New(baseURL, write, geocode)
 	if err != nil {
 		panic(fmt.Sprintf("%s: failed to init geo-api client: %v", op, err))
 	}
+
 	return c
 }
 
-func (c *Client) do(ctx context.Context, baseURL *url.URL, endpoint string, query url.Values, body, out any) error {
-	target := baseURL.JoinPath(endpoint)
-
-	if len(query) > 0 {
-		target.RawQuery = query.Encode()
-	}
-
-	bytes, err := backoff.Retry(
-		ctx,
-		func() ([]byte, error) {
-			return c.attempt(ctx, target.String(), body)
-		},
-		backoff.WithBackOff(c.newBackOff()),
-		backoff.WithMaxElapsedTime(0),
-		backoff.WithMaxTries(c.maxRetries),
-	)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrCreateRequest, err)
-	}
-	err = json.Unmarshal(bytes, out)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrUnmarshalData, err)
-	}
-	return nil
+// put пишет объект во внутренний сервис через канал записи.
+func (c *Client) put(ctx context.Context, endpoint string, body, out any) error {
+	return c.write.JSON(ctx, http.MethodPut, infra.Target(c.baseURL, endpoint, nil), body, out)
 }
 
-func (c *Client) attempt(ctx context.Context, target string, body any) ([]byte, error) {
-	var bodyReader io.Reader
-	method := http.MethodGet
-
-	if body != nil {
-		method = http.MethodPut
-		payload, err := json.Marshal(body)
-		if err != nil {
-			return nil, backoff.Permanent(fmt.Errorf("%w: %v", ErrMarshalData, err))
-		}
-		bodyReader = bytes.NewReader(payload)
-	}
-
-	attemptCtx, cancel := context.WithTimeout(ctx, c.attemptTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(attemptCtx, method, target, bodyReader)
-	if err != nil {
-		return nil, backoff.Permanent(fmt.Errorf("%w: %v", ErrBuildRequest, err))
-	}
-
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, backoff.Permanent(fmt.Errorf("%w: %v", ErrCreateRequest, err))
-		}
-		return nil, fmt.Errorf("%w: %v", ErrCreateRequest, err)
-	}
-	defer resp.Body.Close()
-
-	bytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize+1))
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrReadResponse, err)
-	}
-
-	switch {
-	case resp.StatusCode == http.StatusOK:
-	case resp.StatusCode == http.StatusBadRequest, resp.StatusCode == http.StatusUnauthorized,
-		resp.StatusCode == http.StatusNotFound, resp.StatusCode >= http.StatusInternalServerError:
-		return nil, backoff.Permanent(fmt.Errorf("%w: %d", ErrUnexpectedStatus, resp.StatusCode))
-	default:
-		return nil, backoff.Permanent(fmt.Errorf("%w: %d", ErrUnexpectedStatus, resp.StatusCode))
-	}
-
-	if len(bytes) > maxBodySize {
-		return nil, fmt.Errorf("%w: body exceeds limit", ErrReadResponse)
-	}
-	if len(bytes) == 0 {
-		return nil, fmt.Errorf("%w: empty response body", ErrReadResponse)
-	}
-	return bytes, nil
+// get запрашивает геоданные через канал геокодинга.
+func (c *Client) get(ctx context.Context, endpoint string, query url.Values, out any) error {
+	return c.geocode.JSON(ctx, http.MethodGet, infra.Target(c.baseURL, endpoint, query), nil, out)
 }
 
 func validateURL(u *url.URL) bool {

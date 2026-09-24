@@ -28,7 +28,7 @@ func (c *Client) ParseRestaurantData(ctx context.Context, src a.URL) ([]geoapi.I
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[Restaurant](data, "", mapRestaurant)
+	mappedData := mapToInfraObjects(data, mapRestaurant)
 
 	return mappedData, nil
 }
@@ -41,7 +41,7 @@ func (c *Client) ParseHotelData(ctx context.Context, src a.URL) ([]geoapi.InfraO
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[Hotel](data, "", mapHotel)
+	mappedData := mapToInfraObjects(data, mapHotel)
 
 	return mappedData, nil
 }
@@ -56,7 +56,7 @@ func (c *Client) ParseCinemaData(
 		return nil, err
 	}
 
-	mappedData, err := mapToGeocodedInfraObjects[Cinema](ctx, data, "", convert, mapCinema)
+	mappedData, err := mapToGeocodedInfraObjects(ctx, c.log, datasetCinema, data, convert, mapCinema)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -72,7 +72,7 @@ func (c *Client) ParseMuseumData(ctx context.Context, src a.URL) ([]geoapi.Infra
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[Museum](data, "", mapMuseum)
+	mappedData := mapToInfraObjects(data, mapMuseum)
 
 	return mappedData, nil
 }
@@ -85,7 +85,7 @@ func (c *Client) ParseExhibitionHallData(ctx context.Context, src a.URL) ([]geoa
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[ExhibitionHall](data, "", mapExhibitionHall)
+	mappedData := mapToInfraObjects(data, mapExhibitionHall)
 
 	return mappedData, nil
 }
@@ -98,7 +98,7 @@ func (c *Client) ParseTheatreData(ctx context.Context, src a.URL) ([]geoapi.Infr
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[Theatre](data, "", mapTheatre)
+	mappedData := mapToInfraObjects(data, mapTheatre)
 
 	return mappedData, nil
 }
@@ -111,7 +111,7 @@ func (c *Client) ParsePharmacyData(ctx context.Context, src a.URL) ([]geoapi.Inf
 		return nil, err
 	}
 
-	mappedData := mapToInfraObjects[Pharmacy](data, "", mapPharmacy)
+	mappedData := mapToInfraObjects(data, mapPharmacy)
 
 	return mappedData, nil
 }
@@ -126,7 +126,7 @@ func (c *Client) ParseVetClinicData(
 		return nil, err
 	}
 
-	mappedData, err := mapToGeocodedInfraObjects[VetClinic](ctx, data, "", convert, mapVetClinic)
+	mappedData, err := mapToGeocodedInfraObjects(ctx, c.log, datasetVetClinic, data, convert, mapVetClinic)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -144,7 +144,7 @@ func (c *Client) ParseKidsPlaceData(
 		return nil, err
 	}
 
-	mappedData, err := mapToAddressedInfraObjects[KidsPlace](ctx, data, "", convert, mapKidsPlace)
+	mappedData, err := mapToAddressedInfraObjects(ctx, c.log, datasetKidsPlace, data, convert, mapKidsPlace)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

@@ -2,13 +2,8 @@ package job
 
 import (
 	"context"
-	"errors"
 	"log/slog"
-	"sync"
-	"sync/atomic"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 
 	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
@@ -100,73 +95,62 @@ func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets
 
 	log.InfoContext(ctx, "parse run started", slog.Int("datasets", len(datasets)))
 
-	var (
-		g         errgroup.Group
-		succeeded atomic.Int64
-		failed    atomic.Int64
-		mu        sync.Mutex
-		errs      []error
-	)
+	var succeeded, failed int
 
-	for _, ds := range datasets {
-		ds := ds
+	for i, ds := range datasets {
+		if err := ctx.Err(); err != nil {
+			log.WarnContext(ctx, "parse run interrupted",
+				slog.Int("processed", i),
+				slog.Int("datasets", len(datasets)),
+				slog.Any("error", err),
+			)
 
-		g.Go(func() error {
-			log.DebugContext(ctx, "dataset parsing started",
-				slog.String("dataset", ds.name),
-				slog.String("source", ds.source),
+			break
+		}
+
+		dsLog := log.With(
+			slog.String("dataset", ds.name),
+			slog.String("source", ds.source),
+		)
+
+		dsLog.DebugContext(ctx, "dataset parsing started",
+			slog.String("kind", ds.kind.String()),
+			slog.String("target", ds.target),
+		)
+
+		dsStart := time.Now()
+
+		count, err := ds.parse(ctx)
+		if err != nil {
+			failed++
+
+			dsLog.ErrorContext(ctx, "dataset parsing failed",
 				slog.String("kind", ds.kind.String()),
 				slog.String("target", ds.target),
-			)
-
-			dsStart := time.Now()
-
-			count, err := ds.parse(ctx)
-			if err != nil {
-				failed.Add(1)
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
-
-				log.ErrorContext(ctx, "dataset parsing failed",
-					slog.String("dataset", ds.name),
-					slog.String("source", ds.source),
-					slog.String("kind", ds.kind.String()),
-					slog.String("target", ds.target),
-					slog.Duration("duration", time.Since(dsStart)),
-					slog.Any("error", err),
-				)
-
-				return nil
-			}
-
-			succeeded.Add(1)
-
-			log.InfoContext(ctx, "dataset parsed",
-				slog.String("dataset", ds.name),
-				slog.String("source", ds.source),
-				slog.Int("items", count),
 				slog.Duration("duration", time.Since(dsStart)),
+				slog.Any("error", err),
 			)
 
-			return nil
-		})
+			continue
+		}
+
+		succeeded++
+
+		dsLog.InfoContext(ctx, "dataset parsed",
+			slog.Int("items", count),
+			slog.Duration("duration", time.Since(dsStart)),
+		)
 	}
 
-	_ = g.Wait()
-
 	attrs := []any{
-		slog.Int64("succeeded", succeeded.Load()),
-		slog.Int64("failed", failed.Load()),
+		slog.Int("succeeded", succeeded),
+		slog.Int("failed", failed),
 		slog.Duration("duration", time.Since(runStart)),
 	}
 
-	if len(errs) > 0 {
-		log.ErrorContext(
-			ctx,
-			"parse run finished with errors",
-			append(attrs, slog.Any("error", errors.Join(errs...)))...,
-		)
+	if failed > 0 {
+		log.ErrorContext(ctx, "parse run finished with errors", attrs...)
+
 		return
 	}
 
