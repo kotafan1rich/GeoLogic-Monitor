@@ -118,50 +118,9 @@ func (s *service) Create(
 			return err
 		}
 
-		infraNear, err := s.infraServie.Near(ctx, &location.GeoPoint)
+		ratingResult, err := s.calculateRating(ctx, location)
 		if err != nil {
 			return err
-		}
-
-		dst := make([]*domain.GeoPoint, len(infraNear))
-		for i := range infraNear {
-			dst[i] = &infraNear[i].GeoPoint
-		}
-
-		distances, err := s.osrmService.WalkingDistances(ctx, &location.GeoPoint, dst)
-		if err != nil {
-			s.log.ErrorContext(ctx,
-				"failed to get walking distances for location",
-				slog.String("user_id", userID.String()),
-				slog.String("error", err.Error()),
-			)
-			return err
-		}
-		if len(distances) != len(infraNear) {
-			return errors.New("unexpected walking distance count")
-		}
-
-		businessType, err := s.businessTypeService.GetByID(ctx, location.BusinessTypeID)
-		if err != nil {
-			return err
-		}
-
-		infraWithDistance := make([]*domain.InfraObjectDistance, 0, len(infraNear))
-		for i, distance := range distances {
-			if distance == nil || *distance > float64(infraNear[i].Type.MaxRadius) {
-				continue
-			}
-			infraWithDistance = append(infraWithDistance, &domain.InfraObjectDistance{
-				Object:         infraNear[i],
-				DistanceMeters: *distance,
-			})
-		}
-
-		features := calculate.BuildLocationFeatures(businessType, infraWithDistance)
-
-		ratingResult, err := s.ratingService.Calculate(ctx, *features)
-		if err != nil {
-			return apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
 		}
 		if _, err := s.ratingService.Create(ctx, location.ID, ratingResult); err != nil {
 			return err
@@ -254,4 +213,97 @@ func (s *service) mapError(ctx context.Context, err error, message string, id uu
 		slog.String("error", err.Error()),
 	)
 	return err
+}
+
+func (s *service) Recalculate(ctx context.Context, id uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	location, err := s.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	rating, err := s.calculateRating(ctx, location)
+	if err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	_, err = s.ratingService.Create(ctx, location.ID, rating)
+	return err
+}
+
+func (s *service) RecalculateAll(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	locations, err := s.GetAllForMonitoring(ctx)
+	if err != nil {
+		return err
+	}
+	for _, location := range locations {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := s.Recalculate(ctx, location.ID); err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			s.log.ErrorContext(ctx, "failed to recalculate tracked location rating",
+				slog.String("tracked_location_id", location.ID.String()),
+				slog.String("error", err.Error()),
+			)
+		}
+	}
+	return ctx.Err()
+}
+
+func (s *service) calculateRating(ctx context.Context, location *domain.TrackedLocation) (*domain.CalculatedRating, error) {
+	infraNear, err := s.infraServie.Near(ctx, &location.GeoPoint)
+	if err != nil {
+		return nil, err
+	}
+
+	dst := make([]*domain.GeoPoint, len(infraNear))
+	for i := range infraNear {
+		dst[i] = &infraNear[i].GeoPoint
+	}
+
+	distances, err := s.osrmService.WalkingDistances(ctx, &location.GeoPoint, dst)
+	if err != nil {
+		s.log.ErrorContext(ctx,
+			"failed to get walking distances for location",
+			slog.String("user_id", location.UserID.String()),
+			slog.String("error", err.Error()),
+		)
+		return nil, err
+	}
+	if len(distances) != len(infraNear) {
+		return nil, errors.New("unexpected walking distance count")
+	}
+
+	businessType, err := s.businessTypeService.GetByID(ctx, location.BusinessTypeID)
+	if err != nil {
+		return nil, err
+	}
+
+	infraWithDistance := make([]*domain.InfraObjectDistance, 0, len(infraNear))
+	for i, distance := range distances {
+		if distance == nil || *distance > float64(infraNear[i].Type.MaxRadius) {
+			continue
+		}
+		infraWithDistance = append(infraWithDistance, &domain.InfraObjectDistance{
+			Object:         infraNear[i],
+			DistanceMeters: *distance,
+		})
+	}
+
+	features := calculate.BuildLocationFeatures(businessType, infraWithDistance)
+
+	ratingResult, err := s.ratingService.Calculate(ctx, *features)
+	if err != nil {
+		return nil, apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
+	}
+	return ratingResult, nil
 }
