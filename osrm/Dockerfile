@@ -3,7 +3,8 @@ FROM ghcr.io/project-osrm/osrm-backend:v26.9.0-debian
 ARG PBF_URL=https://www.osmlab.ru/regions/RU-SPE.pbf
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
