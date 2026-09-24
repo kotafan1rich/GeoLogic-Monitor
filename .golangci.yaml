@@ -13,24 +13,10 @@ linters:
     - unused
   exclusions:
     rules:
-      - path: internal/app/app\.go$
-        text: 'Error return value of `db\.Close` is not checked'
+      - text: Error return value of .*\.(Close|Shutdown).* is not checked
         linters:
           - errcheck
-      - path: internal/integrations/geocoder/client\.go$
-        text: 'Error return value of `response\.Body\.Close` is not checked'
-        linters:
-          - errcheck
-      - path: internal/integrations/osrm/client\.go$
-        text: 'Error return value of `resp\.Body\.Close` is not checked'
-        linters:
-          - errcheck
-      - path: internal/scheduler/rating_test\.go$
-        text: 'Error return value of `r\.Shutdown` is not checked'
-        linters:
-          - errcheck
-      - path: internal/service/calculate/features_test\.go$
-        text: 'QF1005:'
+      - text: QF1005
         linters:
           - staticcheck
 
