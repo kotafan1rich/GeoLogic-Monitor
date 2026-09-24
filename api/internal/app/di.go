@@ -235,7 +235,7 @@ func (d *diContainer) RoutesHandler() handler.RoutesHandler {
 func (d *diContainer) GeocoderRepository() geocodingservice.Repository {
 	if d.geocoderRepository == nil {
 		client := &http.Client{Timeout: d.cfg.Geocoder.Timeout}
-		geocoderClient := geocoder.New(client, d.cfg.Geocoder.BaseURL)
+		geocoderClient := geocoder.New(client, d.cfg.Geocoder.BaseURL, d.cfg.Geocoder.APIKey)
 		d.geocoderRepository = geocoderrepository.New(geocoderClient)
 	}
 	return d.geocoderRepository

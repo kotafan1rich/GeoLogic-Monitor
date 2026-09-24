@@ -15,7 +15,7 @@ package "GeoLogic" {
  queue "Kafka\nnotifications" as kafka
  rectangle "OSRM\nOSM / foot.lua" as osrm
 }
-rectangle "Geocoder" as geo
+rectangle "DaData Suggest" as geo
 rectangle "Источники инфраструктуры / Events" as sources
 rectangle "2ГИС" as gis
 user <--> max

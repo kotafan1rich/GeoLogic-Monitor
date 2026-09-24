@@ -1,83 +1,98 @@
 package geocoder
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 )
+
+const suggestionsLimit = 5
 
 type geocoderClient struct {
 	httpClient *http.Client
 	baseURL    string
+	apiKey     string
 }
 
 var _ GeocoderClient = (*geocoderClient)(nil)
 
-func New(client *http.Client, baseURL string) *geocoderClient {
+func New(httpClient *http.Client, baseURL, apiKey string) *geocoderClient {
 	return &geocoderClient{
-		httpClient: client,
-		baseURL:    baseURL,
+		httpClient: httpClient,
+		baseURL:    strings.TrimRight(baseURL, "/"),
+		apiKey:     apiKey,
 	}
-}
-
-func (c *geocoderClient) ParseFree(ctx context.Context, street string) (*Address, error) {
-	query := url.Values{}
-	query.Set("street", street)
-
-	return get[Address](ctx, c, "/parse/free", query)
-}
-
-func (c *geocoderClient) Reverse(ctx context.Context, longitude, latitude float64) (*Geocode, error) {
-	query := url.Values{}
-	query.Set("x", fmt.Sprint(longitude))
-	query.Set("y", fmt.Sprint(latitude))
-
-	return get[Geocode](ctx, c, "/geocode/reverse", query)
-}
-
-func (c *geocoderClient) ParseEAS(ctx context.Context, street string) (*EASAddress, error) {
-	query := url.Values{}
-	query.Set("street", street)
-
-	return get[EASAddress](ctx, c, "/parse/eas", query)
 }
 
 func (c *geocoderClient) Autocomplete(ctx context.Context, search string) ([]Autocomplete, error) {
-	query := url.Values{}
-	query.Set("s", search)
-
-	result, err := get[[]Autocomplete](ctx, c, "/autocomplete/universal", query)
-	if err != nil {
+	request := suggestRequest{
+		Query: search,
+		Count: suggestionsLimit,
+		Locations: []suggestLocation{{
+			City: "Санкт-Петербург",
+		}},
+		RestrictValue: true,
+	}
+	var response suggestionsResponse
+	if err := c.post(ctx, "/suggest/address", request, &response); err != nil {
 		return nil, err
 	}
 
-	return *result, nil
+	result := make([]Autocomplete, 0, len(response.Suggestions))
+	for _, suggestion := range response.Suggestions {
+		result = append(result, Autocomplete{
+			Name:      suggestion.Value,
+			Latitude:  suggestion.Data.GeoLat,
+			Longitude: suggestion.Data.GeoLon,
+		})
+	}
+	return result, nil
 }
 
-func get[T any](ctx context.Context, client *geocoderClient, path string, query url.Values) (*T, error) {
-	requestURL := strings.TrimRight(client.baseURL, "/") + path + "?" + query.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+func (c *geocoderClient) Reverse(ctx context.Context, longitude, latitude float64) (*Geocode, error) {
+	request := geolocateRequest{Lat: latitude, Lon: longitude, Count: 1}
+	var response suggestionsResponse
+	if err := c.post(ctx, "/geolocate/address", request, &response); err != nil {
+		return nil, err
+	}
+	if len(response.Suggestions) == 0 {
+		return nil, fmt.Errorf("DaData address not found")
+	}
+
+	suggestion := response.Suggestions[0]
+	return &Geocode{
+		Address: suggestion.Value,
+		Center:  GeocodeCenter{X: suggestion.Data.GeoLon, Y: suggestion.Data.GeoLat},
+	}, nil
+}
+
+func (c *geocoderClient) post(ctx context.Context, path string, body, result any) error {
+	payload, err := json.Marshal(body)
 	if err != nil {
-		return nil, fmt.Errorf("create geocoder request: %w", err)
+		return fmt.Errorf("encode DaData request: %w", err)
 	}
-
-	resp, err := client.httpClient.Do(req)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
-		return nil, fmt.Errorf("execute geocoder request: %w", err)
+		return fmt.Errorf("create DaData request: %w", err)
 	}
-	defer resp.Body.Close()
+	req.Header.Set("Authorization", "Token "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("geocoder returned HTTP status %d", resp.StatusCode)
+	response, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("execute DaData request: %w", err)
 	}
+	defer response.Body.Close()
 
-	var result T
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode geocoder response: %w", err)
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("DaData returned HTTP status %d", response.StatusCode)
 	}
-
-	return &result, nil
+	if err := json.NewDecoder(response.Body).Decode(result); err != nil {
+		return fmt.Errorf("decode DaData response: %w", err)
+	}
+	return nil
 }
