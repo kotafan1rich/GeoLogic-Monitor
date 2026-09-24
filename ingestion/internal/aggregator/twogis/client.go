@@ -74,10 +74,10 @@ func (c *Client) do(
 	return c.req.JSON(ctx, http.MethodGet, infra.Target(baseURL, endpoint, query), nil, out)
 }
 
-func (c *Client) buildQuery(category, apiKey, cityID string, since time.Time) url.Values {
+func (c *Client) buildQuery(category, cityID string, since time.Time) url.Values {
 	return url.Values{
 		"q":                 {category},
-		"key":               {apiKey},
+		"key":               {c.apiKey},
 		"city_id":           {cityID},
 		"opened_after_date": {since.Format(dateLayout)},
 		"fields":            {pointField},
