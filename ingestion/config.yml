@@ -25,6 +25,19 @@ aggregator:
       yazzh_gate: "https://yazzh.gate.petersburg.ru"
     static_files:
       subway: "static/subway.json"
+  twogis:
+    http:
+      max_idle_conns: 5
+      max_idle_conns_per_host: 5
+      max_conns_per_host: 5
+      request_timeout: 30s
+      attempt_timeout: 5s
+      max_retries: 3
+      rate_limit:
+        rps: 10
+        burst: 10
+    base_url: "https://catalog.api.2gis.com/"
+    categories: ["кафе", "рестораны", "кофейни"]
 
 geo-api:
   url: "http://api:8080/"

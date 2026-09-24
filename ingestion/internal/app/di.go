@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/twogis"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
@@ -19,6 +20,7 @@ const schedulerName = "ingestion"
 
 const (
 	digitalSpbClient      = "digitalspb"
+	twogisClient          = "2gis"
 	geoAPIWriteClient     = "geo-api:write"
 	geoAPIGeocodingClient = "geo-api:geocoding"
 )
@@ -26,6 +28,7 @@ const (
 type diContainer struct {
 	log       *slog.Logger
 	dsc       *digitalspb.Client
+	tgc       *twogis.Client
 	ds        *job.DigitalSpb
 	infraJob  *job.Job
 	eventsJob *job.Job
@@ -93,6 +96,21 @@ func (d *diContainer) DSClient() *digitalspb.Client {
 		)
 	}
 	return d.dsc
+}
+
+func (d *diContainer) TGClient() *twogis.Client {
+	if d.tgc == nil {
+		cfg := config.Get()
+
+		req := d.requester(twogisClient, cfg.Aggregator.Twogis.HTTP, "", false)
+
+		d.tgc = twogis.MustNew(
+			d.Logger(), req, cfg.Aggregator.Twogis.BaseURL, cfg.Aggregator.Twogis.APIKey,
+		)
+
+		d.Logger().Info("2gis client initialized")
+	}
+	return d.tgc
 }
 
 func (d *diContainer) DigitalSpb() *job.DigitalSpb {

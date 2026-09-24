@@ -39,12 +39,20 @@ type HTTPClientConfig struct {
 
 type AggregatorConfig struct {
 	DigitalSpb DigitalSpbConfig `yaml:"digitalspb"`
+	Twogis     TwogisConfig     `yaml:"twogis"`
 }
 
 type DigitalSpbConfig struct {
 	HTTP        HTTPClientConfig  `yaml:"http"`
 	BaseURLMap  map[string]string `yaml:"base_urls"`
 	StaticFiles map[string]string `yaml:"static_files"`
+}
+
+type TwogisConfig struct {
+	HTTP       HTTPClientConfig `yaml:"http"`
+	BaseURL    string           `yaml:"base_url"`
+	APIKey     string           `env:"TWOGIS_API_KEY" env-required:"true"`
+	Categories string           `yaml:"categories"`
 }
 
 type GeoApiConfig struct {
