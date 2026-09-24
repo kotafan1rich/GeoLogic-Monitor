@@ -1,4 +1,25 @@
 services:
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      CADDY_SITE_ADDRESS: "${CADDY_SITE_ADDRESS:-http://localhost}"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    networks:
+      - geo_logic_net
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      miniapp:
+        condition: service_started
+    restart: unless-stopped
+
   api:
     build: ./api
     env_file:
@@ -102,7 +123,8 @@ volumes:
   api_db_data:
   ingestion_db_data:
   osrm_graph:
-    # kafka-data:
+  caddy_data:
+  caddy_config:
 
 networks:
   geo_logic_net:

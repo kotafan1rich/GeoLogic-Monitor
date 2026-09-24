@@ -12,10 +12,11 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/scheduler"
-	"github.com/pressly/goose/v3"
 )
 
 type App struct {

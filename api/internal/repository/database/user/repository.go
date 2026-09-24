@@ -6,6 +6,7 @@ import (
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"

@@ -1,0 +1,116 @@
+name: geologic-monitor
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    env_file:
+      - ./env/caddy.env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - miniapp
+      - bot
+    networks:
+      - backend
+
+  api:
+    image: ${DOCKERHUB_OWNER}/geologic-monitor-api:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - ./env/api.env
+    depends_on:
+      api-db:
+        condition: service_healthy
+      osrm:
+        condition: service_started
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  ingestion:
+    image: ${DOCKERHUB_OWNER}/geologic-monitor-ingestion:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - ./env/ingestion.env
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - backend
+
+  bot:
+    image: ${DOCKERHUB_OWNER}/geologic-monitor-bot:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file:
+      - ./env/bot.env
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "8080"
+    networks:
+      - backend
+
+  api-db:
+    image: postgis/postgis:18-3.6
+    restart: unless-stopped
+    env_file:
+      - ./env/api-db.env
+    volumes:
+      - api_db_data:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  osrm:
+    image: ${DOCKERHUB_OWNER}/geologic-monitor-osrm:${IMAGE_TAG}
+    restart: unless-stopped
+    volumes:
+      - osrm_graph:/data
+    networks:
+      - backend
+
+  miniapp:
+    image: ${DOCKERHUB_OWNER}/geologic-monitor-miniapp:${IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "80"
+    networks:
+      - backend
+
+volumes:
+  api_db_data:
+  osrm_graph:
+  caddy_data:
+  caddy_config:
+
+networks:
+  backend:
+    driver: bridge
