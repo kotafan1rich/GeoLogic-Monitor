@@ -53,7 +53,7 @@ paths:
       operationId: suggestAddresses
       summary: Найти варианты адреса в Санкт-Петербурге
       description: >
-        Конкретный геокодер TBD. Адаптер ограничивает поиск Санкт-Петербургом.
+        Поиск выполняется через DaData Suggest и ограничен Санкт-Петербургом.
         Пустой результат возвращается как пустой массив.
       parameters:
         - name: query
@@ -86,7 +86,9 @@ paths:
     get:
       operationId: getAddressByCoordinates
       summary: Получить адрес по координатам в Санкт-Петербурге
-      description: Возвращает ближайший адрес и координаты найденного адреса.
+      description: >
+        Выполняет обратное геокодирование через DaData GeoLocate и возвращает
+        ближайший адрес с координатами найденного адреса.
       parameters:
         - name: lat
           in: query
@@ -118,8 +120,8 @@ paths:
       operationId: suggestAddressesForIngestion
       summary: Найти варианты адреса для ingestion
       description: >
-        Внутренний вариант поиска адресов в Санкт-Петербурге. Пустой результат
-        возвращается как пустой массив.
+        Внутренний вариант поиска адресов через DaData Suggest, ограниченный
+        Санкт-Петербургом. Пустой результат возвращается как пустой массив.
       security:
         - IngestionToken: []
       parameters:
@@ -153,7 +155,9 @@ paths:
     get:
       operationId: getAddressByCoordinatesForIngestion
       summary: Получить адрес по координатам для ingestion
-      description: Внутренний вариант получения ближайшего адреса в Санкт-Петербурге.
+      description: >
+        Внутренний вариант обратного геокодирования через DaData GeoLocate для
+        получения ближайшего адреса в Санкт-Петербурге.
       security:
         - IngestionToken: []
       parameters:
