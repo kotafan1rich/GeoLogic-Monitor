@@ -66,9 +66,6 @@ func (l *Limiter) Wait(ctx context.Context) error {
 	}
 }
 
-// reserve забирает один токен и сообщает, сколько нужно подождать до его
-// фактического появления. Токены уходят в минус, поэтому очередь из запросов
-// равномерно размазывается по времени вместо всплеска.
 func (l *Limiter) reserve() time.Duration {
 	l.mu.Lock()
 	defer l.mu.Unlock()

@@ -14,16 +14,13 @@ import (
 )
 
 const (
-	// MaxBodySize ограничивает объём вычитываемого тела ответа.
 	MaxBodySize = 64 << 20
 
 	defaultAttemptTimeout = 30 * time.Second
 )
 
-// RetryPolicy сообщает, имеет ли смысл повторить запрос при таком статусе.
 type RetryPolicy func(status int) bool
 
-// RetryTransient повторяет запрос при троттлинге, таймауте и ошибках сервера.
 func RetryTransient(status int) bool {
 	switch {
 	case status == http.StatusTooManyRequests, status == http.StatusRequestTimeout:
@@ -35,9 +32,6 @@ func RetryTransient(status int) bool {
 	}
 }
 
-// Requester выполняет JSON-запросы с потайм-аутом на попытку и экспоненциальным
-// backoff. Один и тот же Requester используют все исходящие клиенты сервиса,
-// поэтому логика повторов, лимитов тела и обработки статусов живёт в одном месте.
 type Requester struct {
 	hc             *http.Client
 	attemptTimeout time.Duration
@@ -83,7 +77,6 @@ func MustNewRequester(
 	return r
 }
 
-// Target собирает адрес запроса из базового URL, эндпоинта и query.
 func Target(baseURL *url.URL, endpoint string, query url.Values) string {
 	target := baseURL.JoinPath(endpoint)
 
@@ -94,9 +87,6 @@ func Target(baseURL *url.URL, endpoint string, query url.Values) string {
 	return target.String()
 }
 
-// JSON выполняет запрос, повторяя временные сбои, и разбирает ответ в out.
-// Пустой body означает запрос без тела, пустой out — что тело ответа
-// только проверяется, но не разбирается.
 func (r *Requester) JSON(ctx context.Context, method, target string, body, out any) error {
 	var payload []byte
 
