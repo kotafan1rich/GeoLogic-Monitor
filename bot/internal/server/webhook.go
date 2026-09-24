@@ -3,8 +3,9 @@ package server
 import (
 	"net/http"
 
-	handler "github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/http"
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
+
+	handler "github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/http"
 )
 
 type Handler interface {

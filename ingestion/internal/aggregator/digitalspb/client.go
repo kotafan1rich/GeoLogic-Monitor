@@ -11,8 +11,6 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
 )
 
-const maxBodySize = infra.MaxBodySize
-
 type Client struct {
 	BaseURLs map[string]a.URL
 	log      *slog.Logger

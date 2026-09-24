@@ -130,7 +130,6 @@ func (s *service) Create(
 		calculatedRating = ratingResult
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

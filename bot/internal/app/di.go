@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot/start"
@@ -19,7 +21,6 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/server"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/service"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/service/onboarding"
-	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
 )
 
 type diContainer struct {
