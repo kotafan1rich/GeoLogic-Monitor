@@ -117,7 +117,8 @@ jobs:
             -i ~/.ssh/production \
             -P "$PROD_PORT" \
             deploy/docker-compose.prod.yaml \
-            "$PROD_USER@$PROD_HOST:$PROD_PATH/docker-compose.prod.yaml"
+            deploy/Caddyfile \
+            "$PROD_USER@$PROD_HOST:$PROD_PATH/"
 
       - name: Log in to Docker Hub on production server
         env:
