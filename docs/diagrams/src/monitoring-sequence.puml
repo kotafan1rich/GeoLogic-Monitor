@@ -1,0 +1,72 @@
+@startuml monitoring-sequence
+title GeoLogic — добавление точки, загрузка и уведомления
+participant "Mini App" as F
+participant bot as B
+participant "Планировщик API" as S
+participant ingestion as W
+participant API as A
+database "API DB" as ADB
+database "Ingestion DB" as IDB
+participant "Источники / 2ГИС" as P
+participant OSRM as R
+queue Kafka as K
+participant MAX as M
+B -> A : PUT users/me после /start (чат уведомлений)
+F -> A : POST tracked-locations / initData
+A -> ADB : проверить пользователя, business type;\nвыбрать кандидатов infra (PostGIS)
+A -> R : пешеходные расстояния до infra
+R --> A : метры / NoRoute
+A -> A : отфильтровать MaxRadius;\nрассчитать рейтинг
+A -> ADB : атомарно сохранить точку и rating_history
+A --> F : 201 точка + rating + rating_calculated_at
+note over A,R
+ При общей ошибке OSRM — 503 и точка не сохраняется.
+ Отдельный NoRoute пропускается.
+end note
+group 1-го числа месяца, 03:00 Europe/Moscow
+ S -> A : пересчитать рейтинги всех точек
+ loop каждая сохранённая точка
+  A -> ADB : актуальная инфраструктура и параметры
+  A -> R : пешеходные расстояния
+  R --> A : расстояния / ошибка
+  alt успешный расчёт
+   A -> ADB : добавить rating_history
+  else ошибка
+   A -> A : логировать, сохранить прежний рейтинг; продолжить
+  end
+ end
+end
+F -> A : GET tracked-locations / initData
+A --> F : точки с последним рейтингом и временем
+F -> A : GET tracked-locations/{id}/rating-history?months=3
+A -> ADB : проверить владельца; история за период
+A --> F : [{value, calculated_at}]
+W -> P : инфраструктура / типы / события
+P --> W : нормализуемые данные
+W -> A : PUT internal: типы, инфраструктура, события
+A -> ADB : upsert постоянных данных
+W -> IDB : очистить просроченный кэш 2ГИС
+W -> A : точки и события рядом на завтра
+A --> W : события и адресаты
+W -> P : конкуренты за вчера
+P --> W : новые конкуренты
+W -> IDB : временный кэш 24 часа
+loop каждая точка
+ W -> A : POST internal/routes/walking-distances\nsource + 1..99 destinations
+ A -> R : Table API: source, затем destinations
+ R --> A : метры / null / ошибка
+ A --> W : distances в порядке destinations / 503
+ W -> K : сигнал + маршрут + причины
+end
+W -> A : отметить событие после публикации всем точкам
+A -> ADB : notified_at
+K -> B : notifications
+B -> M : оповещение
+M --> B : принято
+B -> K : commit offset
+note over W,K
+ Нет общей транзакции БД/Kafka.
+ При сбоях возможны пропуски и дубли.
+ null пропускает одну цель; 503 — весь пакет.
+end note
+@enduml

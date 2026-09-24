@@ -1,0 +1,106 @@
+@startuml er-model
+title GeoLogic — модель данных MVP
+hide circle
+skinparam linetype ortho
+package "API DB" {
+entity users {
+ * id : uuid <<PK>>
+ --
+ * max_user_id : bigint <<UNIQUE>>
+ * max_chat_id : bigint
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+entity tracked_locations {
+ * id : uuid <<PK>>
+ --
+ * user_id : uuid <<FK>>
+ * business_type_id : uuid <<FK>>
+ * name : text
+ * address : text
+ * location : geometry(Point,4326)
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+entity rating_history {
+ * id : uuid <<PK>>
+ --
+ * tracked_location_id : uuid <<FK, ON DELETE CASCADE>>
+ * value : numeric(2,1)
+ * calculated_at : timestamptz
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+entity infra_types {
+ * id : uuid <<PK>>
+ --
+ * slug : text <<UNIQUE>>
+ * name : text
+ * weight : float
+ * max_radius : integer
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+entity infra_objects {
+ * id : uuid <<PK>>
+ --
+ * external_id : text <<UNIQUE>>
+ * type_id : uuid <<FK>>
+ * location : geometry(Point,4326)
+ * address : text
+ name : text
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+entity business_types {
+ * id : uuid <<PK>>
+ --
+ * infra_type_id : uuid <<FK,UNIQUE>>
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+entity events {
+ * id : uuid <<PK>>
+ --
+ * provider, external_id : text <<UNIQUE pair>>
+ * location : geometry(Point,4326)
+ * date : timestamptz
+ info : text
+ notified_at : timestamptz
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+}
+package "Ingestion DB" {
+entity competitor_cache {
+ * tracked_location_id : uuid <<PK,external ID>>
+ * external_id : text <<PK>>
+ --
+ * type_id : uuid <<external ID>>
+ * name, address : text
+ * location : geometry(Point,4326)
+ * opened_at : date
+ notified_at : timestamptz
+ * expires_at : timestamptz
+ * created_at : timestamptz
+ * updated_at : timestamptz
+}
+}
+users ||--o{ tracked_locations
+tracked_locations ||--o{ rating_history
+note bottom of rating_history
+ value: 0.1..9.9; только успешные расчёты.
+ Индекс (tracked_location_id, calculated_at).
+ Хранится до удаления точки; calculated_at входит в HTTP.
+end note
+infra_types ||--o{ infra_objects
+infra_types ||--o| business_types
+business_types ||--o{ tracked_locations
+tracked_locations .. competitor_cache : ID only, no FK
+infra_types .. competitor_cache : ID only, no FK
+note bottom of events
+ notified_at после публикации для всех точек.
+ created_at и updated_at хранятся только в БД
+ и не входят в HTTP-контракты.
+end note
+@enduml

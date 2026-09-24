@@ -1,0 +1,920 @@
+openapi: 3.1.0
+info:
+  title: GeoLogic Monitor API
+  version: 0.7.0
+  description: >
+    Текущий HTTP-контракт MVP, только Санкт-Петербург. Пользовательские и внутренние
+    методы, доступ Mini App и история рейтинга реализованы; плановый пересчёт
+    не является HTTP-операцией и выполняется планировщиком в API-процессе. Внутренний метод
+    walking-distances проксирует пакетный расчёт пешеходных расстояний через OSRM.
+    Mini App передаёт подписанные MAX initData; bot регистрирует чат с сервисным
+    токеном и X-Max-User-Id. Внутренние методы требуют отдельного ingestion token.
+servers:
+  - url: /
+    description: Текущий хост 
+security:
+  - MiniAppInitData: []
+paths:
+  /api/v1/users/me:
+    put:
+      security:
+        - BotToken: []
+          MaxUserId: []
+      operationId: upsertCurrentUser
+      summary: Зарегистрировать пользователя или обновить его личный чат
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [max_chat_id]
+              properties:
+                max_chat_id:
+                  type: integer
+                  format: int64
+            example: { max_chat_id: 123456 }
+      responses:
+        "200":
+          description: Пользователь создан или обновлён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/geocoding/suggestions:
+    get:
+      operationId: suggestAddresses
+      summary: Найти варианты адреса в Санкт-Петербурге
+      description: >
+        Поиск выполняется через DaData Suggest и ограничен Санкт-Петербургом.
+        Пустой результат возвращается как пустой массив.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 500 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 5, default: 5 }
+      responses:
+        "200":
+          description: Варианты для выбора адреса
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Address"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/v1/geocoding/address:
+    get:
+      operationId: getAddressByCoordinates
+      summary: Получить адрес по координатам в Санкт-Петербурге
+      description: >
+        Выполняет обратное геокодирование через DaData GeoLocate и возвращает
+        ближайший адрес с координатами найденного адреса.
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lon
+          in: query
+          required: true
+          schema: { type: number, minimum: -180, maximum: 180 }
+      responses:
+        "200":
+          description: Ближайший адрес
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /internal/v1/geocoding/suggestions:
+    get:
+      operationId: suggestAddressesForIngestion
+      summary: Найти варианты адреса для ingestion
+      description: >
+        Внутренний вариант поиска адресов через DaData Suggest, ограниченный
+        Санкт-Петербургом. Пустой результат возвращается как пустой массив.
+      security:
+        - IngestionToken: []
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 500 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 5, default: 5 }
+      responses:
+        "200":
+          description: Варианты адреса
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Address"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /internal/v1/geocoding/address:
+    get:
+      operationId: getAddressByCoordinatesForIngestion
+      summary: Получить адрес по координатам для ingestion
+      description: >
+        Внутренний вариант обратного геокодирования через DaData GeoLocate для
+        получения ближайшего адреса в Санкт-Петербурге.
+      security:
+        - IngestionToken: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lon
+          in: query
+          required: true
+          schema: { type: number, minimum: -180, maximum: 180 }
+      responses:
+        "200":
+          description: Ближайший адрес
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Геокодер недоступен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /internal/v1/routes/walking-distances:
+    post:
+      operationId: calculateWalkingDistancesForIngestion
+      summary: Рассчитать пешеходные расстояния для ingestion
+      description: >
+        API передаёт в OSRM сначала source, затем destinations в исходном
+        порядке. Каждый элемент distances соответствует destination с тем же
+        индексом. null означает, что пешеходный маршрут не найден; заменять
+        его прямым расстоянием нельзя.
+      security:
+        - IngestionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalkingDistancesRequest"
+            example:
+              source: { lat: 59.939095, lon: 30.315868 }
+              destinations:
+                - { lat: 59.934280, lon: 30.335098 }
+                - { lat: 59.936000, lon: 30.327000 }
+      responses:
+        "200":
+          description: >
+            Расстояния в метрах; длина и порядок массива совпадают с destinations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalkingDistancesResponse"
+              example:
+                distances: [1557.6, null]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/ProviderUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/tracked-locations:
+    post:
+      operationId: createTrackedLocation
+      summary: Добавить точку и автоматически начать мониторинг
+      description: >
+        Mini App передаёт выбранный результат геокодинга без изменений.
+        Пользователь определяется по проверенным initData и должен быть зарегистрирован через /start.
+        API рассчитывает рейтинг окружения по пешеходным расстояниям OSRM.
+        PostGIS используется только для предварительного отбора; отдельный NoRoute
+        пропускается, а при отсутствии подходящей инфраструктуры рейтинг равен 5.0.
+        Создание точки и первой записи rating_history атомарны.
+        Последующие успешные расчёты по расписанию добавляются в историю.
+        Повторный POST не является идемпотентным.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, business_type_id, address, lat, lon]
+              properties:
+                name: { type: string, minLength: 1 }
+                business_type_id: { type: string, format: uuid }
+                address: { type: string, minLength: 1 }
+                lat: { type: number, minimum: -90, maximum: 90 }
+                lon: { type: number, minimum: -180, maximum: 180 }
+            example:
+              name: Кофейня на Невском
+              business_type_id: 22222222-2222-4222-8222-222222222222
+              address: Санкт-Петербург, Невский проспект, 28
+              lat: 59.9358
+              lon: 30.3259
+      responses:
+        "201":
+          description: Точка создана, рейтинг рассчитан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedTrackedLocation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ProviderUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      operationId: listMyTrackedLocations
+      summary: Список точек текущего пользователя без пагинации
+      responses:
+        "200":
+          description: Точки, пустой массив при отсутствии
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserTrackedLocation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/tracked-locations/{id}:
+    delete:
+      operationId: deleteTrackedLocation
+      summary: Удалить свою точку
+      description: Чужая и отсутствующая точка возвращают одинаковый 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Точка и история рейтинга удалены; независимый кэш ingestion истечёт по TTL
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/tracked-locations/{id}/rating-history:
+    get:
+      operationId: getTrackedLocationRatingHistory
+      summary: История рейтинга своей точки за выбранный период
+      description: >
+        Все успешные расчёты по возрастанию calculated_at, без агрегации и интерполяции.
+        Обе границы включены: от момента запроса минус months календарных месяцев
+        до момента запроса. Вычитание выполняется в Europe/Moscow с ограничением
+        дня последним днём целевого месяца. Пустая история — [].
+        Чужая и отсутствующая точка возвращают одинаковый 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: months
+          in: query
+          description: Период истории в календарных месяцах, не шаг агрегации и не TTL.
+          schema: { type: integer, minimum: 1, default: 3 }
+      responses:
+        "200":
+          description: Сохранённые значения рейтинга
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RatingHistoryEntry"
+              example:
+                - { value: 8.0, calculated_at: "2026-09-01T00:00:00Z" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/tracked-locations:
+    get:
+      operationId: listMonitoringLocations
+      summary: Все точки с адресатами для ingestion
+      security:
+        - IngestionToken: []
+      responses:
+        "200":
+          description: Снимок точек на момент запроса
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: "#/components/schemas/TrackedLocation"
+                    - type: object
+                      required: [max_chat_id]
+                      properties:
+                        max_chat_id: { type: integer, format: int64 }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/business-types:
+    get:
+      operationId: listBusinessTypes
+      summary: Типы бизнеса для Mini App, имя из infra_type.name
+      responses:
+        "200":
+          description: Загруженный справочник
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BusinessType"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /internal/v1/infra-types:
+    put:
+      operationId: upsertInfraType
+      summary: Upsert по slug; weight и max_radius используются в рейтинге
+      security: [{ IngestionToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfraTypeInput"
+      responses:
+        "200":
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfraType"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/infra:
+    put:
+      operationId: upsertInfraObject
+      summary: Upsert по стабильному external_id загрузчика; внутренний id генерирует API
+      security: [{ IngestionToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfraObjectInput"
+      responses:
+        "200":
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfraObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/infra/{id}:
+    get:
+      operationId: getInfraObject
+      summary: Получить объект инфраструктуры по внутреннему ID
+      security: [{ IngestionToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Объект инфраструктуры
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfraObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/business-types:
+    put:
+      operationId: upsertBusinessType
+      summary: Upsert по infra_type_id; ссылка должна существовать
+      security: [{ IngestionToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessTypeInput"
+      responses:
+        "200":
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessType"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/events:
+    put:
+      operationId: upsertEvent
+      summary: Upsert по provider/external_id; notified_at сохраняется
+      security: [{ IngestionToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+      responses:
+        "200":
+          description: Созданная или обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      operationId: listUnnotifiedEvents
+      summary: Ещё не обработанные события заданного дня в Europe/Moscow
+      security: [{ IngestionToken: [] }]
+      parameters:
+        - name: day
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: События с notified_at=null
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/events/near:
+    get:
+      operationId: listUnnotifiedEventsNear
+      summary: Получить необработанные события рядом с точкой
+      description: >
+        Возвращает события с notified_at=null в заданном радиусе. Если day передан,
+        календарные границы вычисляются в Europe/Moscow; без day дата не ограничивается.
+        Пустой результат возвращается как пустой массив.
+      security: [{ IngestionToken: [] }]
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - name: lon
+          in: query
+          required: true
+          schema: { type: number, minimum: -180, maximum: 180 }
+        - name: radius
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 5000, default: 500 }
+          description: Радиус поиска в метрах.
+        - name: day
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Необработанные события рядом с точкой
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/events/{id}:
+    get:
+      operationId: getEvent
+      summary: Получить событие по внутреннему ID
+      security: [{ IngestionToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Событие
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/events/{id}/notified:
+    put:
+      operationId: markEventNotified
+      summary: Отметить публикацию для всех подходящих точек
+      description: Сервер устанавливает notified_at один раз; повтор не меняет время.
+      security: [{ IngestionToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Отметка установлена или уже существовала
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /health:
+    get:
+      operationId: health
+      summary: Проверка HTTP-процесса
+      description: Не проверяет доступность внешних провайдеров.
+      security: []
+      responses:
+        "200":
+          description: Процесс работает
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+components:
+  securitySchemes:
+    MiniAppInitData:
+      type: apiKey
+      in: header
+      name: X-Max-Init-Data
+      description: >
+        Исходная строка window.WebApp.initData. API проверяет подпись MAX и auth_date;
+        максимальный возраст по умолчанию 1 час, дата из будущего недопустима.
+        Владелец определяется по проверенному user.id. Service token клиенту не передаётся.
+    BotToken:
+      type: http
+      scheme: bearer
+      description: BOT_SERVICE_TOKEN, только регистрация чата bot-сервисом
+    MaxUserId:
+      type: apiKey
+      in: header
+      name: X-Max-User-Id
+      description: Положительный int64 из проверенного обновления MAX; сам по себе не авторизует.
+    IngestionToken:
+      type: http
+      scheme: bearer
+      description: INGESTION_SERVICE_TOKEN, не даёт доступа к пользовательским маршрутам
+  schemas:
+    BusinessType:
+      type: object
+      required: [id, infra_type_id, infra_type]
+      properties:
+        id: { type: string, format: uuid }
+        infra_type_id: { type: string, format: uuid }
+        infra_type:
+          $ref: "#/components/schemas/InfraType"
+    InfraType:
+      type: object
+      required: [id, slug, name, weight, max_radius]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        weight: { type: number, exclusiveMinimum: 0 }
+        max_radius: { type: integer, minimum: 1, maximum: 65535 }
+    InfraObjectInput:
+      example:
+        {
+          external_id: fixture-object-1,
+          type_id: 33333333-3333-4333-8333-333333333333,
+          lat: 59.9358,
+          lon: 30.3259,
+          address: Санкт-Петербург,
+          name: Тестовый объект,
+        }
+      allOf:
+        - $ref: "#/components/schemas/Address"
+        - type: object
+          required: [external_id, type_id]
+          properties:
+            external_id: { type: string, minLength: 1 }
+            type_id: { type: string, format: uuid }
+            name: { type: [string, "null"] }
+    InfraObject:
+      example:
+        {
+          id: 44444444-4444-4444-8444-444444444444,
+          external_id: fixture-object-1,
+          type_id: 33333333-3333-4333-8333-333333333333,
+          lat: 59.9358,
+          lon: 30.3259,
+          address: Санкт-Петербург,
+          name: Тестовый объект,
+        }
+      allOf:
+        - $ref: "#/components/schemas/InfraObjectInput"
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uuid }
+    Event:
+      type: object
+      required: [id, provider, external_id, lat, lon, date, info, notified_at]
+      properties:
+        id: { type: string, format: uuid }
+        provider: { type: string, minLength: 1 }
+        external_id: { type: string, minLength: 1 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+        date: { type: string, format: date-time }
+        info: { type: [string, "null"] }
+        notified_at: { type: [string, "null"], format: date-time }
+    InfraTypeInput:
+      type: object
+      description: Значения примера тестовые, реальные веса и радиусы ещё предстоит согласовать.
+      example: { slug: coffee_shop, name: Кофейня, weight: 2, max_radius: 1000 }
+      required: [slug, name, weight, max_radius]
+      properties:
+        slug: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        weight: { type: number, exclusiveMinimum: 0 }
+        max_radius: { type: integer, minimum: 1, maximum: 65535 }
+    BusinessTypeInput:
+      type: object
+      example: { infra_type_id: 33333333-3333-4333-8333-333333333333 }
+      required: [infra_type_id]
+      properties:
+        infra_type_id: { type: string, format: uuid }
+    EventInput:
+      type: object
+      example:
+        provider: fixture
+        external_id: concert-1
+        lat: 59.936
+        lon: 30.326
+        date: "2026-09-17T16:00:00Z"
+        info: Концерт завтра в 19:00
+      required: [provider, external_id, lat, lon, date]
+      properties:
+        provider: { type: string, minLength: 1 }
+        external_id: { type: string, minLength: 1 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+        date: { type: string, format: date-time }
+        info: { type: [string, "null"] }
+    Address:
+      type: object
+      required: [address, lat, lon]
+      properties:
+        address: { type: string, minLength: 1 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+    GeoPoint:
+      type: object
+      additionalProperties: false
+      required: [lat, lon]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+    WalkingDistancesRequest:
+      type: object
+      additionalProperties: false
+      required: [source, destinations]
+      properties:
+        source:
+          $ref: "#/components/schemas/GeoPoint"
+        destinations:
+          type: array
+          minItems: 1
+          maxItems: 99
+          items:
+            $ref: "#/components/schemas/GeoPoint"
+    WalkingDistancesResponse:
+      type: object
+      additionalProperties: false
+      required: [distances]
+      properties:
+        distances:
+          type: array
+          minItems: 1
+          maxItems: 99
+          description: >
+            Пешеходные расстояния в метрах. Длина и порядок массива совпадают
+            с destinations из запроса; null означает отсутствие пешеходного маршрута.
+          items:
+            type: [number, "null"]
+            minimum: 0
+    User:
+      type: object
+      required: [id, max_user_id, max_chat_id]
+      properties:
+        id: { type: string, format: uuid }
+        max_user_id: { type: integer, format: int64, minimum: 1 }
+        max_chat_id: { type: integer, format: int64 }
+    TrackedLocation:
+      allOf:
+        - $ref: "#/components/schemas/Address"
+        - type: object
+          required: [id, name, business_type_id]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string, minLength: 1 }
+            business_type_id: { type: string, format: uuid }
+    RatingHistoryEntry:
+      type: object
+      required: [value, calculated_at]
+      properties:
+        value: { type: number, minimum: 0.1, maximum: 9.9, multipleOf: 0.1 }
+        calculated_at:
+          {
+            type: string,
+            format: date-time,
+            description: Время успешного расчёта в UTC,
+          }
+    UserTrackedLocation:
+      description: >
+        Последний сохранённый рейтинг независимо от периода истории.
+        Для существующей точки без истории оба поля рейтинга равны null до первого расчёта.
+      allOf:
+        - $ref: "#/components/schemas/TrackedLocation"
+        - type: object
+          required: [rating, rating_calculated_at]
+          properties:
+            rating:
+              {
+                type: [number, "null"],
+                minimum: 0.1,
+                maximum: 9.9,
+                multipleOf: 0.1,
+              }
+            rating_calculated_at: { type: [string, "null"], format: date-time }
+    CreatedTrackedLocation:
+      description: Точка и первый рейтинг сохранены атомарно; время расчёта возвращается в UTC.
+      allOf:
+        - $ref: "#/components/schemas/TrackedLocation"
+        - type: object
+          required: [rating, rating_calculated_at]
+          properties:
+            rating_calculated_at: { type: string, format: date-time }
+            rating:
+              type: number
+              minimum: 0.1
+              maximum: 9.9
+              multipleOf: 0.1
+              example: 8.0
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            [
+              validation_error,
+              unauthorized,
+              not_found,
+              provider_unavailable,
+              internal_error,
+            ]
+        message: { type: string }
+      example: { code: validation_error, message: address is required }
+  responses:
+    BadRequest:
+      description: Некорректные параметры или данные
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Неверные или просроченные initData либо неверные service token / MAX user ID для сервисного метода
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Запрошенный пользователь, справочник или ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Внутренняя ошибка без раскрытия деталей БД
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ProviderUnavailable:
+      description: OSRM недоступен либо обязательный расчёт рейтинга не завершён
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

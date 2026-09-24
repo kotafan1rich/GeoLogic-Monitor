@@ -1,0 +1,4 @@
+.env*
+README.md
+data/*
+!data/SanktPetersburg.osm.pbf

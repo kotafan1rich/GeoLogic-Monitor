@@ -1,0 +1,75 @@
+scheduler:
+  # для прода
+  # infra: "0 3 1 * *"   # раз в месяц, 1-го числа в 03:00
+  # events: "0 4 * * 1"  # раз в неделю, по понедельникам в 04:00
+
+  # для дебага
+  infra: "@every 1m"   # раз в минуту
+  events: "@every 30s"  # раз в 30 секунд
+
+aggregator:
+  digitalspb:
+    http:
+      max_idle_conns: 4
+      max_idle_conns_per_host: 2
+      max_conns_per_host: 2
+      request_timeout: 30s
+      attempt_timeout: 5s
+      max_retries: 3
+      rate_limit:
+        rps: 5
+        burst: 5
+    base_urls:
+      spb_classif_gate: "https://spb-classif.gate.petersburg.ru/api/v2/"
+      egs_gate: "https://egs.gate.petersburg.ru/egs/"
+      yazzh_gate: "https://yazzh.gate.petersburg.ru"
+    static_files:
+      subway: "static/subway.json"
+
+geo-api:
+  url: "http://api:8080/"
+  write:
+    max_idle_conns: 20
+    max_idle_conns_per_host: 20
+    max_conns_per_host: 20
+    request_timeout: 60s
+    attempt_timeout: 10s
+    max_retries: 3
+    rate_limit:
+      rps: 0
+      burst: 0
+  write_concurrency: 8
+  geocoding:
+    max_idle_conns: 2
+    max_idle_conns_per_host: 1
+    max_conns_per_host: 1
+    request_timeout: 30s
+    attempt_timeout: 10s
+    max_retries: 3
+    rate_limit:
+      rps: 3
+      burst: 1
+  infra_types:
+    - { slug: subway, name: "Станция метро", weight: 10, max_radius: 800 }
+    - { slug: railway_station, name: "Вокзал", weight: 7, max_radius: 1000 }
+    - { slug: hotel, name: "Гостиница", weight: 4, max_radius: 500 }
+    - { slug: museum, name: "Музей", weight: 4, max_radius: 600 }
+    - { slug: theatre, name: "Театр", weight: 3, max_radius: 500 }
+    - { slug: restaurant, name: "Ресторан", weight: 3, max_radius: 300 }
+    - { slug: exhibition_hall, name: "Выставочный зал", weight: 2, max_radius: 500 }
+    - { slug: pharmacy, name: "Аптека", weight: 2, max_radius: 300 }
+    - { slug: cinema, name: "Кинотеатр", weight: 3, max_radius: 500 }
+    - { slug: vet_clinic, name: "Ветклиника", weight: 2, max_radius: 500 }
+    - { slug: park, name: "Парк", weight: 3, max_radius: 600 }
+    - { slug: sports_center, name: "Спортивный центр", weight: 3, max_radius: 500 }
+    - { slug: zoo, name: "Зоопарк", weight: 3, max_radius: 800 }
+    - { slug: education_center, name: "Образовательный центр", weight: 2, max_radius: 400 }
+    - { slug: game_center, name: "Игровой центр", weight: 2, max_radius: 400 }
+    - { slug: playground, name: "Детская площадка", weight: 2, max_radius: 300 }
+    - { slug: library, name: "Библиотека", weight: 1, max_radius: 400 }
+    - { slug: camp, name: "Лагерь", weight: 1, max_radius: 500 }
+    - { slug: other, name: "Прочее", weight: 1, max_radius: 300 }
+
+logger:
+  level: debug
+  format: text

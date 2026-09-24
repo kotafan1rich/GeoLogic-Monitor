@@ -1,0 +1,29 @@
+@startuml c4-components
+title GeoLogic — компоненты API
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+rectangle "cmd/server" as main
+rectangle "app/di.go" as di
+rectangle "net/http / router\nMiniAppInitData / BotToken / IngestionToken" as server
+rectangle "handler\nusers / locations / geocoding\ninfra / business types / events" as handler
+rectangle "service\nбизнес-правила + rating calculator" as service
+rectangle "repository\nPostgreSQL / DaData / OSRM\nлокальные model" as repo
+rectangle "domain\nUser / TrackedLocation / GeoPoint\nInfra / Event / LocationFeatures\nCalculatedRating / RatingHistory" as domain
+database "API PostgreSQL + PostGIS" as db
+rectangle "Планировщик API\ncron: 0 3 1 * * / Europe/Moscow" as scheduler
+rectangle "DaData Suggest" as geo
+rectangle "OSRM\nfoot profile" as osrm
+main --> di
+di --> scheduler
+scheduler --> service : периодический расчёт и история
+di --> server
+server --> handler
+handler --> service
+service --> repo : интерфейсы
+service ..> domain
+repo ..> domain
+repo --> db : pgx / SQL
+repo --> geo
+repo --> osrm : пешеходные расстояния
+@enduml

@@ -1,0 +1,132 @@
+asyncapi: 3.0.0
+info:
+  title: GeoLogic Monitor Notifications
+  version: 0.4.0
+  description: >
+    Контракт ingestion → bot. Один topic, одна consumer group,
+    retention.ms=3600000, без outbox и DLQ. Рейтинг рассчитывается API только
+    при создании точки и в уведомления не входит.
+defaultContentType: application/json
+servers:
+  local:
+    host: localhost:9092
+    protocol: kafka
+channels:
+  notifications:
+    address: notifications
+    servers:
+      - $ref: '#/servers/local'
+    description: >
+      Producer ingestion, consumer bot. Одна partition для демо.
+      Offset подтверждается после успешной отправки MAX. Retention Kafka удаляет
+      сегменты асинхронно и не гарантирует физическое удаление ровно через час.
+    messages:
+      notification:
+        $ref: '#/components/messages/Notification'
+operations:
+  sendNotification:
+    action: send
+    channel:
+      $ref: '#/channels/notifications'
+    summary: Ingestion публикует готовое задание
+    messages:
+      - $ref: '#/channels/notifications/messages/notification'
+  receiveNotification:
+    action: receive
+    channel:
+      $ref: '#/channels/notifications'
+    summary: Bot читает с group.id=bot-notifications
+    messages:
+      - $ref: '#/channels/notifications/messages/notification'
+components:
+  messages:
+    Notification:
+      name: Notification
+      title: Задание на отправку сообщения MAX
+      payload:
+        $ref: '#/components/schemas/Notification'
+      examples:
+        - name: competitor
+          payload:
+            type: competitor_opened
+            max_chat_id: 123456
+            tracked_location:
+              id: 11111111-1111-4111-8111-111111111111
+              name: Кофейня на Невском
+              address: Санкт-Петербург, Невский проспект, 28
+              business_type_id: 22222222-2222-4222-8222-222222222222
+            subject:
+              external_id: demo-coffee-1
+              title: Coffee X
+              category: coffee_shop
+              address: Санкт-Петербург, демонстрационный адрес
+              opened_at: '2026-09-15'
+            route: {distance_meters: 420, duration_seconds: 360}
+            assessment:
+              reasons: [Та же категория бизнеса, Пешая доступность, Открылась вчера]
+              recommendations: []
+        - name: event
+          payload:
+            type: event_upcoming
+            max_chat_id: 123456
+            tracked_location:
+              id: 11111111-1111-4111-8111-111111111111
+              name: Кофейня на Невском
+              address: Санкт-Петербург, Невский проспект, 28
+              business_type_id: 22222222-2222-4222-8222-222222222222
+            subject:
+              external_id: demo-concert-1
+              title: Концерт
+              date: '2026-09-17T16:00:00Z'
+            route: {distance_meters: 600, duration_seconds: 480}
+            assessment:
+              reasons: [Завтра вечером, Пешая доступность]
+              recommendations: [Проверить запас продукции]
+  schemas:
+    Notification:
+      type: object
+      required: [type, max_chat_id, tracked_location, subject, route, assessment]
+      properties:
+        type: {type: string, enum: [competitor_opened, event_upcoming]}
+        max_chat_id: {type: integer}
+        tracked_location:
+          type: object
+          required: [id, name, address, business_type_id]
+          properties:
+            id: {type: string, format: uuid}
+            name: {type: string, minLength: 1}
+            address: {type: string}
+            business_type_id: {type: string, format: uuid}
+        subject:
+          type: object
+          required: [external_id, title]
+          properties:
+            external_id: {type: string}
+            title:
+              type: string
+              description: Для конкурента name, для события info или нейтральное «Мероприятие».
+            category:
+              type: string
+              description: Необязательная подпись типа из источника; Event не требует категории.
+            address: {type: string}
+            opened_at: {type: string, format: date}
+            date: {type: string, format: date-time}
+        route:
+          type: object
+          required: [distance_meters, duration_seconds]
+          properties:
+            distance_meters: {type: number, minimum: 0}
+            duration_seconds: {type: number, minimum: 0}
+        assessment:
+          type: object
+          required: [reasons, recommendations]
+          properties:
+            reasons: {type: array, items: {type: string}}
+            recommendations: {type: array, items: {type: string}}
+      oneOf:
+        - properties:
+            type: {enum: [competitor_opened]}
+            subject: {required: [opened_at]}
+        - properties:
+            type: {enum: [event_upcoming]}
+            subject: {required: [date]}

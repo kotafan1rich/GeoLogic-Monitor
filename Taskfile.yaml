@@ -1,0 +1,109 @@
+version: '3'
+
+vars:
+  GOLANGCI_LINT_VERSION: 'v2.8.0'
+  GCI_VERSION: 'v0.13.7'
+  GOFUMPT_VERSION: 'v0.9.2'
+
+  BIN_DIR: '{{.ROOT_DIR}}/bin'
+  GOLANGCI_LINT: '{{.BIN_DIR}}/golangci-lint'
+  GCI: '{{.BIN_DIR}}/gci'
+  GOFUMPT: '{{.BIN_DIR}}/gofumpt'
+
+tasks:
+  default:
+    desc: "Показать список доступных задач"
+    cmds:
+      - task --list
+
+  api:up:
+    desc: "Собрать и запустить API"
+    cmds:
+      - docker compose up -d --build api
+
+  api:down:
+    desc: "Остановить API"
+    cmds:
+      - docker compose stop api
+
+  ingestion:up:
+    desc: "Собрать и запустить ingestion"
+    cmds:
+      - docker compose up -d --build ingestion
+
+  ingestion:down:
+    desc: "Остановить ingestion"
+    cmds:
+      - docker compose stop ingestion
+
+  bot:up:
+    desc: "Собрать и запустить бота"
+    cmds:
+      - docker compose up -d --build bot
+  
+  bot:tunel:
+    desc: "Запустить тунель для https"
+    cmds:
+      - cloudflared tunnel --url http://localhost:8082
+
+  bot:down:
+    desc: "Остановить бота"
+    cmds:
+      - docker compose stop bot
+
+  api-db:up:
+    desc: "Запустить базу данных API"
+    cmds:
+      - docker compose up -d api-db
+
+  api-db:down:
+    desc: "Остановить базу данных API"
+    cmds:
+      - docker compose stop api-db
+
+  ingestion-db:up:
+    desc: "Запустить базу данных ingestion"
+    cmds:
+      - docker compose up -d ingestion-db
+
+  ingestion-db:down:
+    desc: "Остановить базу данных ingestion"
+    cmds:
+      - docker compose stop ingestion-db
+
+  db:up:
+    desc: "Запустить обе базы данных"
+    cmds:
+      - docker compose up -d api-db ingestion-db
+
+  db:down:
+    desc: "Остановить обе базы данных"
+    cmds:
+      - docker compose stop api-db ingestion-db
+  
+  osrm:up:
+    desc: "Запустить osrm"
+    cmds:
+      - docker compose up -d osrm
+
+  osrm:down:
+    desc: "Остановить osrm"
+    cmds:
+      - docker compose stop osrm
+
+  all:up:
+    aliases: [app:up]
+    desc: "Собрать и запустить все сервисы"
+    cmds:
+      - docker compose up -d --build
+
+  all:down:
+    aliases: [app:down]
+    desc: "Остановить и удалить контейнеры всех сервисов"
+    cmds:
+      - docker compose down
+
+  logs:
+    desc: "Просмотр логов всех контейнеров"
+    cmds:
+      - docker compose logs -f

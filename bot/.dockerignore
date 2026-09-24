@@ -1,0 +1,40 @@
+# Git history and configuration
+.git
+.gitignore
+
+# Go build artifacts and binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+out/
+
+# Go tools and caching
+.golangci.yaml
+.golangci.yml
+*.out
+*.prof
+
+# Local vendor directories (unless you intentionally commit them)
+vendor/
+
+# Local configuration and environment variables
+.env
+.env.*
+*.local
+secrets/
+
+# IDEs and Text Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+#
