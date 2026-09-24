@@ -94,7 +94,7 @@ services:
   miniapp:
     build: ./miniapp
     ports:
-      - "8082:80"
+      - "8083:80"
     networks:
       - geo_logic_net
 

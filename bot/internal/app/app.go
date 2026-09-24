@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/config"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/middleware"
 )
 
 type App struct {
@@ -52,7 +53,10 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 		WriteTimeout: a.cfg.HttpServer.WriteTimeout,
 		IdleTimeout:  a.cfg.HttpServer.IdleTimeout,
 
-		Handler: a.diContainer.Handler(ctx).Routes(),
+		Handler: middleware.LoggerMiddleware(
+			a.diContainer.Log(),
+			a.diContainer.Handler(ctx).Routes(),
+		),
 	}
 	return nil
 }
@@ -81,7 +85,7 @@ func (a *App) Run(ctx context.Context) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	errChan := make(chan error, 1)
+	errChan := make(chan error, 2)
 
 	go func() {
 		err := a.httpServer.ListenAndServe()
@@ -89,10 +93,11 @@ func (a *App) Run(ctx context.Context) error {
 			log.Error("HTTP server failed to listen", "err", err)
 			errChan <- err
 		}
-		close(errChan)
 	}()
 
 	go func() {
+		log.Info("registering MAX webhook")
+
 		result, err := a.diContainer.MAXClient().Subscriptions.Subscribe(
 			ctx,
 			a.cfg.Security.WebhookUrl,
@@ -101,15 +106,17 @@ func (a *App) Run(ctx context.Context) error {
 			"",
 		)
 		if err != nil {
+			log.Error("failed to register MAX webhook", "err", err)
 			errChan <- fmt.Errorf("subscribe MAX webhook: %w", err)
-			close(errChan)
 			return
 		}
 		if !result.Success {
+			log.Error("MAX rejected webhook", "message", result.Message)
 			errChan <- fmt.Errorf("MAX rejected webhook: %s", result.Message)
-			close(errChan)
 			return
 		}
+
+		log.Info("MAX webhook registered")
 	}()
 
 	select {
