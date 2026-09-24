@@ -1,6 +1,25 @@
 name: geologic-monitor
 
 services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    env_file:
+      - ./env/caddy.env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - miniapp
+      - bot
+    networks:
+      - backend
+
   api:
     image: ${DOCKERHUB_OWNER}/geologic-monitor-api:${IMAGE_TAG}
     restart: unless-stopped
@@ -43,8 +62,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:8081:8080"
+    expose:
+      - "8080"
     networks:
       - backend
 
@@ -81,14 +100,16 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:8082:80"
+    expose:
+      - "80"
     networks:
       - backend
 
 volumes:
   api_db_data:
   osrm_graph:
+  caddy_data:
+  caddy_config:
 
 networks:
   backend:

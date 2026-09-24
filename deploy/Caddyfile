@@ -1,0 +1,17 @@
+{$APP_DOMAIN} {
+    handle /api/* {
+        reverse_proxy api:8080
+    }
+
+    handle /docs/* {
+        reverse_proxy api:8080
+    }
+
+    handle_path /bot/* {
+        reverse_proxy bot:8080
+    }
+
+    handle {
+        reverse_proxy miniapp:80
+    }
+}
