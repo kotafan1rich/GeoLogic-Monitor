@@ -11,6 +11,7 @@ import (
 const (
 	placesEndpoint = "3.0/items"
 	recordsPerPage = 10
+	maxPages       = 5
 	successCode    = 200
 
 	spbCityID = "5348647327760881"
@@ -45,7 +46,7 @@ func (c *Client) ParseCompetitors(ctx context.Context, category string, since ti
 
 		items = append(items, raw.Result.Items...)
 
-		if page >= totalPages {
+		if page >= totalPages || page >= maxPages {
 			break
 		}
 	}
