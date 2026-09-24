@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io
-  GHCR_OWNER: kotafan1rich
+  REGISTRY: docker.io
+  DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_USERNAME }}
 
 jobs:
   build:
@@ -22,7 +22,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: write
 
     strategy:
       fail-fast: false
@@ -55,12 +54,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v7
@@ -68,8 +67,8 @@ jobs:
           context: ${{ matrix.context }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.image }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.image }}:latest
+            ${{ env.REGISTRY }}/${{ env.DOCKERHUB_OWNER }}/${{ matrix.image }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.DOCKERHUB_OWNER }}/${{ matrix.image }}:latest
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
@@ -120,20 +119,20 @@ jobs:
             deploy/docker-compose.prod.yaml \
             "$PROD_USER@$PROD_HOST:$PROD_PATH/docker-compose.prod.yaml"
 
-      - name: Log in to GHCR on production server
+      - name: Log in to Docker Hub on production server
         env:
           PROD_HOST: ${{ vars.PROD_HOST }}
           PROD_PORT: ${{ vars.PROD_PORT }}
           PROD_USER: ${{ vars.PROD_USER }}
-          GHCR_USER: ${{ secrets.PROD_GHCR_USER }}
-          GHCR_TOKEN: ${{ secrets.PROD_GHCR_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.PROD_DOCKERHUB_TOKEN }}
         run: |
-          printf '%s' "$GHCR_TOKEN" |
+          printf '%s' "$DOCKERHUB_TOKEN" |
             ssh \
               -i ~/.ssh/production \
               -p "$PROD_PORT" \
               "$PROD_USER@$PROD_HOST" \
-              "docker login ghcr.io --username '$GHCR_USER' --password-stdin"
+              "docker login docker.io --username '$DOCKERHUB_USERNAME' --password-stdin"
 
       - name: Deploy containers
         env:
@@ -147,13 +146,13 @@ jobs:
             -i ~/.ssh/production \
             -p "$PROD_PORT" \
             "$PROD_USER@$PROD_HOST" \
-            "PROD_PATH='$PROD_PATH' IMAGE_TAG='$IMAGE_TAG' bash -s" <<'REMOTE'
+            "PROD_PATH='$PROD_PATH' DOCKERHUB_OWNER='$DOCKERHUB_OWNER' IMAGE_TAG='$IMAGE_TAG' bash -s" <<'REMOTE'
               set -euo pipefail
 
               cd "$PROD_PATH"
 
-              printf 'GHCR_OWNER=kotafan1rich\nIMAGE_TAG=%s\n' \
-                "$IMAGE_TAG" > deploy.env
+              printf 'DOCKERHUB_OWNER=%s\nIMAGE_TAG=%s\n' \
+                "$DOCKERHUB_OWNER" "$IMAGE_TAG" > deploy.env
 
               docker compose \
                 --env-file deploy.env \
