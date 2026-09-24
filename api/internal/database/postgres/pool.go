@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 )
 
@@ -64,6 +65,7 @@ func (p *pgxPool) Query(ctx context.Context, query string, args ...any) (databas
 
 	return p.pool.Query(ctx, query, args...)
 }
+
 func (p *pgxPool) Begin(ctx context.Context) (database.Tx, error) {
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {

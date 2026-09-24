@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  GOLANGCI_LINT_VERSION: 'v2.8.0'
+  GOLANGCI_LINT_VERSION: 'v2.13.2'
   GCI_VERSION: 'v0.13.7'
   GOFUMPT_VERSION: 'v0.9.2'
 
@@ -15,6 +15,35 @@ tasks:
     desc: "Показать список доступных задач"
     cmds:
       - task --list
+
+  tools:golangci-lint:
+    internal: true
+    status:
+      - test -x "{{.GOLANGCI_LINT}}"
+    env:
+      GOBIN: '{{.BIN_DIR}}'
+    cmds:
+      - mkdir -p "{{.BIN_DIR}}"
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+
+  lint:
+    desc: "Запустить линтер для всех Go-модулей"
+    deps:
+      - tools:golangci-lint
+    cmds:
+      - cd api && "{{.GOLANGCI_LINT}}" run --config ../.golangci.yaml ./...
+      - cd ingestion && "{{.GOLANGCI_LINT}}" run --config ../.golangci.yaml ./...
+      - cd bot && "{{.GOLANGCI_LINT}}" run --config ../.golangci.yaml ./...
+
+  format:
+    aliases: [fmt]
+    desc: "Отформатировать все Go-модули"
+    deps:
+      - tools:golangci-lint
+    cmds:
+      - cd api && "{{.GOLANGCI_LINT}}" fmt --config ../.golangci.yaml ./...
+      - cd ingestion && "{{.GOLANGCI_LINT}}" fmt --config ../.golangci.yaml ./...
+      - cd bot && "{{.GOLANGCI_LINT}}" fmt --config ../.golangci.yaml ./...
 
   api:up:
     desc: "Собрать и запустить API"

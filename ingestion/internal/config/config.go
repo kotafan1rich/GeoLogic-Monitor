@@ -6,20 +6,20 @@ import (
 )
 
 type Config struct {
-	Logger     LoggerConfig     `yaml:"logger"`
-	Scheduler  SchedulerConfig  `yaml:"scheduler"`
+	Logger     LoggerConfig
+	Scheduler  SchedulerConfig
 	Aggregator AggregatorConfig `yaml:"aggregator"`
 	GeoApi     GeoApiConfig     `yaml:"geo-api"`
 }
 
 type SchedulerConfig struct {
-	Infra  string `yaml:"infra"`
-	Events string `yaml:"events"`
+	Infra  string `env:"SCHEDULER_INFRA_CRON"  env-default:"0 3 1 * *"`
+	Events string `env:"SCHEDULER_EVENTS_CRON" env-default:"0 4 * * 1"`
 }
 
 type LoggerConfig struct {
-	Level  string `yaml:"level"`
-	Format string `yaml:"format"`
+	Level  string `env:"LOG_LEVEL"  env-default:"info"`
+	Format string `env:"LOG_FORMAT" env-default:"json"`
 }
 
 type RateLimitConfig struct {
@@ -56,7 +56,7 @@ type TwogisConfig struct {
 }
 
 type GeoApiConfig struct {
-	URL              string           `yaml:"url"`
+	URL              string           `env:"GEO_API_URL" env-default:"http://api:8080/"`
 	AuthToken        string           `env:"INGESTION_SERVICE_TOKEN" env-required:"true"`
 	Write            HTTPClientConfig `yaml:"write"`
 	Geocoding        HTTPClientConfig `yaml:"geocoding"`

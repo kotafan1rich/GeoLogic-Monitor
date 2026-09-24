@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v9"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 )

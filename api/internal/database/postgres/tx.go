@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/database"
 )
 

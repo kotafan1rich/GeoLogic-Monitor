@@ -1,0 +1,37 @@
+version: "2"
+
+run:
+  relative-path-mode: gomod
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  exclusions:
+    rules:
+      - text: Error return value of .*\.(Close|Shutdown).* is not checked
+        linters:
+          - errcheck
+      - text: QF1005
+        linters:
+          - staticcheck
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+  exclusions:
+    paths:
+      - internal/config/logging\.go$
+      - internal/domain/business_type\.go$
+      - internal/integrations/osrm/client\.go$

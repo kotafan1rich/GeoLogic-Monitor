@@ -28,7 +28,7 @@ func NewService(apiRepo ApiRepository, messager Messager) *service {
 
 func (s *service) RegisterUser(ctx context.Context, maxUserID, maxChatID int64) error {
 	user := domain.NewUser(maxUserID, maxChatID)
-	user, err := s.apiRepo.PutUser(ctx, user)
+	_, err := s.apiRepo.PutUser(ctx, user)
 	if err != nil {
 		return err
 	}
