@@ -20,7 +20,7 @@ const (
 func (c *Client) ParseCompetitors(ctx context.Context, category string, since time.Time) ([]Item, error) {
 	const op = "twogis.Client.ParseCompetitors"
 
-	query := c.buildQuery(category, spbCityID, since)
+	query := c.buildQuery(category, since)
 
 	var (
 		items      []Item
@@ -55,7 +55,7 @@ func (c *Client) ParseCompetitors(ctx context.Context, category string, since ti
 }
 
 func (c *Client) getPlaces(ctx context.Context, query url.Values, out *Response) error {
-	err := c.do(ctx, c.baseURL, placesEndpoint, query, out)
+	err := c.do(ctx, placesEndpoint, query, out)
 	if err != nil {
 		return err
 	}

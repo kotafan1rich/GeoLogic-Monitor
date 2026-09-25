@@ -17,7 +17,8 @@ const (
 
 	dateLayout = "2000-01-01"
 
-	pointField = "items.point"
+	fieldsList = "items.point,items.dates,items.rubrics"
+	sortOrder  = "creation_time"
 )
 
 type Client struct {
@@ -68,19 +69,18 @@ func MustNew(log *slog.Logger, req *infra.Requester, baseURL, apiKey string) *Cl
 	return c
 }
 
-func (c *Client) do(
-	ctx context.Context, baseURL *url.URL, endpoint string, query url.Values, out any,
-) error {
-	return c.req.JSON(ctx, http.MethodGet, infra.Target(baseURL, endpoint, query), nil, out)
+func (c *Client) do(ctx context.Context, endpoint string, query url.Values, out any) error {
+	return c.req.JSON(ctx, http.MethodGet, infra.Target(c.baseURL, endpoint, query), nil, out)
 }
 
-func (c *Client) buildQuery(category, cityID string, since time.Time) url.Values {
+func (c *Client) buildQuery(category string, since time.Time) url.Values {
 	return url.Values{
 		"q":                 {category},
 		"key":               {c.apiKey},
-		"city_id":           {cityID},
+		"city_id":           {spbCityID},
 		"opened_after_date": {since.Format(dateLayout)},
-		"fields":            {pointField},
+		"sort":              {sortOrder},
+		"fields":            {fieldsList},
 		"page_size":         {strconv.Itoa(recordsPerPage)},
 	}
 }
