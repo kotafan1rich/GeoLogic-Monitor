@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/broker"
 	"github.com/twmb/franz-go/pkg/kgo"
+
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/broker"
 )
 
 type Client struct {
@@ -129,8 +130,8 @@ func handleWithRetry(
 	message broker.Message,
 ) error {
 	err := handler(ctx, message)
-	if err != nil {
-		return err
+	if err == nil {
+		return nil
 	}
 
 	for _, backoff := range retryBackoffs {

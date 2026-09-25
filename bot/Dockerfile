@@ -14,9 +14,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 
 FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates tzdata
 
-COPY certs/russian_trusted_root_ca.crt /usr/local/share/ca-certificates/russian_trusted_root_ca.crt
+COPY certs/russian_trusted_root_ca.crt \
+    /usr/local/share/ca-certificates/russian_trusted_root_ca.crt
+
 RUN update-ca-certificates
 
 WORKDIR /app
