@@ -65,7 +65,7 @@ func (c *Client) do(
 	return c.req.Form(ctx, http.MethodPost, infra.Target(c.BaseURL, endpoint, query), query, out)
 }
 
-func (c *Client) buildQuery() string {
+func (c *Client) buildQuery() url.Values {
 	amenity := []string{
 		"cafe",
 		"restaurant",
@@ -88,5 +88,6 @@ func (c *Client) buildQuery() string {
 	fmt.Fprintf(&b, "  nwr(area.a)[\"healthcare\"~\"^(%s)$\"];\n", strings.Join(healthcare, "|"))
 	b.WriteString(");\n")
 	b.WriteString("out center meta;\n")
-	return b.String()
+
+	return url.Values{"data": {b.String()}}
 }

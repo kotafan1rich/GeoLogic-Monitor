@@ -2,7 +2,6 @@ package maps
 
 import (
 	"context"
-	"net/url"
 )
 
 const interpreterEndpoint = "interpreter"
@@ -10,8 +9,8 @@ const interpreterEndpoint = "interpreter"
 func (c *Client) GetBusinessInfra(ctx context.Context) ([]Element, error) {
 	var raw Response
 
-	q := c.buildQuery()
-	err := c.do(ctx, c.BaseURL, interpreterEndpoint, url.Values{"data": {q}}, &raw)
+	query := c.buildQuery()
+	err := c.do(ctx, c.BaseURL, interpreterEndpoint, query, &raw)
 	if err != nil {
 		return nil, err
 	}
