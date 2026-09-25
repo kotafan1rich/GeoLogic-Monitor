@@ -9,7 +9,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 )
 
-type OSRMRepository interface {
+type Repository interface {
 	WalkingDistances(
 		ctx context.Context,
 		src *domain.GeoPoint,
@@ -19,10 +19,10 @@ type OSRMRepository interface {
 
 type service struct {
 	log      *logger.Logger
-	osrmRepo OSRMRepository
+	osrmRepo Repository
 }
 
-func NewService(log *logger.Logger, osrmRepo OSRMRepository) *service {
+func NewService(log *logger.Logger, osrmRepo Repository) *service {
 	return &service{
 		log:      log,
 		osrmRepo: osrmRepo,

@@ -69,12 +69,12 @@ func (r *repository) GetUnnotifiedByPeriod(
 
 func (r *repository) GetUnnotifiedNear(
 	ctx context.Context,
-	geopoint *domain.GeoPoint,
+	geoPoint *domain.GeoPoint,
 	radius uint16,
 	from *time.Time,
 	to *time.Time,
 ) ([]*domain.Event, error) {
-	location := basemodel.GeoPoint(*geopoint)
+	location := basemodel.GeoPoint(*geoPoint)
 	return r.getMany(ctx, query.GetUnnotifiedNear, location, radius, from, to)
 }
 

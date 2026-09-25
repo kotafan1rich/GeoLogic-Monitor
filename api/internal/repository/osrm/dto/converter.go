@@ -8,7 +8,7 @@ import (
 func ToCoordinate(point *domain.GeoPoint) *osrm.Coordinate {
 	return &osrm.Coordinate{
 		Lat: point.Lat,
-		Lon: point.Lng,
+		Lon: point.Lon,
 	}
 }
 

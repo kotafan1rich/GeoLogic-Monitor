@@ -82,7 +82,7 @@ func TestReverse(t *testing.T) {
 	repo := &fakeRepository{address: want}
 	service := NewService(repo, testLogger())
 
-	result, err := service.Reverse(context.Background(), &domain.GeoPoint{Lat: 59.94, Lng: 30.32})
+	result, err := service.Reverse(context.Background(), &domain.GeoPoint{Lat: 59.94, Lon: 30.32})
 	if err != nil {
 		t.Fatalf("Reverse returned an error: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestReverseMapsClientError(t *testing.T) {
 	repositoryErr := errors.New("geocoder unavailable")
 	service := NewService(&fakeRepository{err: repositoryErr}, testLogger())
 
-	_, err := service.Reverse(context.Background(), &domain.GeoPoint{Lat: 59.94, Lng: 30.32})
+	_, err := service.Reverse(context.Background(), &domain.GeoPoint{Lat: 59.94, Lon: 30.32})
 	var appErr *apperrs.Error
 	if !errors.As(err, &appErr) || appErr.Code != "provider_unavailable" {
 		t.Fatalf("error: got %v, want provider_unavailable", err)

@@ -24,7 +24,7 @@ type InfraObject struct {
 func NewInfraObject(
 	externalID string,
 	typeID uuid.UUID,
-	geopoint *GeoPoint,
+	geoPoint *GeoPoint,
 	address string,
 	name *string,
 ) (*InfraObject, error) {
@@ -38,7 +38,7 @@ func NewInfraObject(
 	return &InfraObject{
 		ExternalID: externalID,
 		TypeID:     typeID,
-		GeoPoint:   *geopoint,
+		GeoPoint:   *geoPoint,
 		Address:    address,
 		Name:       name,
 	}, nil

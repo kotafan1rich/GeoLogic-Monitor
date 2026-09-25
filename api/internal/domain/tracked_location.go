@@ -18,14 +18,14 @@ func NewTrackedLocation(
 	businessTypeID uuid.UUID,
 	name string,
 	address string,
-	geopoint *GeoPoint,
+	geoPoint *GeoPoint,
 ) *TrackedLocation {
 	return &TrackedLocation{
 		UserID:         userID,
 		BusinessTypeID: businessTypeID,
 		Name:           name,
 		Address:        address,
-		GeoPoint:       *geopoint,
+		GeoPoint:       *geoPoint,
 	}
 }
 

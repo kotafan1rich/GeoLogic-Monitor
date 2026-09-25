@@ -15,19 +15,18 @@ type UserRepository interface {
 	Upsert(ctx context.Context, user *domain.User) (*domain.User, error)
 	GetByMaxUserID(ctx context.Context, maxUserID int64) (*domain.User, error)
 }
-type userService struct {
+type service struct {
 	repo UserRepository
 	log  *logger.Logger
 }
 
-func NewUserService(log *logger.Logger, repo UserRepository) *userService {
-	return &userService{log: log, repo: repo}
+func NewUserService(log *logger.Logger, repo UserRepository) *service {
+	return &service{log: log, repo: repo}
 }
 
-func (s *userService) Upsert(
+func (s *service) Upsert(
 	ctx context.Context,
-	maxUserID int64,
-	maxChatID int64,
+	maxUserID, maxChatID int64,
 ) (*domain.User, error) {
 	user, err := domain.NewUser(maxUserID, maxChatID)
 	if err != nil {
@@ -47,7 +46,7 @@ func (s *userService) Upsert(
 	return user, nil
 }
 
-func (s *userService) GetByMaxUserID(ctx context.Context, maxUserID int64) (*domain.User, error) {
+func (s *service) GetByMaxUserID(ctx context.Context, maxUserID int64) (*domain.User, error) {
 	user, err := s.repo.GetByMaxUserID(ctx, maxUserID)
 	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {

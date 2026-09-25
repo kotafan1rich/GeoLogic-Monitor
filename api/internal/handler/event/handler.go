@@ -20,7 +20,7 @@ import (
 const dateLayout = "2006-01-02"
 
 type EventService interface {
-	Upsert(ctx context.Context, provider string, externalID string, lat float64, lng float64, date time.Time, info *string) (*domain.Event, error)
+	Upsert(ctx context.Context, provider string, externalID string, lat float64, lon float64, date time.Time, info *string) (*domain.Event, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Event, error)
 	GetUnnotifiedByPeriod(ctx context.Context, from, to time.Time) ([]*domain.Event, error)
 	GetUnnotifiedNear(

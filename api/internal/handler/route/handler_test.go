@@ -39,10 +39,10 @@ func TestWalkingDistances(t *testing.T) {
 	if got := response.Body.String(); got != "{\"distances\":[1557.6,null]}\n" {
 		t.Fatalf("body: got %q", got)
 	}
-	if service.src == nil || service.src.Lat != 59.939095 || service.src.Lng != 30.315868 {
+	if service.src == nil || service.src.Lat != 59.939095 || service.src.Lon != 30.315868 {
 		t.Fatalf("unexpected source: %+v", service.src)
 	}
-	if len(service.dst) != 2 || service.dst[1].Lat != 59.936 || service.dst[1].Lng != 30.327 {
+	if len(service.dst) != 2 || service.dst[1].Lat != 59.936 || service.dst[1].Lon != 30.327 {
 		t.Fatalf("unexpected destinations: %+v", service.dst)
 	}
 }

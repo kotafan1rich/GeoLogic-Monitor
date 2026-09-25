@@ -18,7 +18,7 @@ func InfraObjectToResponse(infraObject domain.InfraObject) *InfraObjectResponse 
 		ExternalID: infraObject.ExternalID,
 		TypeID:     infraObject.TypeID,
 		Lat:        infraObject.GeoPoint.Lat,
-		Lon:        infraObject.GeoPoint.Lng,
+		Lon:        infraObject.GeoPoint.Lon,
 		Address:    infraObject.Address,
 		Name:       infraObject.Name,
 	}
