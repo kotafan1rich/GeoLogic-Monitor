@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/maps"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
@@ -19,6 +20,7 @@ const schedulerName = "ingestion"
 
 const (
 	digitalSpbClient      = "digitalspb"
+	mapsClient            = "maps-mail-ru"
 	geoAPIWriteClient     = "geo-api:write"
 	geoAPIGeocodingClient = "geo-api:geocoding"
 )
@@ -27,6 +29,8 @@ type diContainer struct {
 	log       *slog.Logger
 	dsc       *digitalspb.Client
 	ds        *job.DigitalSpb
+	maps      *maps.Client
+	m         *job.Maps
 	infraJob  *job.Job
 	eventsJob *job.Job
 	s         *scheduler.Scheduler
@@ -95,6 +99,19 @@ func (d *diContainer) DSClient() *digitalspb.Client {
 	return d.dsc
 }
 
+func (d *diContainer) MapsClient() *maps.Client {
+	if d.maps == nil {
+		cfg := config.Get()
+
+		req := d.requester(mapsClient, cfg.Aggregator.Maps.HTTP, "", false)
+
+		d.maps = maps.MustNew(d.Logger(), req, cfg.Aggregator.Maps.BaseURL)
+
+		d.Logger().Info("maps-mail-ru client initialized")
+	}
+	return d.maps
+}
+
 func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 	if d.ds == nil {
 		cfg := config.Get()
@@ -120,6 +137,27 @@ func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 	return d.ds
 }
 
+func (d *diContainer) Maps() *job.Maps {
+	if d.m == nil {
+		cfg := config.Get()
+
+		d.m = job.NewMaps(
+			d.Logger(),
+			d.MapsClient(),
+			d.GeoApiClient(),
+			d.TypeRegistry(),
+			cfg.GeoApi.WriteConcurrency,
+		)
+
+		d.Logger().Info(
+			"datasets source initialized",
+			slog.String("source", job.MapsName),
+			slog.Int("write_concurrency", cfg.GeoApi.WriteConcurrency),
+		)
+	}
+	return d.m
+}
+
 func (d *diContainer) InfraJob() *job.Job {
 	if d.infraJob == nil {
 		cfg := config.Get()
@@ -129,6 +167,7 @@ func (d *diContainer) InfraJob() *job.Job {
 			cfg.Scheduler.Infra,
 			d.Logger(),
 			d.DigitalSpb().InfraDatasets,
+			d.Maps().InfraDatasets,
 		)
 
 		d.logJob(d.infraJob)
