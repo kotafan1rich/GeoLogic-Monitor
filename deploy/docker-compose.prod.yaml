@@ -142,8 +142,6 @@ services:
         limits:
           cpus: "1.00"
           memory: 600M
-    volumes:
-      - osrm_graph:/data
     networks:
       - backend
 
@@ -166,7 +164,6 @@ services:
 volumes:
   api_db_data:
   kafka_data:
-  osrm_graph:
   caddy_data:
   caddy_config:
 
