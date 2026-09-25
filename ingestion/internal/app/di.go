@@ -30,6 +30,7 @@ type diContainer struct {
 	dsc       *digitalspb.Client
 	ds        *job.DigitalSpb
 	maps      *maps.Client
+	m         *job.Maps
 	infraJob  *job.Job
 	eventsJob *job.Job
 	s         *scheduler.Scheduler
@@ -136,6 +137,27 @@ func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 	return d.ds
 }
 
+func (d *diContainer) Maps() *job.Maps {
+	if d.m == nil {
+		cfg := config.Get()
+
+		d.m = job.NewMaps(
+			d.Logger(),
+			d.MapsClient(),
+			d.GeoApiClient(),
+			d.TypeRegistry(),
+			cfg.GeoApi.WriteConcurrency,
+		)
+
+		d.Logger().Info(
+			"datasets source initialized",
+			slog.String("source", job.MapsName),
+			slog.Int("write_concurrency", cfg.GeoApi.WriteConcurrency),
+		)
+	}
+	return d.m
+}
+
 func (d *diContainer) InfraJob() *job.Job {
 	if d.infraJob == nil {
 		cfg := config.Get()
@@ -145,6 +167,7 @@ func (d *diContainer) InfraJob() *job.Job {
 			cfg.Scheduler.Infra,
 			d.Logger(),
 			d.DigitalSpb().InfraDatasets,
+			d.Maps().InfraDatasets,
 		)
 
 		d.logJob(d.infraJob)

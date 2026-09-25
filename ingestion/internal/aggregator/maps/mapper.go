@@ -7,6 +7,8 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
+const providerPrefix = "maps"
+
 const (
 	datasetSubway            = "subway"
 	datasetRailwayStation    = "railway_station"
@@ -202,13 +204,13 @@ func matchSlug(v string, t map[string]string) string {
 }
 
 func externalID(dataset string, id int64) string {
-	return fmt.Sprintf("%s:%d", dataset, id)
+	return fmt.Sprintf("%s:%s:%d", providerPrefix, dataset, id)
 }
 
 func address(t map[string]string) string {
 	street, ok := t["addr:street"]
 	if !ok {
-		return ""
+		return "mock-address"
 	}
 
 	houseNumber, ok := t["addr:housenumber"]

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	a "github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
 )
 
@@ -18,7 +19,7 @@ const (
 )
 
 type Client struct {
-	BaseURL *url.URL
+	BaseURL a.URL
 	log     *slog.Logger
 	req     *infra.Requester
 }
@@ -36,7 +37,7 @@ func New(log *slog.Logger, req *infra.Requester, baseURL string) (*Client, error
 		return nil, ErrInvalidURL
 	}
 
-	parsedURL, err := url.Parse(baseURL)
+	parsedURL, err := a.NewURL(baseURL)
 	if err != nil {
 		return nil, ErrParseURL
 	}
@@ -62,7 +63,7 @@ func MustNew(log *slog.Logger, req *infra.Requester, baseURL string) *Client {
 func (c *Client) do(
 	ctx context.Context, baseURL *url.URL, endpoint string, query url.Values, out any,
 ) error {
-	return c.req.Form(ctx, http.MethodPost, infra.Target(c.BaseURL, endpoint, query), query, out)
+	return c.req.Form(ctx, http.MethodPost, infra.Target(baseURL, endpoint, query), query, out)
 }
 
 func (c *Client) buildQuery() url.Values {
