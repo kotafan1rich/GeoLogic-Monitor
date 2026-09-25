@@ -52,22 +52,44 @@ geo-api:
       rps: 3
       burst: 1
   infra_types:
-    - { slug: subway, name: "Станция метро", weight: 10, max_radius: 800 }
-    - { slug: railway_station, name: "Вокзал", weight: 7, max_radius: 1000 }
-    - { slug: hotel, name: "Гостиница", weight: 4, max_radius: 500 }
-    - { slug: museum, name: "Музей", weight: 4, max_radius: 600 }
-    - { slug: theatre, name: "Театр", weight: 3, max_radius: 500 }
-    - { slug: restaurant, name: "Ресторан", weight: 3, max_radius: 300 }
-    - { slug: exhibition_hall, name: "Выставочный зал", weight: 2, max_radius: 500 }
-    - { slug: pharmacy, name: "Аптека", weight: 2, max_radius: 300 }
-    - { slug: cinema, name: "Кинотеатр", weight: 3, max_radius: 500 }
-    - { slug: vet_clinic, name: "Ветклиника", weight: 2, max_radius: 500 }
-    - { slug: park, name: "Парк", weight: 3, max_radius: 600 }
-    - { slug: sports_center, name: "Спортивный центр", weight: 3, max_radius: 500 }
-    - { slug: zoo, name: "Зоопарк", weight: 3, max_radius: 800 }
-    - { slug: education_center, name: "Образовательный центр", weight: 2, max_radius: 400 }
-    - { slug: game_center, name: "Игровой центр", weight: 2, max_radius: 400 }
-    - { slug: playground, name: "Детская площадка", weight: 2, max_radius: 300 }
-    - { slug: library, name: "Библиотека", weight: 1, max_radius: 400 }
-    - { slug: camp, name: "Лагерь", weight: 1, max_radius: 500 }
-    - { slug: other, name: "Прочее", weight: 1, max_radius: 300 }
+    - { slug: subway,            name: "Станция метро",        weight: 10, max_radius: 800,  osm: [subway_entrance] }
+    - { slug: railway_station,   name: "Вокзал",               weight: 7,  max_radius: 1000, osm: [station] }
+    - { slug: hotel,             name: "Гостиница",            weight: 4,  max_radius: 500,  osm: [hotel, hostel] }
+    - { slug: museum,            name: "Музей",                weight: 4,  max_radius: 600,  osm: [museum] }
+    - { slug: theatre,           name: "Театр",                weight: 3,  max_radius: 500,  osm: [theatre] }
+    - { slug: cinema,            name: "Кинотеатр",            weight: 3,  max_radius: 500,  osm: [cinema] }
+    - { slug: exhibition_hall,   name: "Выставочный зал",      weight: 2,  max_radius: 500,  osm: [gallery, arts_centre] }
+    - { slug: zoo,               name: "Зоопарк",              weight: 3,  max_radius: 800,  osm: [zoo] }
+    - { slug: park,              name: "Парк",                 weight: 3,  max_radius: 600,  osm: [park] }
+    - { slug: playground,        name: "Детская площадка",     weight: 2,  max_radius: 300,  osm: [playground] }
+    - { slug: library,           name: "Библиотека",           weight: 1,  max_radius: 400,  osm: [library] }
+    - { slug: camp,              name: "Лагерь",               weight: 1,  max_radius: 500,  osm: [camp_site] }
+    - { slug: education_center,  name: "Образовательный центр", weight: 2, max_radius: 400,  osm: [school, university, college] }
+    - { slug: game_center,       name: "Игровой центр",        weight: 2,  max_radius: 400,  osm: [adult_gaming_centre, escape_game] }
+    - { slug: sports_center,     name: "Спортивный центр",     weight: 3,  max_radius: 500,  osm: [fitness_centre, sports_centre] }
+    - { slug: supermarket,       name: "Супермаркет",          weight: 6,  max_radius: 500,  osm: [supermarket] }
+    - { slug: mall,              name: "Торговый центр",       weight: 6,  max_radius: 700,  osm: [mall, department_store] }
+    - { slug: pvz,               name: "ПВЗ",                  weight: 4,  max_radius: 400,  osm: [outpost, parcel_locker] }
+    - { slug: grocery,           name: "Продукты у дома",      weight: 3,  max_radius: 300,
+        osm: [convenience, greengrocer, butcher, seafood, deli, farm, dairy, cheese, nuts, health_food, frozen_food, spices, honey, chocolate] }
+    - { slug: restaurant,        name: "Ресторан",             weight: 3,  max_radius: 300,  osm: [restaurant, bar, pub] }
+    - { slug: cafe,              name: "Кафе",                 weight: 3,  max_radius: 250,  osm: [cafe] }
+    - { slug: coffee,            name: "Кофейня",              weight: 3,  max_radius: 250,  osm: [coffee] }
+    - { slug: fastfood,          name: "Фастфуд",              weight: 3,  max_radius: 300,  osm: [fast_food, food_court] }
+    - { slug: bakery,            name: "Пекарня",              weight: 2,  max_radius: 250,  osm: [bakery, pastry, confectionery] }
+    - { slug: alcohol,           name: "Алкомаркет",           weight: 2,  max_radius: 300,  osm: [alcohol, wine, beverages, brewing_supplies] }
+    - { slug: beauty,            name: "Салон красоты",        weight: 2,  max_radius: 300,  osm: [beauty, hairdresser, massage, tattoo, piercing, spa] }
+    - { slug: pharmacy,          name: "Аптека",               weight: 2,  max_radius: 300,  osm: [pharmacy, chemist, medical_supply, nutrition_supplements, orthopedics, herbalist] }
+    - { slug: medical_center,    name: "Медцентр",             weight: 3,  max_radius: 500,  osm: [clinic, doctors] }
+    - { slug: dental,            name: "Стоматология",         weight: 2,  max_radius: 400,  osm: [dentist] }
+    - { slug: vet_clinic,        name: "Ветклиника",           weight: 2,  max_radius: 500,  osm: [veterinary] }
+    - { slug: pet,               name: "Зоомагазин",           weight: 2,  max_radius: 400,  osm: [pet, pet_grooming] }
+    - { slug: optician,          name: "Оптика",               weight: 1,  max_radius: 400,  osm: [optician, hearing_aids] }
+    - { slug: flowers,           name: "Цветы",                weight: 1,  max_radius: 300,  osm: [florist] }
+    - { slug: laundry,           name: "Прачечная / химчистка", weight: 1, max_radius: 300,  osm: [laundry, dry_cleaning] }
+    - { slug: copyshop,          name: "Копицентр",            weight: 1,  max_radius: 300,  osm: [copyshop, photo, photo_studio, printing] }
+    - { slug: workshop,          name: "Мастерская",           weight: 1,  max_radius: 300,  osm: [shoe_repair, tailor, sewing, watches, key_cutter, locksmith, repair] }
+    - { slug: electronics_repair, name: "Ремонт техники",      weight: 1,  max_radius: 300,  osm: [mobile_phone, electronics, computer, radiotechnics, hifi] }
+    - { slug: car_service,       name: "Автосервис",           weight: 1,  max_radius: 600,  osm: [car_repair, car_parts, tyres, tyres_repair, motorcycle_repair] }
+    - { slug: car_wash,          name: "Автомойка",            weight: 1,  max_radius: 600,  osm: [car_wash] }
+    - { slug: other,             name: "Прочее",               weight: 1,  max_radius: 300,  osm: [] }
