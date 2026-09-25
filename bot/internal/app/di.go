@@ -7,6 +7,8 @@ import (
 
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/broker"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/broker/kafka"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot/start"
@@ -33,6 +35,7 @@ type diContainer struct {
 	apiRepo        repository.ApiRepository
 	apiClient      api.ApiClient
 	messenger      repository.Messenger
+	brokerConsumer broker.Consumer
 	maxClient      *maxbot.Api
 	dispatcher     webhook.Dispatcher
 }
@@ -123,6 +126,21 @@ func (d *diContainer) Messenger() repository.Messenger {
 	return d.messenger
 }
 
+func (d *diContainer) NewBrokerConsumer() (broker.Consumer, error) {
+	if d.brokerConsumer == nil {
+		kafkaClient, err := kafka.New(
+			d.cfg.Kafka.Brokers(),
+			d.cfg.Kafka.Topic,
+			d.cfg.Kafka.GroupID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		d.brokerConsumer = kafkaClient
+	}
+	return d.brokerConsumer, nil
+}
+
 func (d *diContainer) MAXClient() *maxbot.Api {
 	if d.maxClient == nil {
 		client, err := maxbot.NewApi(d.cfg.Security.MaxBotToken)
@@ -132,7 +150,6 @@ func (d *diContainer) MAXClient() *maxbot.Api {
 
 		d.maxClient = client
 	}
-
 	return d.maxClient
 }
 
