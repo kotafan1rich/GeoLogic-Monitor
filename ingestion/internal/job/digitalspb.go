@@ -47,7 +47,7 @@ func NewDigitalSpb(
 	log *slog.Logger,
 	client *digitalspb.Client,
 	staticFiles map[string]string,
-	writer DigitalSpbWriter,
+	writer Writer,
 	types TypeResolver,
 	convert digitalspb.AddressConverter,
 	address digitalspb.CoordinatesConverter,

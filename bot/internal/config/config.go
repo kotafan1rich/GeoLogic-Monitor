@@ -12,6 +12,7 @@ type Config struct {
 	Api        Api
 	Logging    Logging
 	Security   Security
+	Kafka      Kafka
 }
 
 func LoadConfig() (*Config, error) {

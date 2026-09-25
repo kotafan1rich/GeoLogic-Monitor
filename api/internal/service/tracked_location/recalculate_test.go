@@ -54,7 +54,7 @@ func TestRecalculateAllContinuesAfterFailure(t *testing.T) {
 			history := &ratingHistoryRepository{failID: repo.locations[0].ID, failure: failure}
 			s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(), history)
 			if !errors.Is(failure, domainerrs.ErrTrackedLocationNotFound) {
-				s.infraServie = &failingOnceInfra{failure: failure}
+				s.infraService = &failingOnceInfra{failure: failure}
 			}
 			if err := s.RecalculateAll(context.Background()); err != nil {
 				t.Fatal(err)
@@ -73,7 +73,7 @@ func TestRecalculateAllStopsOnCancellation(t *testing.T) {
 	defer cancel()
 	history := &ratingHistoryRepository{}
 	s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(), history)
-	s.infraServie = cancellingInfra{cancel: cancel}
+	s.infraService = cancellingInfra{cancel: cancel}
 	if err := s.RecalculateAll(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v, want context.Canceled", err)
 	}
