@@ -32,7 +32,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: 256M
+          memory: 192M
     env_file:
       - ./env/api.env
     depends_on:
@@ -60,7 +60,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: 128M
+          memory: 96M
     env_file:
       - ./env/ingestion.env
     depends_on:
@@ -76,7 +76,7 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: 128M
+          memory: 96M
     env_file:
       - ./env/bot.env
     depends_on:
@@ -94,7 +94,7 @@ services:
       resources:
         limits:
           cpus: "1.00"
-          memory: 384M
+          memory: 320M
     env_file:
       - ./env/api-db.env
     volumes:
@@ -118,7 +118,7 @@ services:
       resources:
         limits:
           cpus: "1.00"
-          memory: 768M
+          memory: 600M
     volumes:
       - osrm_graph:/data
     networks:
