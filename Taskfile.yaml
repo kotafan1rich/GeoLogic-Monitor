@@ -119,6 +119,16 @@ tasks:
     desc: "Остановить osrm"
     cmds:
       - docker compose stop osrm
+  
+  kafka:up:
+    desc: "Запустить kafka"
+    cmds:
+      - docker compose up -d kafka
+
+  kafka:down:
+    desc: "Остановить kafka"
+    cmds:
+      - docker compose stop kafka
 
   all:up:
     aliases: [app:up]

@@ -2,9 +2,12 @@ package max
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
+
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/errs"
 )
 
 type repository struct {
@@ -23,6 +26,14 @@ func (r *repository) SendMessage(ctx context.Context, chatID int64, text string)
 		maxbot.NewMessage().SetChat(chatID).SetText(text),
 	)
 	if err != nil {
+		var apiErr *maxbot.Error
+		if errors.As(err, &apiErr) && apiErr.Code == "chat.not.found" {
+			return fmt.Errorf(
+				"%w: chat_id=%d",
+				errs.ErrChatNotFound,
+				chatID,
+			)
+		}
 		return fmt.Errorf("send message through MAX API: %w", err)
 	}
 	return nil

@@ -7,11 +7,15 @@ import (
 
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/broker"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/broker/kafka"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/config"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/bot/start"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/http"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/http/webhook"
+	kafkahandler "github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/handler/kafka"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/integrations"
 	apiintegration "github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/integrations/api"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/logger"
@@ -20,21 +24,25 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/repository/max"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/server"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/service"
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/service/notification"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/service/onboarding"
 )
 
 type diContainer struct {
-	cfg            *config.Config
-	log            *logger.Logger
-	startHandler   bot.StartHandler
-	userService    service.OnboardingService
-	webhookHandler http.WebhookHandler
-	handler        server.Handler
-	apiRepo        repository.ApiRepository
-	apiClient      api.ApiClient
-	messenger      repository.Messenger
-	maxClient      *maxbot.Api
-	dispatcher     webhook.Dispatcher
+	cfg                 *config.Config
+	log                 *logger.Logger
+	startHandler        bot.StartHandler
+	userService         service.OnboardingService
+	notificationService service.NotificationService
+	webhookHandler      handler.WebhookHandler
+	notificationHandler handler.NotificationHandler
+	handler             server.Handler
+	apiRepo             repository.ApiRepository
+	apiClient           api.ApiClient
+	messenger           repository.Messenger
+	brokerConsumer      broker.Consumer
+	maxClient           *maxbot.Api
+	dispatcher          webhook.Dispatcher
 }
 
 func NewDIContainer(cfg *config.Config) *diContainer {
@@ -89,6 +97,16 @@ func (d *diContainer) UserService() service.OnboardingService {
 	return d.userService
 }
 
+func (d *diContainer) NotificationService() service.NotificationService {
+	if d.notificationService == nil {
+		d.notificationService = notification.New(
+			d.Messenger(),
+		)
+	}
+
+	return d.notificationService
+}
+
 func (d *diContainer) WebhookHandler() http.WebhookHandler {
 	if d.webhookHandler == nil {
 		d.webhookHandler = webhook.NewHandler(
@@ -96,6 +114,16 @@ func (d *diContainer) WebhookHandler() http.WebhookHandler {
 		)
 	}
 	return d.webhookHandler
+}
+
+func (d *diContainer) NotificationHandler() handler.NotificationHandler {
+	if d.notificationHandler == nil {
+		d.notificationHandler = kafkahandler.NewHandler(
+			d.Log(),
+			d.NotificationService(),
+		)
+	}
+	return d.notificationHandler
 }
 
 func (d *diContainer) ApiRepository() repository.ApiRepository {
@@ -123,6 +151,21 @@ func (d *diContainer) Messenger() repository.Messenger {
 	return d.messenger
 }
 
+func (d *diContainer) NewBrokerConsumer() (broker.Consumer, error) {
+	if d.brokerConsumer == nil {
+		kafkaClient, err := kafka.New(
+			d.cfg.Kafka.Brokers(),
+			d.cfg.Kafka.Topic,
+			d.cfg.Kafka.GroupID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		d.brokerConsumer = kafkaClient
+	}
+	return d.brokerConsumer, nil
+}
+
 func (d *diContainer) MAXClient() *maxbot.Api {
 	if d.maxClient == nil {
 		client, err := maxbot.NewApi(d.cfg.Security.MaxBotToken)
@@ -132,13 +175,15 @@ func (d *diContainer) MAXClient() *maxbot.Api {
 
 		d.maxClient = client
 	}
-
 	return d.maxClient
 }
 
 func (d *diContainer) Dispatcher() webhook.Dispatcher {
 	if d.dispatcher == nil {
-		d.dispatcher = bot.NewDispatcher(d.StartHandler())
+		d.dispatcher = bot.NewDispatcher(
+			d.Log(),
+			d.StartHandler(),
+		)
 	}
 	return d.dispatcher
 }
