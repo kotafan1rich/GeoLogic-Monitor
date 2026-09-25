@@ -3,8 +3,9 @@ package bot
 import (
 	"context"
 
-	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/logger"
 	"github.com/max-messenger/max-bot-api-client-go/v2/model"
+
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/logger"
 )
 
 type StartHandler interface {

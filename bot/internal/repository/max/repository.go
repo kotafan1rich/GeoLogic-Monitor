@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/errs"
 	maxbot "github.com/max-messenger/max-bot-api-client-go/v2"
+
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/errs"
 )
 
 type repository struct {
