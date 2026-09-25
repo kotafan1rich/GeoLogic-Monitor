@@ -16,6 +16,18 @@ aggregator:
       yazzh_gate: "https://yazzh.gate.petersburg.ru"
     static_files:
       subway: "static/subway.json"
+  maps:
+    http:
+      max_idle_conns: 1
+      max_idle_conns_per_host: 1
+      max_conns_per_host: 1
+      request_timeout: 120s
+      attempt_timeout: 30s
+      max_retries: 3
+      rate_limit:
+        rps: 0
+        burst: 0
+    base_url: "https://maps.mail.ru/osm/tools/overpass/api/"
 
 geo-api:
   write:
