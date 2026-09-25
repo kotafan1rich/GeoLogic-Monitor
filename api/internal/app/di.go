@@ -21,6 +21,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/geocoder"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository"
 	businesstyperepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/business_type"
 	eventrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/event"
 	infraobjectrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/database/infra_object"
@@ -31,11 +32,13 @@ import (
 	geocoderrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/geocoder"
 	osrmrepository "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/repository/osrm"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/scheduler"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service"
 	businesstypeservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/business_type"
 	calculateservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/calculate"
 	eventservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/event"
 	geocodingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/geocoding"
-	infraservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra"
+	infraobjservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra_object"
+	infratypeservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/infra_type"
 	osrmservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/osrm"
 	ratingservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating"
 	ratinghistoryservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/rating_history"
@@ -43,67 +46,36 @@ import (
 	userservice "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/user"
 )
 
-type userService interface {
-	userhandler.UserService
-	trackedlocationhandler.UserService
-}
-
-type businessTypeService interface {
-	businesstypehandler.BusinessTypeService
-	trackedlocationservice.BusinessTypeService
-}
-
-type infraService interface {
-	infrahandler.InfraService
-	trackedlocationservice.InfraService
-}
-
-type trackedLocationService interface {
-	scheduler.RatingService
-	ratinghistoryservice.TrackedLocationService
-	trackedlocationhandler.TrackedLocationService
-}
-
-type ratingRepository interface {
-	ratingservice.RatingRepository
-	ratinghistoryservice.RatingRepository
-}
-
-type osrmService interface {
-	trackedlocationservice.OSRMService
-	routeshandler.OSRMService
-}
-
 type diContainer struct {
 	cfg                       *config.Config
 	db                        database.DBTX
 	txManager                 database.TxManager
 	log                       *logger.Logger
-	businessTypeRepository    businesstypeservice.Repository
-	eventRepository           eventservice.EventRepository
-	infraObjectRepository     infraservice.InfraRepository
-	infraTypeRepository       infraservice.InfraTypeRepository
-	ratingRepository          ratingRepository
-	trackedLocationRepository trackedlocationservice.TrackedLocationRepository
-	userRepository            userservice.UserRepository
-	osrmRepository            osrmservice.OSRMRepository
-	geocoderRepository        geocodingservice.Repository
-	geocodingService          geocodinghandler.GeocodingService
-	osrmService               osrmService
-	ratingService             ratingservice.Service
-	ratingHistoryService      ratinghistoryservice.Service
-	trackedLocationService    trackedLocationService
-	userService               userService
-	businessTypeService       businessTypeService
-	infraTypeService          infrahandler.InfraTypeService
-	infraService              infraService
+	businessTypeRepository    repository.BusinessType
+	eventRepository           repository.Event
+	infraObjectRepository     repository.InfraObject
+	infraTypeRepository       repository.InfraType
+	ratingRepository          repository.Rating
+	trackedLocationRepository repository.TrackedLocation
+	userRepository            repository.User
+	osrmRepository            repository.OSRM
+	geocoderRepository        repository.Geocoder
+	geocodingService          service.Geocoding
+	osrmService               service.OSRM
+	ratingService             service.Rating
+	ratingHistoryService      service.RatingHistory
+	trackedLocationService    service.TrackedLocation
+	userService               service.User
+	businessTypeService       service.BusinessType
+	infraTypeService          service.InfraType
+	infraService              service.InfraObj
+	eventService              service.Event
 	healthHandler             handler.HealthHandler
 	userHandler               handler.UserHandler
 	geocodingHandler          handler.GeocodingHandler
 	trackedLocationHandler    handler.TrackedLocationHandler
 	businessTypeHandler       handler.BusinessTypeHandler
 	infraHandler              handler.InfraHandler
-	eventService              eventhandler.EventService
 	eventHandler              handler.EventHandler
 	routesHandler             handler.RoutesHandler
 	handler                   api.Handler
@@ -160,56 +132,56 @@ func (d *diContainer) Log() *logger.Logger {
 	return d.log
 }
 
-func (d *diContainer) BusinessTypeRepository(ctx context.Context) businesstypeservice.Repository {
+func (d *diContainer) BusinessTypeRepository(ctx context.Context) repository.BusinessType {
 	if d.businessTypeRepository == nil {
 		d.businessTypeRepository = businesstyperepository.NewRepository(d.DB(ctx))
 	}
 	return d.businessTypeRepository
 }
 
-func (d *diContainer) EventRepository(ctx context.Context) eventservice.EventRepository {
+func (d *diContainer) EventRepository(ctx context.Context) repository.Event {
 	if d.eventRepository == nil {
 		d.eventRepository = eventrepository.NewRepository(d.DB(ctx))
 	}
 	return d.eventRepository
 }
 
-func (d *diContainer) InfraObjectRepository(ctx context.Context) infraservice.InfraRepository {
+func (d *diContainer) InfraObjectRepository(ctx context.Context) repository.InfraObject {
 	if d.infraObjectRepository == nil {
 		d.infraObjectRepository = infraobjectrepository.NewRepository(d.DB(ctx))
 	}
 	return d.infraObjectRepository
 }
 
-func (d *diContainer) InfraTypeRepository(ctx context.Context) infraservice.InfraTypeRepository {
+func (d *diContainer) InfraTypeRepository(ctx context.Context) repository.InfraType {
 	if d.infraTypeRepository == nil {
 		d.infraTypeRepository = infratyperepository.NewRepository(d.DB(ctx))
 	}
 	return d.infraTypeRepository
 }
 
-func (d *diContainer) RatingRepository(ctx context.Context) ratingRepository {
+func (d *diContainer) RatingRepository(ctx context.Context) repository.Rating {
 	if d.ratingRepository == nil {
 		d.ratingRepository = ratingrepository.NewRepository(d.DB(ctx))
 	}
 	return d.ratingRepository
 }
 
-func (d *diContainer) TrackedLocationRepository(ctx context.Context) trackedlocationservice.TrackedLocationRepository {
+func (d *diContainer) TrackedLocationRepository(ctx context.Context) repository.TrackedLocation {
 	if d.trackedLocationRepository == nil {
 		d.trackedLocationRepository = trackedlocationrepository.NewRepository(d.DB(ctx))
 	}
 	return d.trackedLocationRepository
 }
 
-func (d *diContainer) UserRepository(ctx context.Context) userservice.UserRepository {
+func (d *diContainer) UserRepository(ctx context.Context) repository.User {
 	if d.userRepository == nil {
 		d.userRepository = userrepository.NewRepository(d.DB(ctx))
 	}
 	return d.userRepository
 }
 
-func (d *diContainer) OSRMRepository() osrmservice.OSRMRepository {
+func (d *diContainer) OSRMRepository() repository.OSRM {
 	if d.osrmRepository == nil {
 		client := &http.Client{Timeout: d.cfg.OSRM.Timeout}
 		osrmClient := osrm.New(client, d.cfg.OSRM.BaseURL)
@@ -218,7 +190,7 @@ func (d *diContainer) OSRMRepository() osrmservice.OSRMRepository {
 	return d.osrmRepository
 }
 
-func (d *diContainer) OSRMService() osrmService {
+func (d *diContainer) OSRMService() service.OSRM {
 	if d.osrmService == nil {
 		d.osrmService = osrmservice.NewService(d.Log(), d.OSRMRepository())
 	}
@@ -232,7 +204,7 @@ func (d *diContainer) RoutesHandler() handler.RoutesHandler {
 	return d.routesHandler
 }
 
-func (d *diContainer) GeocoderRepository() geocodingservice.Repository {
+func (d *diContainer) GeocoderRepository() repository.Geocoder {
 	if d.geocoderRepository == nil {
 		client := &http.Client{Timeout: d.cfg.Geocoder.Timeout}
 		geocoderClient := geocoder.New(client, d.cfg.Geocoder.BaseURL, d.cfg.Geocoder.APIKey)
@@ -241,14 +213,14 @@ func (d *diContainer) GeocoderRepository() geocodingservice.Repository {
 	return d.geocoderRepository
 }
 
-func (d *diContainer) GeocodingService() geocodinghandler.GeocodingService {
+func (d *diContainer) GeocodingService() service.Geocoding {
 	if d.geocodingService == nil {
 		d.geocodingService = geocodingservice.NewService(d.GeocoderRepository(), d.Log())
 	}
 	return d.geocodingService
 }
 
-func (d *diContainer) RatingService(ctx context.Context) ratingservice.Service {
+func (d *diContainer) RatingService(ctx context.Context) service.Rating {
 	if d.ratingService == nil {
 		d.ratingService = ratingservice.NewService(
 			d.Log(),
@@ -259,7 +231,7 @@ func (d *diContainer) RatingService(ctx context.Context) ratingservice.Service {
 	return d.ratingService
 }
 
-func (d *diContainer) RatingHistoryService(ctx context.Context) ratinghistoryservice.Service {
+func (d *diContainer) RatingHistoryService(ctx context.Context) service.RatingHistory {
 	if d.ratingHistoryService == nil {
 		d.ratingHistoryService = ratinghistoryservice.NewService(
 			d.Log(),
@@ -270,7 +242,7 @@ func (d *diContainer) RatingHistoryService(ctx context.Context) ratinghistoryser
 	return d.ratingHistoryService
 }
 
-func (d *diContainer) UserService(ctx context.Context) userService {
+func (d *diContainer) UserService(ctx context.Context) service.User {
 	if d.userService == nil {
 		d.userService = userservice.NewUserService(d.Log(), d.UserRepository(ctx))
 	}
@@ -298,7 +270,7 @@ func (d *diContainer) GeocodingHandler() handler.GeocodingHandler {
 	return d.geocodingHandler
 }
 
-func (d *diContainer) TrackedLocationService(ctx context.Context) trackedLocationService {
+func (d *diContainer) TrackedLocationService(ctx context.Context) service.TrackedLocation {
 	if d.trackedLocationService == nil {
 		d.trackedLocationService = trackedlocationservice.NewTrackedLocationService(
 			d.TrackedLocationRepository(ctx),
@@ -324,7 +296,7 @@ func (d *diContainer) TrackedLocationHandler(ctx context.Context) handler.Tracke
 	return d.trackedLocationHandler
 }
 
-func (d *diContainer) BusinessTypeService(ctx context.Context) businessTypeService {
+func (d *diContainer) BusinessTypeService(ctx context.Context) service.BusinessType {
 	if d.businessTypeService == nil {
 		d.businessTypeService = businesstypeservice.NewService(d.Log(), d.BusinessTypeRepository(ctx))
 	}
@@ -338,16 +310,16 @@ func (d *diContainer) BusinessTypeHandler(ctx context.Context) handler.BusinessT
 	return d.businessTypeHandler
 }
 
-func (d *diContainer) InfraTypeService(ctx context.Context) infrahandler.InfraTypeService {
+func (d *diContainer) InfraTypeService(ctx context.Context) service.InfraType {
 	if d.infraTypeService == nil {
-		d.infraTypeService = infraservice.NewTypeService(d.Log(), d.InfraTypeRepository(ctx))
+		d.infraTypeService = infratypeservice.NewService(d.Log(), d.InfraTypeRepository(ctx))
 	}
 	return d.infraTypeService
 }
 
-func (d *diContainer) InfraService(ctx context.Context) infraService {
+func (d *diContainer) InfraService(ctx context.Context) service.InfraObj {
 	if d.infraService == nil {
-		d.infraService = infraservice.NewInfraService(d.Log(), d.InfraObjectRepository(ctx))
+		d.infraService = infraobjservice.NewService(d.Log(), d.InfraObjectRepository(ctx))
 	}
 	return d.infraService
 }
@@ -359,7 +331,7 @@ func (d *diContainer) InfraHandler(ctx context.Context) handler.InfraHandler {
 	return d.infraHandler
 }
 
-func (d *diContainer) EventService(ctx context.Context) eventhandler.EventService {
+func (d *diContainer) EventService(ctx context.Context) service.Event {
 	if d.eventService == nil {
 		d.eventService = eventservice.NewEventService(
 			d.Log(),

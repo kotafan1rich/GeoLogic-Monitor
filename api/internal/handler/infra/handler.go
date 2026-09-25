@@ -29,7 +29,7 @@ type InfraService interface {
 		externalID string,
 		typeID uuid.UUID,
 		lat float64,
-		lng float64,
+		lon float64,
 		address string,
 		name *string,
 	) (*domain.InfraObject, error)

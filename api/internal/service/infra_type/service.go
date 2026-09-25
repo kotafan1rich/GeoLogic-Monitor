@@ -1,4 +1,4 @@
-package infra
+package infratype
 
 import (
 	"context"
@@ -22,14 +22,13 @@ type typeService struct {
 	log  *logger.Logger
 }
 
-func NewTypeService(log *logger.Logger, repo InfraTypeRepository) *typeService {
+func NewService(log *logger.Logger, repo InfraTypeRepository) *typeService {
 	return &typeService{log: log, repo: repo}
 }
 
 func (s *typeService) Upsert(
 	ctx context.Context,
-	slug string,
-	name string,
+	slug, name string,
 	weight float64,
 	maxRadius uint16,
 ) (*domain.InfraType, error) {

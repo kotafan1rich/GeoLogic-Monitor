@@ -3,6 +3,6 @@ package errs
 import "errors"
 
 var (
-	ErrInvalidLat  = errors.New("invalid latitude")
-	ErrInvalidLong = errors.New("invalid longitude")
+	ErrInvalidLat = errors.New("invalid latitude")
+	ErrInvalidLon = errors.New("invalid longitude")
 )

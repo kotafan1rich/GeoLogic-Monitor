@@ -8,7 +8,7 @@ func ToResponse(event *domain.Event) *EventResponse {
 		Provider:   event.Provider,
 		ExternalID: event.ExternalID,
 		Lat:        event.GeoPoint.Lat,
-		Lon:        event.GeoPoint.Lng,
+		Lon:        event.GeoPoint.Lon,
 		Date:       event.Date,
 		Info:       event.Info,
 		NotifiedAt: event.NotifiedAt,

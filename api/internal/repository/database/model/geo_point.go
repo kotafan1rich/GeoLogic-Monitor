@@ -10,11 +10,11 @@ import (
 
 type GeoPoint struct {
 	Lat float64
-	Lng float64
+	Lon float64
 }
 
 func (p GeoPoint) Value() (driver.Value, error) {
-	return fmt.Sprintf("SRID=4326;POINT(%f %f)", p.Lng, p.Lat), nil
+	return fmt.Sprintf("SRID=4326;POINT(%f %f)", p.Lon, p.Lat), nil
 }
 
 func (p *GeoPoint) Scan(val any) error {
@@ -64,11 +64,11 @@ func (p *GeoPoint) Scan(val any) error {
 	}
 
 	// 4. Читаем координаты напрямую из байт-кода
-	longBits := order.Uint64(decoded[offset : offset+8])
+	lonBits := order.Uint64(decoded[offset : offset+8])
 	latBits := order.Uint64(decoded[offset+8 : offset+16])
 
 	// Превращаем биты в числа с плавающей точкой float64
-	p.Lng = math.Float64frombits(longBits)
+	p.Lon = math.Float64frombits(lonBits)
 	p.Lat = math.Float64frombits(latBits)
 
 	return nil // Успех!

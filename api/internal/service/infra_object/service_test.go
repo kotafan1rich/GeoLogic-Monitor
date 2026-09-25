@@ -1,4 +1,4 @@
-package infra
+package infraobject
 
 import (
 	"context"
@@ -8,47 +8,16 @@ import (
 	"uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
-	domainerrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
 	apperrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 )
-
-func TestTypeServiceUpsert(t *testing.T) {
-	t.Parallel()
-
-	repo := &fakeInfraTypeRepository{}
-	service := NewTypeService(testLogger(), repo)
-
-	result, err := service.Upsert(context.Background(), "school", "School", 2, 1000)
-	if err != nil {
-		t.Fatalf("Upsert returned an error: %v", err)
-	}
-	if result.Slug != "school" || result.Name != "School" {
-		t.Fatalf("unexpected infra type: %+v", result)
-	}
-	if repo.upsertCalls != 1 {
-		t.Fatalf("repository upsert calls: got %d, want 1", repo.upsertCalls)
-	}
-}
-
-func TestTypeServiceUpsertRejectsInvalidSlug(t *testing.T) {
-	t.Parallel()
-
-	repo := &fakeInfraTypeRepository{}
-	service := NewTypeService(testLogger(), repo)
-
-	_, err := service.Upsert(context.Background(), "", "School", 2, 1000)
-	assertAppError(t, err, "validation_error", domainerrs.ErrInvalidSlug)
-	if repo.upsertCalls != 0 {
-		t.Fatalf("repository upsert calls: got %d, want 0", repo.upsertCalls)
-	}
-}
 
 func TestInfraServiceUpsert(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeInfraRepository{}
-	service := NewInfraService(testLogger(), repo)
+	service := NewService(testLogger(), repo)
 	typeID := uuid.New()
 
 	result, err := service.Upsert(context.Background(), "external-id", typeID, 59.93, 30.32, "address", nil)
@@ -67,10 +36,10 @@ func TestInfraServiceUpsertRejectsInvalidExternalID(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeInfraRepository{}
-	service := NewInfraService(testLogger(), repo)
+	service := NewService(testLogger(), repo)
 
 	_, err := service.Upsert(context.Background(), "", uuid.New(), 59.93, 30.32, "address", nil)
-	assertAppError(t, err, "validation_error", domainerrs.ErrInvalidExternalID)
+	assertAppError(t, err, "validation_error", errs.ErrInvalidExternalID)
 	if repo.upsertCalls != 0 {
 		t.Fatalf("repository upsert calls: got %d, want 0", repo.upsertCalls)
 	}
@@ -79,8 +48,8 @@ func TestInfraServiceUpsertRejectsInvalidExternalID(t *testing.T) {
 func TestInfraServiceUpsertMapsMissingType(t *testing.T) {
 	t.Parallel()
 
-	repo := &fakeInfraRepository{upsertErr: domainerrs.ErrInfraTypeNotFound}
-	service := NewInfraService(testLogger(), repo)
+	repo := &fakeInfraRepository{upsertErr: errs.ErrInfraTypeNotFound}
+	service := NewService(testLogger(), repo)
 
 	_, err := service.Upsert(
 		context.Background(),
@@ -91,23 +60,7 @@ func TestInfraServiceUpsertMapsMissingType(t *testing.T) {
 		"address",
 		nil,
 	)
-	assertAppError(t, err, "not_found", domainerrs.ErrInfraTypeNotFound)
-}
-
-type fakeInfraTypeRepository struct {
-	upsertCalls int
-}
-
-func (r *fakeInfraTypeRepository) Upsert(
-	_ context.Context,
-	infraType *domain.InfraType,
-) (*domain.InfraType, error) {
-	r.upsertCalls++
-	return infraType, nil
-}
-
-func (r *fakeInfraTypeRepository) GetByID(context.Context, uuid.UUID) (*domain.InfraType, error) {
-	return nil, nil
+	assertAppError(t, err, "not_found", errs.ErrInfraTypeNotFound)
 }
 
 type fakeInfraRepository struct {

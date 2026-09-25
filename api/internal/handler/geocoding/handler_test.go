@@ -63,9 +63,13 @@ func (*fakeGeocodingService) Suggest(context.Context, string) ([]domain.Address,
 
 func (s *fakeGeocodingService) Reverse(
 	_ context.Context,
-	geopoint *domain.GeoPoint,
+	geoPoint *domain.GeoPoint,
 ) (*domain.Address, error) {
-	s.lat = geopoint.Lat
-	s.lon = geopoint.Lng
-	return &domain.Address{Address: "first", Lat: geopoint.Lat, Lon: geopoint.Lng}, nil
+	s.lat = geoPoint.Lat
+	s.lon = geoPoint.Lon
+	return &domain.Address{
+		Address: "first",
+		Lat:     geoPoint.Lat,
+		Lon:     geoPoint.Lon,
+	}, nil
 }

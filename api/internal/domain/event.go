@@ -20,7 +20,7 @@ type Event struct {
 func NewEvent(
 	provider string,
 	externalID string,
-	geopoint *GeoPoint,
+	geoPoint *GeoPoint,
 	date time.Time,
 	info *string,
 ) (*Event, error) {
@@ -34,7 +34,7 @@ func NewEvent(
 	return &Event{
 		Provider:   provider,
 		ExternalID: externalID,
-		GeoPoint:   *geopoint,
+		GeoPoint:   *geoPoint,
 		Date:       date,
 		Info:       info,
 	}, nil

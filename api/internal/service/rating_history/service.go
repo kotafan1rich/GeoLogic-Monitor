@@ -19,15 +19,6 @@ type TrackedLocationService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.TrackedLocation, error)
 }
 
-type Service interface {
-	GetHistory(
-		ctx context.Context,
-		maxUserID int64,
-		trackedLocationID uuid.UUID,
-		months uint,
-	) (*domain.LocationRatingHistory, error)
-}
-
 type service struct {
 	log                    *logger.Logger
 	ratingRepo             RatingRepository
@@ -38,7 +29,7 @@ func NewService(
 	log *logger.Logger,
 	ratingRepo RatingRepository,
 	trackedLocationService TrackedLocationService,
-) Service {
+) *service {
 	return &service{
 		log:                    log,
 		ratingRepo:             ratingRepo,

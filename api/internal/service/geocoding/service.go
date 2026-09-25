@@ -60,8 +60,8 @@ func (s *service) Suggest(ctx context.Context, query string) ([]domain.Address, 
 	return result, nil
 }
 
-func (s *service) Reverse(ctx context.Context, geopoint *domain.GeoPoint) (*domain.Address, error) {
-	address, err := s.repo.Reverse(ctx, geopoint.Lat, geopoint.Lng)
+func (s *service) Reverse(ctx context.Context, geoPoint *domain.GeoPoint) (*domain.Address, error) {
+	address, err := s.repo.Reverse(ctx, geoPoint.Lat, geoPoint.Lon)
 	if err != nil {
 		s.log.ErrorContext(ctx,
 			"failed to get address from lat and lon",
