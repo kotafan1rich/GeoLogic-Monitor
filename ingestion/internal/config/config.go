@@ -63,11 +63,10 @@ type GeoApiConfig struct {
 }
 
 type InfraType struct {
-	Slug      string   `yaml:"slug"`
-	Name      string   `yaml:"name"`
-	Weight    int      `yaml:"weight"`
-	MaxRadius int      `yaml:"max_radius"`
-	OSM       []string `yaml:"osm"`
+	Slug      string `yaml:"slug"`
+	Name      string `yaml:"name"`
+	Weight    int    `yaml:"weight"`
+	MaxRadius int    `yaml:"max_radius"`
 }
 
 var config *Config
