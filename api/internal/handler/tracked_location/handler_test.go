@@ -176,7 +176,7 @@ func (s *fakeTrackedLocationService) Create(
 	name string,
 	address string,
 	lat float64,
-	lng float64,
+	lon float64,
 ) (*domain.TrackedLocationRating, error) {
 	s.createdUserID = userID
 	s.createdBusinessTypeID = businessTypeID
@@ -188,7 +188,7 @@ func (s *fakeTrackedLocationService) Create(
 			BusinessTypeID: businessTypeID,
 			Name:           name,
 			Address:        address,
-			GeoPoint:       domain.GeoPoint{Lat: lat, Lng: lng},
+			GeoPoint:       domain.GeoPoint{Lat: lat, Lon: lon},
 		},
 		&domain.CalculatedRating{Value: 5},
 	), nil

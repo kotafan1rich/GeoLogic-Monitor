@@ -27,7 +27,7 @@ type TrackedLocationService interface {
 		name string,
 		address string,
 		lat float64,
-		lng float64,
+		lon float64,
 	) (*domain.TrackedLocationRating, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]domain.TrackedLocation, error)
 	DeleteForUser(ctx context.Context, id, userID uuid.UUID) error

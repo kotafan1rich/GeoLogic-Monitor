@@ -16,8 +16,8 @@ func validateLat(lat float64) bool {
 	return true
 }
 
-func validateLong(long float64) bool {
-	if long < minLongitude || long > maxLongitude {
+func validateLon(lon float64) bool {
+	if lon < minLongitude || lon > maxLongitude {
 		return false
 	}
 	return true
@@ -25,17 +25,17 @@ func validateLong(long float64) bool {
 
 type GeoPoint struct {
 	Lat float64
-	Lng float64
+	Lon float64
 }
 
-func NewGeoPoint(lat, lng float64) (*GeoPoint, error) {
+func NewGeoPoint(lat, lon float64) (*GeoPoint, error) {
 	if !validateLat(lat) {
 		return nil, errs.ErrInvalidLat
 	}
-	if !validateLong(lng) {
-		return nil, errs.ErrInvalidLong
+	if !validateLon(lon) {
+		return nil, errs.ErrInvalidLon
 	}
-	return &GeoPoint{Lat: lat, Lng: lng}, nil
+	return &GeoPoint{Lat: lat, Lon: lon}, nil
 }
 
 func (g *GeoPoint) UpdateLat(lat float64) error {
@@ -46,10 +46,10 @@ func (g *GeoPoint) UpdateLat(lat float64) error {
 	return nil
 }
 
-func (g *GeoPoint) UpdateLong(lng float64) error {
-	if !validateLong(lng) {
-		return errs.ErrInvalidLong
+func (g *GeoPoint) UpdateLon(lon float64) error {
+	if !validateLon(lon) {
+		return errs.ErrInvalidLon
 	}
-	g.Lng = lng
+	g.Lon = lon
 	return nil
 }

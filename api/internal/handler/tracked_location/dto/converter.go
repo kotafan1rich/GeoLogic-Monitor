@@ -9,7 +9,7 @@ func ToResponse(location domain.TrackedLocation) TrackedLocationResponse {
 		BusinessTypeID: location.BusinessTypeID,
 		Address:        location.Address,
 		Lat:            location.GeoPoint.Lat,
-		Lon:            location.GeoPoint.Lng,
+		Lon:            location.GeoPoint.Lon,
 	}
 }
 

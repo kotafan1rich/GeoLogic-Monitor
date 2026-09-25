@@ -38,7 +38,7 @@ func ToModel(trackedLocation domain.TrackedLocation) *model.TrackedLocation {
 		Address:        trackedLocation.Address,
 		Location: basemodel.GeoPoint{
 			Lat: trackedLocation.GeoPoint.Lat,
-			Lng: trackedLocation.GeoPoint.Lng,
+			Lon: trackedLocation.GeoPoint.Lon,
 		},
 		User: model.User{
 			ID:        trackedLocation.User.ID,

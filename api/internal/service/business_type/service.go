@@ -19,19 +19,12 @@ type Repository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
-type Service interface {
-	Upsert(ctx context.Context, infraTypeID uuid.UUID) (*domain.BusinessType, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*domain.BusinessType, error)
-	GetAll(ctx context.Context) ([]domain.BusinessType, error)
-	Delete(ctx context.Context, id uuid.UUID) error
-}
-
 type service struct {
 	repo Repository
 	log  *logger.Logger
 }
 
-func NewService(log *logger.Logger, repo Repository) Service {
+func NewService(log *logger.Logger, repo Repository) *service {
 	return &service{
 		repo: repo,
 		log:  log,

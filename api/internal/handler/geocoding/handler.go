@@ -17,7 +17,7 @@ const defaultLimit = 5
 
 type GeocodingService interface {
 	Suggest(ctx context.Context, query string) ([]domain.Address, error)
-	Reverse(ctx context.Context, geopoint *domain.GeoPoint) (*domain.Address, error)
+	Reverse(ctx context.Context, geoPoint *domain.GeoPoint) (*domain.Address, error)
 }
 
 type handler struct {
@@ -63,12 +63,12 @@ func (h *handler) Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geopoint, err := domain.NewGeoPoint(lat, lon)
+	geoPoint, err := domain.NewGeoPoint(lat, lon)
 	if err != nil {
 		response.WriteError(w, app.ValidationError(err))
 		return
 	}
-	address, err := h.service.Reverse(r.Context(), geopoint)
+	address, err := h.service.Reverse(r.Context(), geoPoint)
 	if err != nil {
 		response.WriteServiceError(w, err)
 		return

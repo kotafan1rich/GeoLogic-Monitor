@@ -32,25 +32,25 @@ type EventRepository interface {
 	MarkNotified(ctx context.Context, id uuid.UUID) error
 }
 
-type eventService struct {
+type service struct {
 	repo EventRepository
 	log  *logger.Logger
 }
 
-func NewEventService(log *logger.Logger, repo EventRepository) *eventService {
-	return &eventService{repo: repo, log: log}
+func NewEventService(log *logger.Logger, repo EventRepository) *service {
+	return &service{repo: repo, log: log}
 }
 
-func (s *eventService) Upsert(
+func (s *service) Upsert(
 	ctx context.Context,
 	provider string,
 	externalID string,
 	lat float64,
-	lng float64,
+	lon float64,
 	date time.Time,
 	info *string,
 ) (*domain.Event, error) {
-	geoPoint, err := domain.NewGeoPoint(lat, lng)
+	geoPoint, err := domain.NewGeoPoint(lat, lon)
 	if err != nil {
 		return nil, apperrs.ValidationError(err)
 	}
@@ -74,7 +74,7 @@ func (s *eventService) Upsert(
 	return event, nil
 }
 
-func (s *eventService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Event, error) {
+func (s *service) GetByID(ctx context.Context, id uuid.UUID) (*domain.Event, error) {
 	event, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, s.mapIDError(ctx, err, "failed to get event", id)
@@ -83,7 +83,7 @@ func (s *eventService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Event
 	return event, nil
 }
 
-func (s *eventService) GetUnnotifiedByPeriod(
+func (s *service) GetUnnotifiedByPeriod(
 	ctx context.Context,
 	from time.Time,
 	to time.Time,
@@ -100,12 +100,11 @@ func (s *eventService) GetUnnotifiedByPeriod(
 	return events, nil
 }
 
-func (s *eventService) GetUnnotifiedNear(
+func (s *service) GetUnnotifiedNear(
 	ctx context.Context,
 	geoPoint *domain.GeoPoint,
 	radius *uint16,
-	from *time.Time,
-	to *time.Time,
+	from, to *time.Time,
 ) ([]*domain.Event, error) {
 	finalRadius := defaultRadius
 	if radius != nil {
@@ -127,7 +126,7 @@ func (s *eventService) GetUnnotifiedNear(
 	return events, nil
 }
 
-func (s *eventService) MarkNotified(ctx context.Context, id uuid.UUID) error {
+func (s *service) MarkNotified(ctx context.Context, id uuid.UUID) error {
 	err := s.repo.MarkNotified(ctx, id)
 	if err != nil {
 		return s.mapIDError(ctx, err, "failed to mark event as notified", id)
@@ -136,7 +135,7 @@ func (s *eventService) MarkNotified(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *eventService) mapIDError(ctx context.Context, err error, message string, id uuid.UUID) error {
+func (s *service) mapIDError(ctx context.Context, err error, message string, id uuid.UUID) error {
 	if errors.Is(err, domainerrs.ErrEventNotFound) {
 		return apperrs.Wrap(err, apperrs.ErrNotFound)
 	}

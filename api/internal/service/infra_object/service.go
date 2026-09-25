@@ -1,4 +1,4 @@
-package infra
+package infraobject
 
 import (
 	"context"
@@ -12,31 +12,33 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/logger"
 )
 
-type InfraRepository interface {
+type Repository interface {
 	Upsert(ctx context.Context, infraObject *domain.InfraObject) (*domain.InfraObject, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.InfraObject, error)
 	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error)
 }
 
-type infraService struct {
-	repo InfraRepository
+type service struct {
+	repo Repository
 	log  *logger.Logger
 }
 
-func NewInfraService(log *logger.Logger, repo InfraRepository) *infraService {
-	return &infraService{log: log, repo: repo}
+func NewService(log *logger.Logger, repo Repository) *service {
+	return &service{
+		log:  log,
+		repo: repo,
+	}
 }
 
-func (s *infraService) Upsert(
+func (s *service) Upsert(
 	ctx context.Context,
 	externalID string,
 	typeID uuid.UUID,
-	lat float64,
-	lng float64,
+	lat, lon float64,
 	address string,
 	name *string,
 ) (*domain.InfraObject, error) {
-	geoPoint, err := domain.NewGeoPoint(lat, lng)
+	geoPoint, err := domain.NewGeoPoint(lat, lon)
 	if err != nil {
 		return nil, apperrs.ValidationError(err)
 	}
@@ -63,7 +65,7 @@ func (s *infraService) Upsert(
 	return infraObject, nil
 }
 
-func (s *infraService) GetByID(ctx context.Context, id uuid.UUID) (*domain.InfraObject, error) {
+func (s *service) GetByID(ctx context.Context, id uuid.UUID) (*domain.InfraObject, error) {
 	infraObject, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, domainerrs.ErrInfraObjectNotFound) {
@@ -81,7 +83,7 @@ func (s *infraService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Infra
 	return infraObject, nil
 }
 
-func (s *infraService) Near(
+func (s *service) Near(
 	ctx context.Context,
 	geoPoint *domain.GeoPoint,
 ) ([]*domain.InfraObject, error) {

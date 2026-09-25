@@ -51,7 +51,7 @@ type RatingService interface {
 type service struct {
 	repo                TrackedLocationRepository
 	osrmService         OSRMService
-	infraServie         InfraService
+	infraService        InfraService
 	businessTypeService BusinessTypeService
 	ratingService       RatingService
 
@@ -62,7 +62,7 @@ type service struct {
 func NewTrackedLocationService(
 	repo TrackedLocationRepository,
 	osrmService OSRMService,
-	infraServie InfraService,
+	infraService InfraService,
 	businessTypeService BusinessTypeService,
 	ratingService RatingService,
 	txManager database.TxManager,
@@ -71,7 +71,7 @@ func NewTrackedLocationService(
 	return &service{
 		repo:                repo,
 		osrmService:         osrmService,
-		infraServie:         infraServie,
+		infraService:        infraService,
 		businessTypeService: businessTypeService,
 		ratingService:       ratingService,
 		txManager:           txManager,
@@ -81,12 +81,9 @@ func NewTrackedLocationService(
 
 func (s *service) Create(
 	ctx context.Context,
-	userID uuid.UUID,
-	businessTypeID uuid.UUID,
-	name string,
-	address string,
-	lat float64,
-	lng float64,
+	userID, businessTypeID uuid.UUID,
+	name, address string,
+	lat, lon float64,
 ) (*domain.TrackedLocationRating, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, apperrs.ValidationError(domainerrs.ErrInvalidName)
@@ -95,7 +92,7 @@ func (s *service) Create(
 		return nil, apperrs.ValidationError(domainerrs.ErrInvalidAddress)
 	}
 
-	geoPoint, err := domain.NewGeoPoint(lat, lng)
+	geoPoint, err := domain.NewGeoPoint(lat, lon)
 	if err != nil || geoPoint == nil {
 		return nil, apperrs.ValidationError(err)
 	}
@@ -201,19 +198,6 @@ func (s *service) GetAllForMonitoring(ctx context.Context) ([]domain.MonitoringL
 	return locations, nil
 }
 
-func (s *service) mapError(ctx context.Context, err error, message string, id uuid.UUID) error {
-	if errors.Is(err, domainerrs.ErrTrackedLocationNotFound) {
-		return apperrs.Wrap(err, apperrs.ErrNotFound)
-	}
-
-	s.log.ErrorContext(ctx,
-		message,
-		slog.String("id", id.String()),
-		slog.String("error", err.Error()),
-	)
-	return err
-}
-
 func (s *service) Recalculate(ctx context.Context, id uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -259,7 +243,7 @@ func (s *service) RecalculateAll(ctx context.Context) error {
 }
 
 func (s *service) calculateRating(ctx context.Context, location *domain.TrackedLocation) (*domain.CalculatedRating, error) {
-	infraNear, err := s.infraServie.Near(ctx, &location.GeoPoint)
+	infraNear, err := s.infraService.Near(ctx, &location.GeoPoint)
 	if err != nil {
 		return nil, err
 	}
@@ -305,4 +289,17 @@ func (s *service) calculateRating(ctx context.Context, location *domain.TrackedL
 		return nil, apperrs.Wrap(err, apperrs.ErrProviderUnavailable)
 	}
 	return ratingResult, nil
+}
+
+func (s *service) mapError(ctx context.Context, err error, message string, id uuid.UUID) error {
+	if errors.Is(err, domainerrs.ErrTrackedLocationNotFound) {
+		return apperrs.Wrap(err, apperrs.ErrNotFound)
+	}
+
+	s.log.ErrorContext(ctx,
+		message,
+		slog.String("id", id.String()),
+		slog.String("error", err.Error()),
+	)
+	return err
 }
