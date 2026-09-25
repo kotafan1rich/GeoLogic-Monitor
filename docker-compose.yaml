@@ -90,17 +90,37 @@ services:
       - ingestion_db_data:/var/lib/postgresql
     healthcheck:
       test: [ "CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
-  # я ещё не рабтал с кафкой, потом надо будет посмотреть
-  # kafka:
-  #   image: apache/kafka:4.3.1
-  #   container_name: kafka
-  #   ports:
-  #     - "9092:9092"
-  #   # environment:
-  #     # заполнить при подключении
 
-  #   volumes:
-  #     - kafka-data:/var/lib/kafka/data
+  kafka:
+    image: apache/kafka:4.3.0
+    container_name: kafka
+    ports:
+      - "${KAFKA_HOST_PORT:-9092}:9092"
+    networks:
+      - geo_logic_net
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_LISTENERS: CONTROLLER://:29093,INTERNAL://:19092,HOST://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_LOG_RETENTION_MS: ${KAFKA_RETENTION_MS:-3600000}
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
 
   osrm:
     build: ./osrm
@@ -122,6 +142,7 @@ services:
 volumes:
   api_db_data:
   ingestion_db_data:
+  kafka-data:
   osrm_graph:
   caddy_data:
   caddy_config:
