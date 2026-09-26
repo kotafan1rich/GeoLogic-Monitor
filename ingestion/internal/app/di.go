@@ -10,6 +10,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/twogis"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/config"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/database/postgresql"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/job"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
@@ -28,6 +29,7 @@ const (
 
 type diContainer struct {
 	log       *slog.Logger
+	db        *postgresql.DB
 	dsc       *digitalspb.Client
 	tgc       *twogis.Client
 	ds        *job.DigitalSpb
@@ -55,6 +57,31 @@ func (d *diContainer) Logger() *slog.Logger {
 		)
 	}
 	return d.log
+}
+
+func (d *diContainer) DB(ctx context.Context) *postgresql.DB {
+	if d.db == nil {
+		cfg := config.Get()
+
+		psql := postgresql.MustNew(
+			ctx,
+			cfg.Database.Postgresql.DSN(),
+			d.Logger(),
+			cfg.Database.Postgresql.MinConns,
+			cfg.Database.Postgresql.MaxConns,
+			cfg.Database.Postgresql.MaxConnIdleLifetime,
+			cfg.Database.Postgresql.MaxConnLifetime,
+		)
+
+		closer.Add("postgresql", func(context.Context) error {
+			return psql.Close()
+		})
+
+		d.Logger().Info("postgresql initialized")
+
+		d.db = psql
+	}
+	return d.db
 }
 
 func (d *diContainer) requester(

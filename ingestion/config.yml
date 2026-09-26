@@ -93,3 +93,10 @@ geo-api:
   - { slug: car_wash, name: "Автомойка", weight: 1, max_radius: 600 }
   - { slug: other, name: "Прочее", weight: 1, max_radius: 300 }
 
+database:
+  postgresql:
+    ssl_mode: disable
+    min_conns: 5
+    max_conns: 25
+    max_conn_idle_lifetime: 5m
+    max_conn_lifetime: 15m
