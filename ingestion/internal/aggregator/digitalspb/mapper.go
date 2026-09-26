@@ -108,43 +108,6 @@ func mapToGeocodedInfraObjects[T any](
 	return mapped, nil
 }
 
-func mapToAddressedInfraObjects[T any](
-	ctx context.Context,
-	log *slog.Logger,
-	dataset string,
-	objs []T,
-	convert CoordinatesConverter,
-	fn func(T) geoapi.InfraObjectInput,
-) ([]geoapi.InfraObjectInput, error) {
-	if convert == nil {
-		return nil, ErrInvalidCoordinatesConverter
-	}
-
-	mapped := mapToInfraObjects(objs, fn)
-
-	err := geocode(
-		ctx, log, dataset, "coordinates_to_address", mapped,
-		func(o geoapi.InfraObjectInput) bool {
-			return o.Address == "" && (o.Lat != 0 || o.Lon != 0)
-		},
-		func(ctx context.Context, o *geoapi.InfraObjectInput) error {
-			address, err := convert(ctx, o.Lat, o.Lon)
-			if err != nil {
-				return err
-			}
-
-			o.Address = address
-
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return mapped, nil
-}
-
 func geocode(
 	ctx context.Context,
 	log *slog.Logger,
@@ -304,7 +267,7 @@ func mapKidsPlace(o KidsPlace) geoapi.InfraObjectInput {
 		dataset = datasetOther
 	}
 
-	return infraObject(dataset, o.ID, "", o.Title, o.Coordinates)
+	return infraObject(dataset, o.ID, "mock-address", o.Title, o.Coordinates)
 }
 
 func mapStreetPerformance(o StreetPerformance) geoapi.EventInput {

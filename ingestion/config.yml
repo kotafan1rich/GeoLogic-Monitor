@@ -4,8 +4,8 @@ aggregator:
       max_idle_conns: 4
       max_idle_conns_per_host: 2
       max_conns_per_host: 2
-      request_timeout: 30s
-      attempt_timeout: 5s
+      request_timeout: 60s
+      attempt_timeout: 15s
       max_retries: 3
       rate_limit:
         rps: 5
@@ -16,6 +16,18 @@ aggregator:
       yazzh_gate: "https://yazzh.gate.petersburg.ru"
     static_files:
       subway: "static/subway.json"
+  maps:
+    http:
+      max_idle_conns: 1
+      max_idle_conns_per_host: 1
+      max_conns_per_host: 1
+      request_timeout: 120s
+      attempt_timeout: 30s
+      max_retries: 3
+      rate_limit:
+        rps: 0
+        burst: 0
+    base_url: "https://maps.mail.ru/osm/tools/overpass/api/"
 
 geo-api:
   write:
@@ -40,22 +52,51 @@ geo-api:
       rps: 3
       burst: 1
   infra_types:
-    - { slug: subway, name: "Станция метро", weight: 10, max_radius: 800 }
-    - { slug: railway_station, name: "Вокзал", weight: 7, max_radius: 1000 }
-    - { slug: hotel, name: "Гостиница", weight: 4, max_radius: 500 }
-    - { slug: museum, name: "Музей", weight: 4, max_radius: 600 }
-    - { slug: theatre, name: "Театр", weight: 3, max_radius: 500 }
-    - { slug: restaurant, name: "Ресторан", weight: 3, max_radius: 300 }
-    - { slug: exhibition_hall, name: "Выставочный зал", weight: 2, max_radius: 500 }
-    - { slug: pharmacy, name: "Аптека", weight: 2, max_radius: 300 }
-    - { slug: cinema, name: "Кинотеатр", weight: 3, max_radius: 500 }
-    - { slug: vet_clinic, name: "Ветклиника", weight: 2, max_radius: 500 }
-    - { slug: park, name: "Парк", weight: 3, max_radius: 600 }
-    - { slug: sports_center, name: "Спортивный центр", weight: 3, max_radius: 500 }
-    - { slug: zoo, name: "Зоопарк", weight: 3, max_radius: 800 }
-    - { slug: education_center, name: "Образовательный центр", weight: 2, max_radius: 400 }
-    - { slug: game_center, name: "Игровой центр", weight: 2, max_radius: 400 }
-    - { slug: playground, name: "Детская площадка", weight: 2, max_radius: 300 }
-    - { slug: library, name: "Библиотека", weight: 1, max_radius: 400 }
-    - { slug: camp, name: "Лагерь", weight: 1, max_radius: 500 }
-    - { slug: other, name: "Прочее", weight: 1, max_radius: 300 }
+  - { slug: subway, name: "Станция метро", weight: 10, max_radius: 800 }
+  - { slug: railway_station, name: "Вокзал", weight: 7, max_radius: 1000 }
+  - { slug: hotel, name: "Гостиница", weight: 4, max_radius: 500 }
+  - { slug: museum, name: "Музей", weight: 4, max_radius: 600 }
+  - { slug: theatre, name: "Театр", weight: 3, max_radius: 500 }
+  - { slug: cinema, name: "Кинотеатр", weight: 3, max_radius: 500 }
+  - { slug: exhibition_hall, name: "Выставочный зал", weight: 2, max_radius: 500 }
+  - { slug: zoo, name: "Зоопарк", weight: 3, max_radius: 800 }
+  - { slug: park, name: "Парк", weight: 3, max_radius: 600 }
+  - { slug: playground, name: "Детская площадка", weight: 2, max_radius: 300 }
+  - { slug: library, name: "Библиотека", weight: 1, max_radius: 400 }
+  - { slug: camp, name: "Лагерь", weight: 1, max_radius: 500 }
+  - { slug: education_center, name: "Образовательный центр", weight: 2, max_radius: 400 }
+  - { slug: game_center, name: "Игровой центр", weight: 2, max_radius: 400 }
+  - { slug: sports_center, name: "Спортивный центр", weight: 3, max_radius: 500 }
+  - { slug: supermarket, name: "Супермаркет", weight: 6, max_radius: 500 }
+  - { slug: mall, name: "Торговый центр", weight: 6, max_radius: 700 }
+  - { slug: pvz, name: "ПВЗ", weight: 4, max_radius: 400 }
+  - { slug: grocery, name: "Продукты у дома", weight: 3, max_radius: 300 }
+  - { slug: restaurant, name: "Ресторан", weight: 3, max_radius: 300 }
+  - { slug: cafe, name: "Кафе", weight: 3, max_radius: 250 }
+  - { slug: coffee, name: "Кофейня", weight: 3, max_radius: 250 }
+  - { slug: fastfood, name: "Фастфуд", weight: 3, max_radius: 300 }
+  - { slug: bakery, name: "Пекарня", weight: 2, max_radius: 250 }
+  - { slug: alcohol, name: "Алкомаркет", weight: 2, max_radius: 300 }
+  - { slug: beauty, name: "Салон красоты", weight: 2, max_radius: 300 }
+  - { slug: pharmacy, name: "Аптека", weight: 2, max_radius: 300 }
+  - { slug: medical_center, name: "Медцентр", weight: 3, max_radius: 500 }
+  - { slug: dental, name: "Стоматология", weight: 2, max_radius: 400 }
+  - { slug: vet_clinic, name: "Ветклиника", weight: 2, max_radius: 500 }
+  - { slug: pet, name: "Зоомагазин", weight: 2, max_radius: 400 }
+  - { slug: optician, name: "Оптика", weight: 1, max_radius: 400 }
+  - { slug: flowers, name: "Цветы", weight: 1, max_radius: 300 }
+  - { slug: laundry, name: "Прачечная / химчистка", weight: 1, max_radius: 300 }
+  - { slug: copyshop, name: "Копицентр", weight: 1, max_radius: 300 }
+  - { slug: workshop, name: "Мастерская", weight: 1, max_radius: 300 }
+  - { slug: electronics_repair, name: "Ремонт техники", weight: 1, max_radius: 300 }
+  - { slug: car_service, name: "Автосервис", weight: 1, max_radius: 600 }
+  - { slug: car_wash, name: "Автомойка", weight: 1, max_radius: 600 }
+  - { slug: other, name: "Прочее", weight: 1, max_radius: 300 }
+
+database:
+  postgresql:
+    ssl_mode: disable
+    min_conns: 5
+    max_conns: 25
+    max_conn_idle_lifetime: 5m
+    max_conn_lifetime: 15m

@@ -6,8 +6,10 @@ import (
 	"os"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/maps"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/config"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/database/postgresql"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/job"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
@@ -19,14 +21,18 @@ const schedulerName = "ingestion"
 
 const (
 	digitalSpbClient      = "digitalspb"
+	mapsClient            = "maps-mail-ru"
 	geoAPIWriteClient     = "geo-api:write"
 	geoAPIGeocodingClient = "geo-api:geocoding"
 )
 
 type diContainer struct {
 	log       *slog.Logger
+	db        *postgresql.DB
 	dsc       *digitalspb.Client
 	ds        *job.DigitalSpb
+	maps      *maps.Client
+	m         *job.Maps
 	infraJob  *job.Job
 	eventsJob *job.Job
 	s         *scheduler.Scheduler
@@ -49,6 +55,31 @@ func (d *diContainer) Logger() *slog.Logger {
 		)
 	}
 	return d.log
+}
+
+func (d *diContainer) DB(ctx context.Context) *postgresql.DB {
+	if d.db == nil {
+		cfg := config.Get()
+
+		psql := postgresql.MustNew(
+			ctx,
+			cfg.Database.Postgresql.DSN(),
+			d.Logger(),
+			cfg.Database.Postgresql.MinConns,
+			cfg.Database.Postgresql.MaxConns,
+			cfg.Database.Postgresql.MaxConnIdleLifetime,
+			cfg.Database.Postgresql.MaxConnLifetime,
+		)
+
+		closer.Add("postgresql", func(context.Context) error {
+			return psql.Close()
+		})
+
+		d.Logger().Info("postgresql initialized")
+
+		d.db = psql
+	}
+	return d.db
 }
 
 func (d *diContainer) requester(
@@ -95,6 +126,19 @@ func (d *diContainer) DSClient() *digitalspb.Client {
 	return d.dsc
 }
 
+func (d *diContainer) MapsClient() *maps.Client {
+	if d.maps == nil {
+		cfg := config.Get()
+
+		req := d.requester(mapsClient, cfg.Aggregator.Maps.HTTP, "", false)
+
+		d.maps = maps.MustNew(d.Logger(), req, cfg.Aggregator.Maps.BaseURL)
+
+		d.Logger().Info("maps-mail-ru client initialized")
+	}
+	return d.maps
+}
+
 func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 	if d.ds == nil {
 		cfg := config.Get()
@@ -106,7 +150,6 @@ func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 			d.GeoApiClient(),
 			d.TypeRegistry(),
 			d.GeoApiClient().Coordinates,
-			d.GeoApiClient().Address,
 			cfg.GeoApi.WriteConcurrency,
 		)
 
@@ -120,6 +163,27 @@ func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 	return d.ds
 }
 
+func (d *diContainer) Maps() *job.Maps {
+	if d.m == nil {
+		cfg := config.Get()
+
+		d.m = job.NewMaps(
+			d.Logger(),
+			d.MapsClient(),
+			d.GeoApiClient(),
+			d.TypeRegistry(),
+			cfg.GeoApi.WriteConcurrency,
+		)
+
+		d.Logger().Info(
+			"datasets source initialized",
+			slog.String("source", job.MapsName),
+			slog.Int("write_concurrency", cfg.GeoApi.WriteConcurrency),
+		)
+	}
+	return d.m
+}
+
 func (d *diContainer) InfraJob() *job.Job {
 	if d.infraJob == nil {
 		cfg := config.Get()
@@ -129,6 +193,9 @@ func (d *diContainer) InfraJob() *job.Job {
 			cfg.Scheduler.Infra,
 			d.Logger(),
 			d.DigitalSpb().InfraDatasets,
+			d.Maps().InfraDatasets,
+		).After(
+			d.Maps().ConnectBusinessTypes,
 		)
 
 		d.logJob(d.infraJob)

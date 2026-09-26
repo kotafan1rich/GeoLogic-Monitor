@@ -40,17 +40,15 @@ type DigitalSpb struct {
 	files   map[string]a.File
 	store   *store
 	convert digitalspb.AddressConverter
-	address digitalspb.CoordinatesConverter
 }
 
 func NewDigitalSpb(
 	log *slog.Logger,
 	client *digitalspb.Client,
 	staticFiles map[string]string,
-	writer DigitalSpbWriter,
+	writer Writer,
 	types TypeResolver,
 	convert digitalspb.AddressConverter,
-	address digitalspb.CoordinatesConverter,
 	writeConcurrency int,
 ) *DigitalSpb {
 	files := make(map[string]a.File, len(staticFiles))
@@ -68,13 +66,12 @@ func NewDigitalSpb(
 			concurrency: writeConcurrency,
 		},
 		convert: convert,
-		address: address,
 	}
 }
 
 func (j *DigitalSpb) InfraDatasets() []dataset {
 	c := j.client
-	s, conv, addr := j.store, j.convert, j.address
+	s, conv := j.store, j.convert
 
 	classif := j.url(sourceSpbClassifGate)
 	yazzh := j.url(sourceYazzhGate)
@@ -101,7 +98,7 @@ func (j *DigitalSpb) InfraDatasets() []dataset {
 			s.infra(datasetCinema)),
 		ds(datasetVetClinic, sourceSpbClassifGate, classif, geocoded(c.ParseVetClinicData, conv),
 			s.infra(datasetVetClinic)),
-		ds(datasetKidsPlace, sourceYazzhGate, yazzh, geocoded(c.ParseKidsPlaceData, addr),
+		ds(datasetKidsPlace, sourceYazzhGate, yazzh, c.ParseKidsPlaceData,
 			s.infra(datasetKidsPlace)),
 	}
 }
