@@ -29,7 +29,7 @@ services:
     networks:
       - geo_logic_net
     depends_on:
-      api-db:
+      postgres:
         condition: service_healthy
     healthcheck:
       test: [ "CMD-SHELL", 'wget -q -O /dev/null "http://127.0.0.1:$${API_PORT:-8080}/health"' ]
@@ -47,7 +47,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      ingestion-db:
+      postgres:
         condition: service_healthy
       # kafka:
       #   condition: service_healthy
@@ -65,31 +65,31 @@ services:
     depends_on:
       - api
 
-  api-db:
-    image: postgis/postgis:18-3.6
-    env_file:
-      - api/.env
+  postgres:
+    build: ./docker/postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      POSTGRES_DB: postgres
+      API_POSTGRES_PASSWORD: ${API_POSTGRES_PASSWORD}
+      INGESTION_POSTGRES_PASSWORD: ${INGESTION_POSTGRES_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 320M
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql
     networks:
       - geo_logic_net
-    volumes:
-      - api_db_data:/var/lib/postgresql
     healthcheck:
-      test: [ "CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
-
-  ingestion-db:
-    image: postgis/postgis:18-3.6
-    env_file:
-      - ingestion/.env
-    ports:
-      - "5433:5432"
-    networks:
-      - geo_logic_net
-    volumes:
-      - ingestion_db_data:/var/lib/postgresql
-    healthcheck:
-      test: [ "CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' ]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: apache/kafka:4.3.0
@@ -138,8 +138,7 @@ services:
       - geo_logic_net
 
 volumes:
-  api_db_data:
-  ingestion_db_data:
+  db_data:
   kafka-data:
   caddy_data:
   caddy_config:

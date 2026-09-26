@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+psql \
+	--username "$POSTGRES_USER" \
+	--dbname "$POSTGRES_DB" \
+	--set=ON_ERROR_STOP=1 \
+	--set=api_password="$API_POSTGRES_PASSWORD" \
+	--set=ingestion_password="$INGESTION_POSTGRES_PASSWORD" <<'SQL'
+CREATE USER api_user WITH PASSWORD :'api_password';
+CREATE DATABASE api OWNER api_user;
+
+CREATE USER ingestion_user WITH PASSWORD :'ingestion_password';
+CREATE DATABASE ingestion OWNER ingestion_user;
+
+\connect api
+CREATE EXTENSION IF NOT EXISTS postgis;
+\connect ingestion
+CREATE EXTENSION IF NOT EXISTS postgis;
+SQL

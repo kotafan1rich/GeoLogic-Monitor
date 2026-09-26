@@ -36,7 +36,7 @@ services:
     env_file:
       - ./env/api.env
     depends_on:
-      api-db:
+      postgres:
         condition: service_healthy
       osrm:
         condition: service_started
@@ -62,6 +62,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - backend
 
@@ -83,8 +85,8 @@ services:
     networks:
       - backend
 
-  api-db:
-    image: postgis/postgis:18-3.6
+  postgres:
+    image: ${DOCKERHUB_OWNER}/geologic-monitor-postgres:${IMAGE_TAG}
     restart: unless-stopped
     deploy:
       resources:
@@ -92,7 +94,7 @@ services:
           cpus: "1.00"
           memory: 320M
     env_file:
-      - ./env/api-db.env
+      - ./env/postgres.env
     volumes:
       - api_db_data:/var/lib/postgresql
     networks:
