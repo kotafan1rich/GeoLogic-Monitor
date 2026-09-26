@@ -47,6 +47,10 @@ jobs:
             context: ./osrm
             image: geologic-monitor-osrm
 
+          - service: postgres
+            context: ./docker/postgres
+            image: geologic-monitor-postgres
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
