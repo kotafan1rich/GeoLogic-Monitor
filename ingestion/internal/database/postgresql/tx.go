@@ -11,15 +11,15 @@ import (
 )
 
 func (db *DB) WithTx(ctx context.Context, fn func(context.Context) error) error {
-	return db.withTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, fn)
+	return db.withTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, 1, fn)
 }
 
 func (db *DB) WithSerializableTx(ctx context.Context, fn func(context.Context) error) error {
-	return db.withTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable}, fn)
+	return db.withTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable}, db.maxRetries, fn)
 }
 
 func (db *DB) withTx(
-	ctx context.Context, opts pgx.TxOptions, fn func(context.Context) error,
+	ctx context.Context, opts pgx.TxOptions, maxRetries uint, fn func(context.Context) error,
 ) error {
 	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
 		return fn(ctx)
@@ -36,7 +36,7 @@ func (db *DB) withTx(
 		},
 		backoff.WithBackOff(db.newBackOff()),
 		backoff.WithMaxElapsedTime(0),
-		backoff.WithMaxTries(db.maxRetries),
+		backoff.WithMaxTries(maxRetries),
 		backoff.WithNotify(func(err error, d time.Duration) {
 			db.log.WarnContext(ctx, "transaction conflict",
 				slog.Any("error", err), slog.Duration("next_retry_in", d))
