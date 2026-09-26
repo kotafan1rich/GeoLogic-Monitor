@@ -22,17 +22,15 @@ const (
 
 	otherDataset = "other"
 
-	kindInfra    = "infra"
-	kindEvents   = "events"
-	kindBusiness = "business_types"
+	kindInfra  = "infra"
+	kindEvents = "events"
 )
 
 type storeFunc[T any] = func(ctx context.Context, data []T) error
 
-type Writer interface {
+type DigitalSpbWriter interface {
 	PutInfraObject(ctx context.Context, obj geoapi.InfraObjectInput) (geoapi.InfraObject, error)
 	PutEvent(ctx context.Context, obj geoapi.EventInput) (geoapi.Event, error)
-	ConnectWithInfra(ctx context.Context, ID string) (geoapi.BusinessType, error)
 }
 
 type TypeResolver interface {
@@ -41,7 +39,7 @@ type TypeResolver interface {
 
 type store struct {
 	log         *slog.Logger
-	writer      Writer
+	writer      DigitalSpbWriter
 	types       TypeResolver
 	concurrency int
 }
@@ -60,14 +58,14 @@ func (s *store) infra(slug string) storeFunc[geoapi.InfraObjectInput] {
 			return nil
 		}
 
-		byObject := perObjectType(slug)
+		perObjectType := slug == datasetKidsPlace
 
 		var (
 			typeID string
 			err    error
 		)
 
-		if !byObject {
+		if !perObjectType {
 			typeID, err = s.types.TypeID(ctx, slug)
 			if err != nil {
 				return fmt.Errorf("%w [%s]: %v", ErrResolveType, slug, err)
@@ -90,7 +88,7 @@ func (s *store) infra(slug string) storeFunc[geoapi.InfraObjectInput] {
 				continue
 			}
 
-			if byObject {
+			if perObjectType {
 				dataset := extractDataset(obj.ExternalID)
 
 				typeID, err = s.types.TypeID(ctx, dataset)
@@ -173,52 +171,6 @@ func (s *store) events(dataset string) storeFunc[geoapi.EventInput] {
 	}
 }
 
-func (s *store) connectBusiness(ctx context.Context, slugs []string) error {
-	if len(slugs) == 0 {
-		return nil
-	}
-
-	var (
-		g         errgroup.Group
-		collector = errs.NewCollector(errs.DefaultSampleSize)
-		connected atomic.Int64
-		start     = time.Now()
-	)
-
-	g.SetLimit(s.limit())
-
-	for _, slug := range slugs {
-		g.Go(func() error {
-			typeID, err := s.types.TypeID(ctx, slug)
-			if err != nil {
-				collector.Add(fmt.Errorf("%w [%s]: %v", ErrResolveType, slug, err))
-
-				return nil
-			}
-
-			if _, err := s.writer.ConnectWithInfra(ctx, typeID); err != nil {
-				collector.Add(fmt.Errorf("%w [%s]: %v", ErrConnectBusiness, slug, err))
-
-				return nil
-			}
-
-			connected.Add(1)
-
-			return nil
-		})
-	}
-
-	_ = g.Wait()
-
-	s.logResult(ctx, kindBusiness, datasetBusiness, len(slugs), int(connected.Load()), 0, collector, start)
-
-	if n := collector.Total(); n > 0 {
-		return fmt.Errorf("%w: %d/%d business types", ErrConnectBusiness, n, len(slugs))
-	}
-
-	return nil
-}
-
 func (s *store) logResult(
 	ctx context.Context,
 	kind, dataset string,
@@ -250,10 +202,6 @@ func (s *store) logResult(
 	}
 
 	s.log.DebugContext(ctx, "storing finished", attrs...)
-}
-
-func perObjectType(slug string) bool {
-	return slug == datasetKidsPlace || slug == datasetBusiness
 }
 
 func extractDataset(externalID string) string {

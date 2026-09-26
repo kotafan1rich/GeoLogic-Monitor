@@ -20,6 +20,5 @@ WORKDIR /app
 COPY --from=builder /app/ingestion .
 COPY --from=builder /app/config.yml .
 COPY --from=builder /app/static ./static
-COPY --from=builder /app/migrations ./migrations
 
 CMD ["./ingestion"]

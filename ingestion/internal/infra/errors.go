@@ -11,7 +11,7 @@ var (
 	ErrUnmarshalData         = errors.New("failed to unmarshal data")
 	ErrBuildRequest          = errors.New("failed to build request")
 	ErrDoRequest             = errors.New("failed to do request")
-	ErrDecodeResponse        = errors.New("failed to decode response")
+	ErrReadResponse          = errors.New("failed to read response")
 	ErrUnexpectedStatus      = errors.New("unexpected response status")
 	ErrBodyTooLarge          = errors.New("response body exceeds limit")
 	ErrEmptyResponse         = errors.New("response body is empty")
