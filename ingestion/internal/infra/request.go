@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"time"
 
 	"github.com/cenkalti/backoff/v7"
@@ -17,6 +18,9 @@ const (
 	MaxBodySize = 64 << 20
 
 	defaultAttemptTimeout = 30 * time.Second
+
+	mediaTypeJSON = "application/json"
+	mediaTypeForm = "application/x-www-form-urlencoded"
 )
 
 type RetryPolicy func(status int) bool
@@ -99,31 +103,36 @@ func (r *Requester) JSON(ctx context.Context, method, target string, body, out a
 		}
 	}
 
-	raw, err := backoff.Retry(
+	return r.do(ctx, method, target, payload, mediaTypeJSON, out)
+}
+
+func (r *Requester) Form(ctx context.Context, method, target string, form url.Values, out any) error {
+	return r.do(ctx, method, target, []byte(form.Encode()), mediaTypeForm, out)
+}
+
+func (r *Requester) do(
+	ctx context.Context, method, target string, payload []byte, contentType string, out any,
+) error {
+	_, err := backoff.Retry(
 		ctx,
-		func() ([]byte, error) { return r.attempt(ctx, method, target, payload) },
+		func() (struct{}, error) {
+			return struct{}{}, r.attempt(ctx, method, target, payload, contentType, out)
+		},
 		backoff.WithBackOff(r.newBackOff()),
 		backoff.WithMaxElapsedTime(0),
 		backoff.WithMaxTries(r.maxRetries),
 	)
-	if err != nil {
-		return err
-	}
 
-	if out == nil {
-		return nil
-	}
-
-	if err := json.Unmarshal(raw, out); err != nil {
-		return fmt.Errorf("%w: %v", ErrUnmarshalData, err)
-	}
-
-	return nil
+	return err
 }
 
-func (r *Requester) attempt(ctx context.Context, method, target string, payload []byte) ([]byte, error) {
+func (r *Requester) attempt(
+	ctx context.Context, method, target string, payload []byte, contentType string, out any,
+) error {
 	attemptCtx, cancel := context.WithTimeout(ctx, r.attemptTimeout)
 	defer cancel()
+
+	resetOut(out)
 
 	var bodyReader io.Reader
 	if payload != nil {
@@ -132,45 +141,66 @@ func (r *Requester) attempt(ctx context.Context, method, target string, payload 
 
 	req, err := http.NewRequestWithContext(attemptCtx, method, target, bodyReader)
 	if err != nil {
-		return nil, backoff.Permanent(fmt.Errorf("%w: %v", ErrBuildRequest, err))
+		return backoff.Permanent(fmt.Errorf("%w: %v", ErrBuildRequest, err))
 	}
 
 	if payload != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", contentType)
 	}
 
 	resp, err := r.hc.Do(req)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, backoff.Permanent(fmt.Errorf("%w: %v", ErrDoRequest, err))
+			return backoff.Permanent(fmt.Errorf("%w: %v", ErrDoRequest, err))
 		}
 
-		return nil, fmt.Errorf("%w: %v", ErrDoRequest, err)
+		return fmt.Errorf("%w: %v", ErrDoRequest, err)
 	}
 	defer resp.Body.Close()
 
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, MaxBodySize+1))
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrReadResponse, err)
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		statusErr := fmt.Errorf("%w: %d [%s]", ErrUnexpectedStatus, resp.StatusCode, target)
+		drain(resp.Body)
 
 		if r.retry(resp.StatusCode) {
-			return nil, statusErr
+			return fmt.Errorf("%w [%d]", ErrUnexpectedStatus, resp.StatusCode)
 		}
 
-		return nil, backoff.Permanent(statusErr)
+		return backoff.Permanent(fmt.Errorf("%w [%d]", ErrUnexpectedStatus, resp.StatusCode))
 	}
 
-	if len(raw) > MaxBodySize {
-		return nil, backoff.Permanent(fmt.Errorf("%w: %v", ErrReadResponse, ErrBodyTooLarge))
+	if out == nil {
+		drain(resp.Body)
+		return nil
 	}
 
-	if len(raw) == 0 {
-		return nil, fmt.Errorf("%w: %v", ErrReadResponse, ErrEmptyResponse)
+	lr := &io.LimitedReader{R: resp.Body, N: MaxBodySize + 1}
+
+	if err := json.NewDecoder(lr).Decode(out); err != nil {
+		if lr.N <= 0 {
+			return backoff.Permanent(fmt.Errorf("%w: %w", ErrDecodeResponse, ErrBodyTooLarge))
+		}
+		return fmt.Errorf("%w: %v", ErrDecodeResponse, err)
 	}
 
-	return raw, nil
+	return nil
+}
+
+func resetOut(out any) {
+	if out == nil {
+		return
+	}
+
+	v := reflect.ValueOf(out)
+	if v.Kind() != reflect.Pointer || v.IsNil() {
+		return
+	}
+
+	elem := v.Elem()
+	if elem.CanSet() {
+		elem.Set(reflect.Zero(elem.Type()))
+	}
+}
+
+func drain(r io.Reader) {
+	_, _ = io.Copy(io.Discard, io.LimitReader(r, MaxBodySize+1))
 }
