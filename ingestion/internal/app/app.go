@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/tern/v2/migrate"
+
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 )
 
