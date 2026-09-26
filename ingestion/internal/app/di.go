@@ -150,7 +150,6 @@ func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 			d.GeoApiClient(),
 			d.TypeRegistry(),
 			d.GeoApiClient().Coordinates,
-			d.GeoApiClient().Address,
 			cfg.GeoApi.WriteConcurrency,
 		)
 
