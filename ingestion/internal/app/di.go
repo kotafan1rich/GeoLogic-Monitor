@@ -197,6 +197,8 @@ func (d *diContainer) InfraJob() *job.Job {
 			d.Logger(),
 			d.DigitalSpb().InfraDatasets,
 			d.Maps().InfraDatasets,
+		).After(
+			d.Maps().ConnectBusinessTypes,
 		)
 
 		d.logJob(d.infraJob)
