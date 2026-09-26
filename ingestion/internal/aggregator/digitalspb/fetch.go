@@ -17,7 +17,7 @@ const (
 	egsGateV1 = 1
 	egsGateV2 = 2
 
-	recordsPerPage = 100
+	recordsPerPage = 500
 )
 
 func fetchSpbClassifGate[T any](

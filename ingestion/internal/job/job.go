@@ -18,24 +18,15 @@ type parseFunc func(ctx context.Context) (int, error)
 
 type datasetsFunc func() []dataset
 
-type afterFunc func(ctx context.Context) error
-
 type Job struct {
 	name     string
 	schedule string
 	log      *slog.Logger
 	sources  []datasetsFunc
-	after    []afterFunc
 }
 
 func New(name, schedule string, log *slog.Logger, sources ...datasetsFunc) *Job {
 	return &Job{name: name, schedule: schedule, log: log, sources: sources}
-}
-
-func (j *Job) After(fns ...afterFunc) *Job {
-	j.after = append(j.after, fns...)
-
-	return j
 }
 
 func (j *Job) Name() string {
@@ -52,25 +43,7 @@ func (j *Job) Run(ctx context.Context) {
 		datasets = append(datasets, source()...)
 	}
 
-	ctx = logger.WithRunID(ctx, logger.NewRunID())
-	log := j.log.With(slog.String("job", j.name))
-
-	runDatasets(ctx, log, datasets)
-	runAfter(ctx, log, j.after)
-}
-
-func runAfter(ctx context.Context, log *slog.Logger, fns []afterFunc) {
-	for _, fn := range fns {
-		if err := ctx.Err(); err != nil {
-			log.WarnContext(ctx, "after steps skipped", slog.Any("error", err))
-
-			return
-		}
-
-		if err := fn(ctx); err != nil {
-			log.ErrorContext(ctx, "after step failed", slog.Any("error", err))
-		}
-	}
+	runDatasets(ctx, j.log, j.name, datasets)
 }
 
 type dataset struct {
@@ -114,7 +87,10 @@ func collect[S a.Source, T any](
 	}
 }
 
-func runDatasets(ctx context.Context, log *slog.Logger, datasets []dataset) {
+func runDatasets(ctx context.Context, log *slog.Logger, jobName string, datasets []dataset) {
+	ctx = logger.WithRunID(ctx, logger.NewRunID())
+	log = log.With(slog.String("job", jobName))
+
 	runStart := time.Now()
 
 	log.InfoContext(ctx, "parse run started", slog.Int("datasets", len(datasets)))

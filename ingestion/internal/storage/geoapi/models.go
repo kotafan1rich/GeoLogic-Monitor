@@ -62,14 +62,4 @@ type (
 		Info       *string   `json:"info,omitempty"`
 		NotifiedAt time.Time `json:"notified_at"`
 	}
-
-	InfraTypeID struct {
-		InfraTypeID string `json:"infra_type_id"`
-	}
-
-	BusinessType struct {
-		ID          string    `json:"id"`
-		InfraTypeID string    `json:"infra_type_id"`
-		InfraType   InfraType `json:"infra_type"`
-	}
 )
