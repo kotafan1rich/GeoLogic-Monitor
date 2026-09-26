@@ -75,6 +75,8 @@ func MustNew(
 	return p
 }
 
+func (db *DB) Pool() *pgxpool.Pool { return db.pool }
+
 func (db *DB) Ping(ctx context.Context) error { return db.pool.Ping(ctx) }
 
 func (db *DB) Close() error {
