@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	maxBodySize = infra.MaxBodySize
+	// maxBodySize = infra.MaxBodySize
 
 	dateLayout = "2000-01-01"
 

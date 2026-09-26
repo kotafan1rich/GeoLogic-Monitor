@@ -7,7 +7,6 @@ import (
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/maps"
-	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/twogis"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/database/postgresql"
@@ -31,7 +30,6 @@ type diContainer struct {
 	log       *slog.Logger
 	db        *postgresql.DB
 	dsc       *digitalspb.Client
-	tgc       *twogis.Client
 	ds        *job.DigitalSpb
 	maps      *maps.Client
 	m         *job.Maps
