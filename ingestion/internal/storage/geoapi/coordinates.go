@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strconv"
 )
 
 const (
@@ -28,25 +27,4 @@ func (c *Client) Coordinates(ctx context.Context, address string) (float64, floa
 	}
 
 	return raw[0].Lat, raw[0].Lon, nil
-}
-
-func (c *Client) Address(ctx context.Context, lat, lon float64) (string, error) {
-	const op = "geoapi.Client.Address"
-
-	query := url.Values{
-		"lat": {strconv.FormatFloat(lat, 'f', -1, 64)},
-		"lon": {strconv.FormatFloat(lon, 'f', -1, 64)},
-	}
-
-	var raw AddressComponent
-
-	if err := c.get(ctx, reverseGeocodeEndpoint, query, &raw); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	if raw.Address == "" {
-		return "", fmt.Errorf("%s: %w [%f, %f]", op, ErrEmptyAddress, lat, lon)
-	}
-
-	return raw.Address, nil
 }
