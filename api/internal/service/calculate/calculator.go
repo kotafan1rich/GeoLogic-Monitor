@@ -61,7 +61,7 @@ func (c FormulaCalculator) Calculate(ctx context.Context, location domain.Locati
 			return nil, fmt.Errorf("invalid walking distance for %q", object.Type)
 		}
 		factor := max(0, 1-d/t.Radius)
-		influence[object.Type] += factor * factor
+		influence[object.Type] += factor
 	}
 	result := &domain.RatingAssessment{Rating: c.cfg.Min, Breakdown: make([]domain.RatingContribution, 0)}
 	var denominator, totalWeight, positive float64
@@ -69,7 +69,7 @@ func (c FormulaCalculator) Calculate(ctx context.Context, location domain.Locati
 		sat := -math.Expm1(-influence[t.Slug] / t.Saturation)
 		if t.Slug == location.BusinessSlug {
 			if available[t.Slug] {
-				result.CompetitionPenalty = c.cfg.Beta * sat
+				result.CompetitionPenalty = c.cfg.CompetitionMaxPenalty * sat
 			}
 			continue
 		}
@@ -101,11 +101,12 @@ func (c FormulaCalculator) Calculate(ctx context.Context, location domain.Locati
 		return result, nil
 	}
 	result.Confidence = denominator / totalWeight
-	score := positive / denominator
-	score = -math.Expm1(-c.cfg.ScoreCalibration * score)
-	score *= (1 - result.CompetitionPenalty) * street
-	rating := c.cfg.Scale * math.Pow(min(1, max(0, score)), c.cfg.Gamma)
-	result.Rating = min(c.cfg.Max, max(c.cfg.Min, math.Round(rating*c.cfg.RoundFactor)/c.cfg.RoundFactor))
+	rawInfraScore := positive / denominator
+	infraNormalized := min(1, max(-1, (rawInfraScore-c.cfg.InfraBaseline)/c.cfg.InfraSpread))
+	infraEffect := c.cfg.InfraRange * infraNormalized
+	rating := (c.cfg.BaseScore+infraEffect)*street - result.CompetitionPenalty
+	rating = min(c.cfg.Max, max(c.cfg.Min, rating))
+	result.Rating = math.Round(rating*c.cfg.RoundFactor) / c.cfg.RoundFactor
 	for i := range result.Breakdown {
 		result.Breakdown[i].Contribution /= denominator
 	}

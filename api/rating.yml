@@ -1,7 +1,9 @@
 # Distances are walking metres from OSRM; no detour multiplier.
-beta: 0.4
-gamma: 0.8
-score_calibration: 3.5
+base_score: 5
+infra_baseline: 0.05
+infra_spread: 0.08
+infra_range: 3.5
+competition_max_penalty: 2.5
 scale: 10
 min: 0.1
 max: 9.9
