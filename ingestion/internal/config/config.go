@@ -38,7 +38,6 @@ type PostgresqlConfig struct {
 	Port                int           `env:"POSTGRES_PORT" env-required:"true"`
 	User                string        `env:"POSTGRES_USER" env-required:"true"`
 	Password            string        `env:"POSTGRES_PASSWORD" env-required:"true"`
-	Name                string        `env:"POSTGRES_NAME" env-required:"true"`
 	DB                  string        `env:"POSTGRES_DB" env-required:"true"`
 	SSLMode             string        `yaml:"ssl_mode"`
 	MinConns            int           `yaml:"min_conns"`
