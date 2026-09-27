@@ -45,5 +45,6 @@ Kafka consumer в `bot` реализован. Producer уведомлений в
 ## Документация сервисов
 
 - [API](../api/README.md)
+- [Bot](../bot/README.md)
 - [OSRM](../osrm/README.md)
-- Документация `ingestion`, `bot` и `miniapp` будет добавлена рядом с соответствующими приложениями.
+- Документация `ingestion` и `miniapp` будет добавлена рядом с соответствующими приложениями.

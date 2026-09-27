@@ -31,7 +31,7 @@ GeoLogic Monitor помогает владельцам кофеен, кафе и
 | --- | --- | --- |
 | `api` | Постоянные данные, HTTP-контракт, геокодинг, рейтинг и планировщик | [README API](api/README.md) |
 | `ingestion` | Загрузка инфраструктуры и событий, мониторинг изменений | Документация будет добавлена отдельно |
-| `bot` | Webhook MAX, `/start`, Kafka consumer и отправка уведомлений | Документация будет добавлена отдельно |
+| `bot` | Webhook MAX, `/start`, Kafka consumer и отправка уведомлений | [README Bot](bot/README.md) |
 | `miniapp` | Пользовательский интерфейс точек, рейтинга и истории | Документация будет добавлена отдельно |
 | `osrm` | Локальная пешеходная маршрутизация | [README OSRM](osrm/README.md) |
 
@@ -68,6 +68,7 @@ task all:up
 - [Обзор владения данными](docs/data-model.md)
 - [Рейтинг окружения](docs/impact-engine.md)
 - [Документация API](api/README.md)
+- [Документация Bot](bot/README.md)
 - [HTTP OpenAPI](api/docs/openapi.yaml)
 - [Kafka AsyncAPI](docs/asyncapi/notifications.yaml)
 - [Локальная разработка](docs/local-development.md)
