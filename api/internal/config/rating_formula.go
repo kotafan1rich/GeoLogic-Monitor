@@ -14,6 +14,7 @@ import (
 type RatingFormula struct {
 	Beta                float64                       `yaml:"beta"`
 	Gamma               float64                       `yaml:"gamma"`
+	ScoreGain           float64                       `yaml:"score_gain"`
 	Scale               float64                       `yaml:"scale"`
 	Min                 float64                       `yaml:"min"`
 	Max                 float64                       `yaml:"max"`
@@ -63,6 +64,9 @@ func (c RatingFormula) MaxRadius() float64 {
 func (c RatingFormula) Validate() error {
 	if !finite(c.Beta) || c.Beta < 0 || c.Beta > 1 || !positive(c.Gamma) {
 		return fmt.Errorf("rating: beta must be in [0,1] and gamma must be positive and finite")
+	}
+	if !finite(c.ScoreGain) || c.ScoreGain < 0 {
+		return fmt.Errorf("rating: score gain must be non-negative and finite")
 	}
 	// Output must fit the existing NUMERIC(2,1) history column.
 	if !positive(c.Scale) || !positive(c.Min) || !finite(c.Max) || c.Min < 0.1 || c.Max > 9.9 || c.Min > c.Max || c.Max > c.Scale || c.RoundFactor != 10 || c.BreakdownLimit <= 0 {

@@ -82,6 +82,7 @@ func TestRatingProperties(t *testing.T) {
 
 func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	cfg := testConfig(t)
+	cfg.ScoreGain = 0 // Isolate profile and availability from score calibration.
 	cfg.AvailableTypes = []string{"subway", "cafe"}
 	input := domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{{Type: "subway", DistanceMeters: 100}}}
 	initial := assess(t, cfg, input)
@@ -112,6 +113,7 @@ func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	}
 
 	cfg = testConfig(t)
+	cfg.ScoreGain = 0
 	cfg.InfraTypes = []config.RatingInfraType{
 		{Slug: "restaurant", Weight: 3, Radius: 300, Saturation: 1},
 		{Slug: "b", Weight: 1, Radius: 300, Saturation: 1},
@@ -135,6 +137,31 @@ func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	cfg.AvailableTypes = append(cfg.AvailableTypes, "c")
 	if assess(t, cfg, input).Confidence != 1 || assess(t, cfg, input).Rating >= out.Rating {
 		t.Fatal("availability must affect denominator and confidence")
+	}
+}
+
+func TestScoreGainChangesScaleWithoutChangingComponents(t *testing.T) {
+	cfg := testConfig(t)
+	input := domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{
+		{Type: "subway", DistanceMeters: 100},
+		{Type: "supermarket", DistanceMeters: 100},
+		{Type: "hotel", DistanceMeters: 100},
+		{Type: "restaurant", DistanceMeters: 50},
+	}}
+	calibrated := assess(t, cfg, input)
+	cfg.ScoreGain = 0
+	baseline := assess(t, cfg, input)
+	if calibrated.Rating <= baseline.Rating {
+		t.Fatalf("score gain did not spread the scale: calibrated=%v baseline=%v", calibrated.Rating, baseline.Rating)
+	}
+	if calibrated.Confidence != baseline.Confidence ||
+		calibrated.CompetitionPenalty != baseline.CompetitionPenalty ||
+		!reflect.DeepEqual(calibrated.Breakdown, baseline.Breakdown) {
+		t.Fatal("score gain changed coverage, competition or breakdown")
+	}
+	empty := domain.LocationFeatures{BusinessSlug: "restaurant"}
+	if assess(t, cfg, empty).Rating != 0.1 {
+		t.Fatal("score gain must not raise an empty location")
 	}
 }
 

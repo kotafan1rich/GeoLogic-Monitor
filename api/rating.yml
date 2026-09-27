@@ -1,6 +1,7 @@
 # Distances are walking metres from OSRM; no detour multiplier.
 beta: 0.4
 gamma: 0.8
+score_gain: 8
 scale: 10
 min: 0.1
 max: 9.9
