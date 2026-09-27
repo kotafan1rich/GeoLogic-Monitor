@@ -102,6 +102,7 @@ func (c FormulaCalculator) Calculate(ctx context.Context, location domain.Locati
 	}
 	result.Confidence = denominator / totalWeight
 	score := positive / denominator
+	score = min(1, score+c.cfg.ScoreGain*score*score)
 	score *= (1 - result.CompetitionPenalty) * street
 	rating := c.cfg.Scale * math.Pow(min(1, max(0, score)), c.cfg.Gamma)
 	result.Rating = min(c.cfg.Max, max(c.cfg.Min, math.Round(rating*c.cfg.RoundFactor)/c.cfg.RoundFactor))

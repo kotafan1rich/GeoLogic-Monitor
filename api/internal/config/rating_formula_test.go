@@ -27,6 +27,8 @@ func TestRatingConfigValidation(t *testing.T) {
 		"infinite k":          func(c *RatingFormula) { c.InfraTypes[0].Saturation = math.Inf(1) },
 		"bad beta":            func(c *RatingFormula) { c.Beta = 1.1 },
 		"bad gamma":           func(c *RatingFormula) { c.Gamma = 0 },
+		"negative gain":       func(c *RatingFormula) { c.ScoreGain = -1 },
+		"infinite gain":       func(c *RatingFormula) { c.ScoreGain = math.Inf(1) },
 		"bad bounds":          func(c *RatingFormula) { c.Max = 10 },
 		"fractional bounds":   func(c *RatingFormula) { c.Min = 0.15 },
 		"bad street":          func(c *RatingFormula) { c.StreetFactorDefault = 0.8 },
