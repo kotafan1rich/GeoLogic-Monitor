@@ -49,8 +49,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      # kafka:
-      #   condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   bot:
     build: ./bot
@@ -63,7 +63,10 @@ services:
     networks:
       - geo_logic_net
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   postgres:
     build: ./docker/postgres
@@ -121,6 +124,25 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:v1.3.0
+    ports:
+      - "127.0.0.1:8088:8080"
+    networks:
+      - geo_logic_net
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
+    depends_on:
+      kafka:
+        condition: service_healthy
 
   osrm:
     build: ./osrm
