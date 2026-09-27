@@ -39,7 +39,7 @@ func TestRatingProperties(t *testing.T) {
 	metro := func(d float64) *domain.RatingAssessment {
 		return assess(t, cfg, domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{{Type: "subway", DistanceMeters: d}}})
 	}
-	if metro(300).Rating >= 1.5 || metro(100).Rating <= metro(600).Rating {
+	if metro(300).Rating >= 2.5 || metro(100).Rating <= metro(600).Rating {
 		t.Fatal("metro saturation or distance monotonicity failed")
 	}
 	if metro(800).Rating != empty.Rating || metro(900).Rating != empty.Rating {
@@ -82,7 +82,7 @@ func TestRatingProperties(t *testing.T) {
 
 func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	cfg := testConfig(t)
-	cfg.ScoreGain = 0 // Isolate profile and availability from score calibration.
+	cfg.ScoreCalibration = 1 // Keep synthetic profiles away from the rating ceiling.
 	cfg.AvailableTypes = []string{"subway", "cafe"}
 	input := domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{{Type: "subway", DistanceMeters: 100}}}
 	initial := assess(t, cfg, input)
@@ -113,7 +113,7 @@ func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	}
 
 	cfg = testConfig(t)
-	cfg.ScoreGain = 0
+	cfg.ScoreCalibration = 1
 	cfg.InfraTypes = []config.RatingInfraType{
 		{Slug: "restaurant", Weight: 3, Radius: 300, Saturation: 1},
 		{Slug: "b", Weight: 1, Radius: 300, Saturation: 1},
@@ -140,7 +140,7 @@ func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	}
 }
 
-func TestScoreGainChangesScaleWithoutChangingComponents(t *testing.T) {
+func TestScoreCalibrationChangesScaleWithoutChangingComponents(t *testing.T) {
 	cfg := testConfig(t)
 	input := domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{
 		{Type: "subway", DistanceMeters: 100},
@@ -149,19 +149,39 @@ func TestScoreGainChangesScaleWithoutChangingComponents(t *testing.T) {
 		{Type: "restaurant", DistanceMeters: 50},
 	}}
 	calibrated := assess(t, cfg, input)
-	cfg.ScoreGain = 0
+	cfg.ScoreCalibration = 1
 	baseline := assess(t, cfg, input)
 	if calibrated.Rating <= baseline.Rating {
-		t.Fatalf("score gain did not spread the scale: calibrated=%v baseline=%v", calibrated.Rating, baseline.Rating)
+		t.Fatalf("score calibration did not spread the scale: calibrated=%v baseline=%v", calibrated.Rating, baseline.Rating)
 	}
 	if calibrated.Confidence != baseline.Confidence ||
 		calibrated.CompetitionPenalty != baseline.CompetitionPenalty ||
 		!reflect.DeepEqual(calibrated.Breakdown, baseline.Breakdown) {
-		t.Fatal("score gain changed coverage, competition or breakdown")
+		t.Fatal("score calibration changed coverage, competition or breakdown")
 	}
 	empty := domain.LocationFeatures{BusinessSlug: "restaurant"}
 	if assess(t, cfg, empty).Rating != 0.1 {
-		t.Fatal("score gain must not raise an empty location")
+		t.Fatal("score calibration must not raise an empty location")
+	}
+}
+
+func TestScoreCalibrationHasNoEarlyPlateau(t *testing.T) {
+	cfg := testConfig(t)
+	input := domain.LocationFeatures{BusinessSlug: "restaurant"}
+	for _, typ := range []string{"subway", "railway_station", "mall", "supermarket", "fastfood", "pvz"} {
+		for range 20 {
+			input.Objects = append(input.Objects, domain.RatingObjectDistance{Type: typ})
+		}
+	}
+	first := assess(t, cfg, input).Rating
+	for _, typ := range []string{"grocery", "coffee", "cafe", "hotel"} {
+		for range 20 {
+			input.Objects = append(input.Objects, domain.RatingObjectDistance{Type: typ})
+		}
+	}
+	second := assess(t, cfg, input).Rating
+	if second <= first {
+		t.Fatalf("calibration reached an early plateau: first=%v second=%v", first, second)
 	}
 }
 
@@ -177,7 +197,7 @@ func TestBoundsAndInvalidInputs(t *testing.T) {
 		}
 	}
 	result := assess(t, cfg, in)
-	if result.Rating != 9.9 || len(result.Breakdown) != 5 {
+	if result.Rating != 9.8 || len(result.Breakdown) != 5 {
 		t.Fatalf("upper clamp: %+v", result)
 	}
 	for _, d := range []float64{-1, math.NaN(), math.Inf(1)} {
