@@ -49,7 +49,7 @@ HTTP-сервер публикует только `POST /webhook`; health endpoi
 | `KAFKA_TOPIC` | `notifications` | Topic заданий на уведомления |
 | `KAFKA_GROUP_ID` | `bot-notifications` | Consumer group Bot |
 
-Kafka-переменные пока отсутствуют в `bot/.env.template`, но читаются конфигурацией. Значения по умолчанию подходят для сети Compose. При запуске Bot на хосте укажите `KAFKA_BROKERS=localhost:9092`.
+Шаблон содержит значения Kafka для сети Compose. При запуске Bot на хосте укажите `KAFKA_BROKERS=localhost:9092`.
 
 ### Логирование
 

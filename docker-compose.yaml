@@ -1,8 +1,6 @@
 services:
   caddy:
     image: caddy:2-alpine
-    environment:
-      CADDY_SITE_ADDRESS: "${CADDY_SITE_ADDRESS:-http://localhost}"
     ports:
       - "80:80"
       - "443:443"
