@@ -440,16 +440,51 @@ button:disabled {
   color: #ad2634;
 }
 
+.address-field {
+  position: relative;
+  min-width: 0;
+}
+
 .address-suggestions {
-  display: grid;
-  gap: 8px;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   margin: 0;
   padding: 0;
+  border: 1px solid #dce2ec;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 6px 16px #18243b20;
   list-style: none;
 }
 
-.address-suggestions .button {
-  justify-content: flex-start;
+.address-suggestions button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  color: inherit;
+  background: transparent;
   text-align: left;
+  line-height: inherit;
   font-weight: 400;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.address-suggestions button:hover,
+.address-suggestions button:active,
+.address-suggestions button:focus-visible {
+  background: #edf2fa;
+}
+
+.address-suggestions button:focus-visible {
+  outline: 3px solid #6c8dff;
+  outline-offset: -3px;
 }
