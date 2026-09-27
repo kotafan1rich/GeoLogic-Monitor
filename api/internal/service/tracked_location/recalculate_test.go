@@ -23,7 +23,7 @@ func TestCreateAndRecalculateAppendRatings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(history.rows) != 1 || history.rows[0].Value != point.Value || point.Value != 0.1 {
+	if len(history.rows) != 1 || history.rows[0].Value != point.Value || point.Value != 2.8 {
 		t.Fatalf("first rating was not saved: %+v", history.rows)
 	}
 	repo.locations = []domain.MonitoringLocation{{TrackedLocation: domain.TrackedLocation{

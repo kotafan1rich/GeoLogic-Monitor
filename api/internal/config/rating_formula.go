@@ -12,20 +12,22 @@ import (
 )
 
 type RatingFormula struct {
-	Beta                float64                       `yaml:"beta"`
-	Gamma               float64                       `yaml:"gamma"`
-	ScoreCalibration    float64                       `yaml:"score_calibration"`
-	Scale               float64                       `yaml:"scale"`
-	Min                 float64                       `yaml:"min"`
-	Max                 float64                       `yaml:"max"`
-	RoundFactor         float64                       `yaml:"round_factor"`
-	BreakdownLimit      int                           `yaml:"breakdown_limit"`
-	StreetFactorDefault float64                       `yaml:"street_factor_default"`
-	StreetFactorMin     float64                       `yaml:"street_factor_min"`
-	StreetFactorMax     float64                       `yaml:"street_factor_max"`
-	AvailableTypes      []string                      `yaml:"available_types"`
-	InfraTypes          []RatingInfraType             `yaml:"infra_types"`
-	Profiles            map[string]map[string]float64 `yaml:"profiles"`
+	BaseScore             float64                       `yaml:"base_score"`
+	InfraBaseline         float64                       `yaml:"infra_baseline"`
+	InfraSpread           float64                       `yaml:"infra_spread"`
+	InfraRange            float64                       `yaml:"infra_range"`
+	CompetitionMaxPenalty float64                       `yaml:"competition_max_penalty"`
+	Scale                 float64                       `yaml:"scale"`
+	Min                   float64                       `yaml:"min"`
+	Max                   float64                       `yaml:"max"`
+	RoundFactor           float64                       `yaml:"round_factor"`
+	BreakdownLimit        int                           `yaml:"breakdown_limit"`
+	StreetFactorDefault   float64                       `yaml:"street_factor_default"`
+	StreetFactorMin       float64                       `yaml:"street_factor_min"`
+	StreetFactorMax       float64                       `yaml:"street_factor_max"`
+	AvailableTypes        []string                      `yaml:"available_types"`
+	InfraTypes            []RatingInfraType             `yaml:"infra_types"`
+	Profiles              map[string]map[string]float64 `yaml:"profiles"`
 }
 
 type RatingInfraType struct {
@@ -62,15 +64,12 @@ func (c RatingFormula) MaxRadius() float64 {
 }
 
 func (c RatingFormula) Validate() error {
-	if !finite(c.Beta) || c.Beta < 0 || c.Beta > 1 || !positive(c.Gamma) {
-		return fmt.Errorf("rating: beta must be in [0,1] and gamma must be positive and finite")
-	}
-	if !positive(c.ScoreCalibration) {
-		return fmt.Errorf("rating: score calibration must be positive and finite")
-	}
 	// Output must fit the existing NUMERIC(2,1) history column.
 	if !positive(c.Scale) || !positive(c.Min) || !finite(c.Max) || c.Min < 0.1 || c.Max > 9.9 || c.Min > c.Max || c.Max > c.Scale || c.RoundFactor != 10 || c.BreakdownLimit <= 0 {
 		return fmt.Errorf("rating: invalid output scale, bounds, rounding or breakdown limit")
+	}
+	if !finite(c.BaseScore) || c.BaseScore < c.Min || c.BaseScore > c.Max || !finite(c.InfraBaseline) || c.InfraBaseline < 0 || !positive(c.InfraSpread) || !finite(c.InfraRange) || c.InfraRange < 0 || !finite(c.CompetitionMaxPenalty) || c.CompetitionMaxPenalty < 0 {
+		return fmt.Errorf("rating: invalid baseline normalization parameters")
 	}
 	if math.Round(c.Min*c.RoundFactor)/c.RoundFactor != c.Min || math.Round(c.Max*c.RoundFactor)/c.RoundFactor != c.Max {
 		return fmt.Errorf("rating: bounds must be representable to one decimal place")

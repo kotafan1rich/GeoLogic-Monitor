@@ -33,24 +33,25 @@ func TestRatingProperties(t *testing.T) {
 	cfg := testConfig(t)
 	input := domain.LocationFeatures{BusinessSlug: "restaurant"}
 	empty := assess(t, cfg, input)
-	if empty.Rating != 0.1 || empty.Confidence != 1 {
+	if empty.Rating != 2.8 || empty.Confidence != 1 || empty.CompetitionPenalty != 0 {
 		t.Fatalf("empty: %+v", empty)
 	}
 	metro := func(d float64) *domain.RatingAssessment {
 		return assess(t, cfg, domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{{Type: "subway", DistanceMeters: d}}})
 	}
-	if metro(300).Rating >= 2.5 || metro(100).Rating <= metro(600).Rating {
-		t.Fatal("metro saturation or distance monotonicity failed")
+	if metro(100).Rating <= metro(600).Rating || metro(600).Rating <= empty.Rating {
+		t.Fatal("distance monotonicity failed")
 	}
 	if metro(800).Rating != empty.Rating || metro(900).Rating != empty.Rating {
 		t.Fatal("radius boundary failed")
 	}
+
 	input.Objects = []domain.RatingObjectDistance{{Type: "subway", DistanceMeters: 100}}
 	previous := assess(t, cfg, input).Rating
 	for range 50 {
 		input.Objects = append(input.Objects, domain.RatingObjectDistance{Type: "restaurant", DistanceMeters: 50})
 		next := assess(t, cfg, input)
-		if next.Rating > previous || next.CompetitionPenalty < 0 || next.CompetitionPenalty > cfg.Beta {
+		if next.Rating > previous || next.CompetitionPenalty < 0 || next.CompetitionPenalty > cfg.CompetitionMaxPenalty {
 			t.Fatal("competitor raised rating or invalid penalty")
 		}
 		previous = next.Rating
@@ -82,7 +83,8 @@ func TestRatingProperties(t *testing.T) {
 
 func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	cfg := testConfig(t)
-	cfg.ScoreCalibration = 1 // Keep synthetic profiles away from the rating ceiling.
+	cfg.InfraBaseline = 0.2
+	cfg.InfraSpread = 1
 	cfg.AvailableTypes = []string{"subway", "cafe"}
 	input := domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{{Type: "subway", DistanceMeters: 100}}}
 	initial := assess(t, cfg, input)
@@ -113,7 +115,8 @@ func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	}
 
 	cfg = testConfig(t)
-	cfg.ScoreCalibration = 1
+	cfg.InfraBaseline = 0.2
+	cfg.InfraSpread = 1
 	cfg.InfraTypes = []config.RatingInfraType{
 		{Slug: "restaurant", Weight: 3, Radius: 300, Saturation: 1},
 		{Slug: "b", Weight: 1, Radius: 300, Saturation: 1},
@@ -140,52 +143,69 @@ func TestAvailabilityProfilesAndBreakdown(t *testing.T) {
 	}
 }
 
-func TestScoreCalibrationChangesScaleWithoutChangingComponents(t *testing.T) {
+func TestBaselineNormalizationDistanceAndCompetition(t *testing.T) {
 	cfg := testConfig(t)
-	input := domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{
-		{Type: "subway", DistanceMeters: 100},
-		{Type: "supermarket", DistanceMeters: 100},
-		{Type: "hotel", DistanceMeters: 100},
-		{Type: "restaurant", DistanceMeters: 50},
-	}}
-	calibrated := assess(t, cfg, input)
-	cfg.ScoreCalibration = 1
-	baseline := assess(t, cfg, input)
-	if calibrated.Rating <= baseline.Rating {
-		t.Fatalf("score calibration did not spread the scale: calibrated=%v baseline=%v", calibrated.Rating, baseline.Rating)
+	cfg.InfraTypes = []config.RatingInfraType{
+		{Slug: "restaurant", Weight: 1, Radius: 1000, Saturation: 1},
+		{Slug: "amenity", Weight: 1, Radius: 1000, Saturation: 1},
 	}
-	if calibrated.Confidence != baseline.Confidence ||
-		calibrated.CompetitionPenalty != baseline.CompetitionPenalty ||
-		!reflect.DeepEqual(calibrated.Breakdown, baseline.Breakdown) {
-		t.Fatal("score calibration changed coverage, competition or breakdown")
+	cfg.AvailableTypes = []string{"restaurant", "amenity"}
+	cfg.Profiles = map[string]map[string]float64{}
+
+	empty := assess(t, cfg, domain.LocationFeatures{BusinessSlug: "restaurant"})
+	if empty.Rating != 2.8 {
+		t.Fatalf("empty rating = %v, want 2.8", empty.Rating)
 	}
-	empty := domain.LocationFeatures{BusinessSlug: "restaurant"}
-	if assess(t, cfg, empty).Rating != 0.1 {
-		t.Fatal("score calibration must not raise an empty location")
+
+	baselineInfluence := -math.Log1p(-cfg.InfraBaseline)
+	baseline := assess(t, cfg, domain.LocationFeatures{
+		BusinessSlug: "restaurant",
+		Objects:      []domain.RatingObjectDistance{{Type: "amenity", DistanceMeters: 1000 * (1 - baselineInfluence)}},
+	})
+	if baseline.Rating != 5 {
+		t.Fatalf("baseline rating = %v, want 5", baseline.Rating)
+	}
+
+	atThreeQuarters := assess(t, cfg, domain.LocationFeatures{
+		BusinessSlug: "restaurant",
+		Objects:      []domain.RatingObjectDistance{{Type: "amenity", DistanceMeters: 750}},
+	})
+	linearSat := -math.Expm1(-0.25)
+	quadraticSat := -math.Expm1(-0.25 * 0.25)
+	if len(atThreeQuarters.Breakdown) != 1 || math.Abs(atThreeQuarters.Breakdown[0].Sat-linearSat) > 1e-12 || atThreeQuarters.Breakdown[0].Sat <= 3*quadraticSat {
+		t.Fatalf("distance influence is not linear: %+v", atThreeQuarters.Breakdown)
+	}
+
+	goodInput := domain.LocationFeatures{BusinessSlug: "restaurant"}
+	for range 20 {
+		goodInput.Objects = append(goodInput.Objects, domain.RatingObjectDistance{Type: "amenity"})
+	}
+	good := assess(t, cfg, goodInput)
+	if good.Rating != 8.5 || good.Rating == cfg.Max {
+		t.Fatalf("good infrastructure rating = %v, want 8.5 below max", good.Rating)
+	}
+
+	oneCompetitorInput := goodInput
+	oneCompetitorInput.Objects = append(oneCompetitorInput.Objects, domain.RatingObjectDistance{Type: "restaurant"})
+	oneCompetitor := assess(t, cfg, oneCompetitorInput)
+	if oneCompetitor.Rating >= good.Rating || oneCompetitor.CompetitionPenalty <= 0 || math.Abs((good.Rating-oneCompetitor.Rating)-oneCompetitor.CompetitionPenalty) > 0.1 {
+		t.Fatalf("competitor did not lower rating: before=%+v after=%+v", good, oneCompetitor)
+	}
+
+	highCompetitionInput := goodInput
+	for range 20 {
+		highCompetitionInput.Objects = append(highCompetitionInput.Objects, domain.RatingObjectDistance{Type: "restaurant"})
+	}
+	highCompetition := assess(t, cfg, highCompetitionInput)
+	if highCompetition.CompetitionPenalty > cfg.CompetitionMaxPenalty || highCompetition.CompetitionPenalty < 2.4 {
+		t.Fatalf("competition penalty = %v", highCompetition.CompetitionPenalty)
+	}
+	if highCompetition.Rating < 6 || highCompetition.Rating > 6.1 {
+		t.Fatalf("good infrastructure with high competition = %v, want about 6", highCompetition.Rating)
 	}
 }
 
-func TestScoreCalibrationHasNoEarlyPlateau(t *testing.T) {
-	cfg := testConfig(t)
-	input := domain.LocationFeatures{BusinessSlug: "restaurant"}
-	for _, typ := range []string{"subway", "railway_station", "mall", "supermarket", "fastfood", "pvz"} {
-		for range 20 {
-			input.Objects = append(input.Objects, domain.RatingObjectDistance{Type: typ})
-		}
-	}
-	first := assess(t, cfg, input).Rating
-	for _, typ := range []string{"grocery", "coffee", "cafe", "hotel"} {
-		for range 20 {
-			input.Objects = append(input.Objects, domain.RatingObjectDistance{Type: typ})
-		}
-	}
-	second := assess(t, cfg, input).Rating
-	if second <= first {
-		t.Fatalf("calibration reached an early plateau: first=%v second=%v", first, second)
-	}
-}
-
-func TestBoundsAndInvalidInputs(t *testing.T) {
+func TestInfrastructureCeilingAndInvalidInputs(t *testing.T) {
 	cfg := testConfig(t)
 	in := domain.LocationFeatures{BusinessSlug: "restaurant"}
 	for _, typ := range cfg.InfraTypes {
@@ -197,8 +217,8 @@ func TestBoundsAndInvalidInputs(t *testing.T) {
 		}
 	}
 	result := assess(t, cfg, in)
-	if result.Rating != 9.8 || len(result.Breakdown) != 5 {
-		t.Fatalf("upper clamp: %+v", result)
+	if result.Rating != 8.5 || len(result.Breakdown) != 5 {
+		t.Fatalf("infrastructure ceiling: %+v", result)
 	}
 	for _, d := range []float64{-1, math.NaN(), math.Inf(1)} {
 		_, err := NewFormulaCalculator(cfg).Calculate(context.Background(), domain.LocationFeatures{BusinessSlug: "restaurant", Objects: []domain.RatingObjectDistance{{Type: "subway", DistanceMeters: d}}})

@@ -14,7 +14,7 @@ func TestRatingConfigValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.InfraTypes) != 40 || cfg.MaxRadius() != 800 {
+	if len(cfg.InfraTypes) != 40 || cfg.MaxRadius() != 800 || cfg.BaseScore != 5 || cfg.InfraBaseline != 0.05 || cfg.InfraSpread != 0.08 || cfg.InfraRange != 3.5 || cfg.CompetitionMaxPenalty != 2.5 {
 		t.Fatal("default config mismatch")
 	}
 	cases := map[string]func(*RatingFormula){
@@ -25,10 +25,17 @@ func TestRatingConfigValidation(t *testing.T) {
 		"negative weight":      func(c *RatingFormula) { c.InfraTypes[0].Weight = -1 },
 		"zero radius":          func(c *RatingFormula) { c.InfraTypes[0].Radius = 0 },
 		"infinite k":           func(c *RatingFormula) { c.InfraTypes[0].Saturation = math.Inf(1) },
-		"bad beta":             func(c *RatingFormula) { c.Beta = 1.1 },
-		"bad gamma":            func(c *RatingFormula) { c.Gamma = 0 },
-		"zero calibration":     func(c *RatingFormula) { c.ScoreCalibration = 0 },
-		"infinite calibration": func(c *RatingFormula) { c.ScoreCalibration = math.Inf(1) },
+		"base below scale":     func(c *RatingFormula) { c.BaseScore = 0 },
+		"base above scale":     func(c *RatingFormula) { c.BaseScore = 10 },
+		"infinite base":        func(c *RatingFormula) { c.BaseScore = math.Inf(1) },
+		"negative baseline":    func(c *RatingFormula) { c.InfraBaseline = -1 },
+		"nan baseline":         func(c *RatingFormula) { c.InfraBaseline = math.NaN() },
+		"zero spread":          func(c *RatingFormula) { c.InfraSpread = 0 },
+		"infinite spread":      func(c *RatingFormula) { c.InfraSpread = math.Inf(1) },
+		"negative range":       func(c *RatingFormula) { c.InfraRange = -1 },
+		"nan range":            func(c *RatingFormula) { c.InfraRange = math.NaN() },
+		"negative competition": func(c *RatingFormula) { c.CompetitionMaxPenalty = -1 },
+		"infinite competition": func(c *RatingFormula) { c.CompetitionMaxPenalty = math.Inf(1) },
 		"bad bounds":           func(c *RatingFormula) { c.Max = 10 },
 		"fractional bounds":    func(c *RatingFormula) { c.Min = 0.15 },
 		"bad street":           func(c *RatingFormula) { c.StreetFactorDefault = 0.8 },
@@ -62,7 +69,7 @@ func TestRatingConfigRejectsUnknownYAML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, suffix := range []string{"\nunknown_field: 1\n", "\n---\nbeta: 0.4\n"} {
+	for _, suffix := range []string{"\nunknown_field: 1\n", "\n---\nbase_score: 5\n"} {
 		path := filepath.Join(t.TempDir(), "rating.yml")
 		if err := os.WriteFile(path, append(data, []byte(suffix)...), 0o600); err != nil {
 			t.Fatal(err)
