@@ -1,0 +1,196 @@
+schemaVersion: "1.0"
+
+solution:
+  name: "GeoLogic Monitor"
+  teamId: "Big Dogs of Programming"
+
+api:
+  baseUrl: "https://geologic-monitor.duckdns.org"
+  openapi: "./api/docs/openapi.yaml"
+  defaultHeaders:
+    Accept: "application/json"
+
+checks:
+  - id: "register-user"
+    name: "Register test user"
+    description: "Registers the MAX user used by the dependent user checks."
+    method: "PUT"
+    path: "/api/v1/users/me"
+    role: "admin"
+    request:
+      headers:
+        Content-Type: "application/json"
+        X-Max-User-Id: "1234567"
+      body:
+        max_chat_id: 1234567
+    expected:
+      statusCodes: [200]
+      contentType: "application/json"
+      requiredFields: ["id", "max_user_id", "max_chat_id"]
+      bodySchema:
+        type: object
+        required: [id, max_user_id, max_chat_id]
+        properties:
+          id:
+            type: string
+          max_user_id:
+            type: integer
+          max_chat_id:
+            type: integer
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: "list-business-types"
+    name: "List business types"
+    description: "Loads a business type for the tracked location scenario."
+    method: "GET"
+    path: "/api/v1/business-types"
+    role: "user"
+    dependsOn: ["register-user"]
+    expected:
+      statusCodes: [200]
+      contentType: "application/json"
+      bodySchema:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required: [id, infra_type_id, infra_type]
+          properties:
+            id:
+              type: string
+            infra_type_id:
+              type: string
+            infra_type:
+              type: object
+    timeoutMs: 5000
+    repeatable: true
+    extract:
+      businessTypeId: "$[0].id"
+
+  - id: "create-tracked-location"
+    name: "Create tracked location"
+    description: "Creates a temporary location and calculates its initial rating."
+    method: "POST"
+    path: "/api/v1/tracked-locations"
+    role: "user"
+    dependsOn: ["register-user", "list-business-types"]
+    request:
+      headers:
+        Content-Type: "application/json"
+      body:
+        name: "DATA-API test location"
+        business_type_id: "${businessTypeId}"
+        address: "Санкт-Петербург, Невский проспект, 28"
+        lat: 59.9358
+        lon: 30.3259
+    expected:
+      statusCodes: [201]
+      contentType: "application/json"
+      requiredFields:
+        - "id"
+        - "name"
+        - "business_type_id"
+        - "address"
+        - "lat"
+        - "lon"
+        - "rating"
+        - "rating_calculated_at"
+      bodySchema:
+        type: object
+        required:
+          - id
+          - name
+          - business_type_id
+          - address
+          - lat
+          - lon
+          - rating
+          - rating_calculated_at
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+          business_type_id:
+            type: string
+          address:
+            type: string
+          lat:
+            type: number
+          lon:
+            type: number
+          rating:
+            type: number
+          rating_calculated_at:
+            type: string
+    timeoutMs: 15000
+    repeatable: false
+    extract:
+      trackedLocationId: "$.id"
+
+  - id: "list-tracked-locations"
+    name: "List tracked locations"
+    method: "GET"
+    path: "/api/v1/tracked-locations"
+    role: "user"
+    dependsOn: ["create-tracked-location"]
+    expected:
+      statusCodes: [200]
+      contentType: "application/json"
+      bodySchema:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required:
+            - id
+            - name
+            - business_type_id
+            - address
+            - lat
+            - lon
+            - rating
+            - rating_calculated_at
+    timeoutMs: 5000
+    repeatable: true
+
+  - id: "get-rating-history"
+    name: "Get tracked location rating history"
+    method: "GET"
+    path: "/api/v1/tracked-locations/{id}/rating-history"
+    role: "user"
+    dependsOn: ["create-tracked-location"]
+    request:
+      path:
+        id: "${trackedLocationId}"
+      query:
+        months: 3
+    expected:
+      statusCodes: [200]
+      contentType: "application/json"
+      bodySchema:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required: [value, calculated_at]
+          properties:
+            value:
+              type: number
+            calculated_at:
+              type: string
+    timeoutMs: 5000
+    repeatable: true
+
+cleanup:
+  - id: "delete-tracked-location"
+    method: "DELETE"
+    path: "/api/v1/tracked-locations/{id}"
+    role: "user"
+    request:
+      path:
+        id: "${trackedLocationId}"
+    expected:
+      statusCodes: [204, 404]
+    timeoutMs: 5000
