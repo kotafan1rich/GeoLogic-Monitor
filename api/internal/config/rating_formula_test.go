@@ -18,22 +18,22 @@ func TestRatingConfigValidation(t *testing.T) {
 		t.Fatal("default config mismatch")
 	}
 	cases := map[string]func(*RatingFormula){
-		"duplicate slug":      func(c *RatingFormula) { c.InfraTypes = append(c.InfraTypes, c.InfraTypes[0]) },
-		"unknown available":   func(c *RatingFormula) { c.AvailableTypes = append(c.AvailableTypes, "unknown") },
-		"duplicate available": func(c *RatingFormula) { c.AvailableTypes = append(c.AvailableTypes, c.AvailableTypes[0]) },
-		"nan weight":          func(c *RatingFormula) { c.InfraTypes[0].Weight = math.NaN() },
-		"negative weight":     func(c *RatingFormula) { c.InfraTypes[0].Weight = -1 },
-		"zero radius":         func(c *RatingFormula) { c.InfraTypes[0].Radius = 0 },
-		"infinite k":          func(c *RatingFormula) { c.InfraTypes[0].Saturation = math.Inf(1) },
-		"bad beta":            func(c *RatingFormula) { c.Beta = 1.1 },
-		"bad gamma":           func(c *RatingFormula) { c.Gamma = 0 },
-		"negative gain":       func(c *RatingFormula) { c.ScoreGain = -1 },
-		"infinite gain":       func(c *RatingFormula) { c.ScoreGain = math.Inf(1) },
-		"bad bounds":          func(c *RatingFormula) { c.Max = 10 },
-		"fractional bounds":   func(c *RatingFormula) { c.Min = 0.15 },
-		"bad street":          func(c *RatingFormula) { c.StreetFactorDefault = 0.8 },
-		"unknown profile":     func(c *RatingFormula) { c.Profiles = map[string]map[string]float64{"unknown": {"subway": 1}} },
-		"negative relevance":  func(c *RatingFormula) { c.Profiles = map[string]map[string]float64{"restaurant": {"subway": -1}} },
+		"duplicate slug":       func(c *RatingFormula) { c.InfraTypes = append(c.InfraTypes, c.InfraTypes[0]) },
+		"unknown available":    func(c *RatingFormula) { c.AvailableTypes = append(c.AvailableTypes, "unknown") },
+		"duplicate available":  func(c *RatingFormula) { c.AvailableTypes = append(c.AvailableTypes, c.AvailableTypes[0]) },
+		"nan weight":           func(c *RatingFormula) { c.InfraTypes[0].Weight = math.NaN() },
+		"negative weight":      func(c *RatingFormula) { c.InfraTypes[0].Weight = -1 },
+		"zero radius":          func(c *RatingFormula) { c.InfraTypes[0].Radius = 0 },
+		"infinite k":           func(c *RatingFormula) { c.InfraTypes[0].Saturation = math.Inf(1) },
+		"bad beta":             func(c *RatingFormula) { c.Beta = 1.1 },
+		"bad gamma":            func(c *RatingFormula) { c.Gamma = 0 },
+		"zero calibration":     func(c *RatingFormula) { c.ScoreCalibration = 0 },
+		"infinite calibration": func(c *RatingFormula) { c.ScoreCalibration = math.Inf(1) },
+		"bad bounds":           func(c *RatingFormula) { c.Max = 10 },
+		"fractional bounds":    func(c *RatingFormula) { c.Min = 0.15 },
+		"bad street":           func(c *RatingFormula) { c.StreetFactorDefault = 0.8 },
+		"unknown profile":      func(c *RatingFormula) { c.Profiles = map[string]map[string]float64{"unknown": {"subway": 1}} },
+		"negative relevance":   func(c *RatingFormula) { c.Profiles = map[string]map[string]float64{"restaurant": {"subway": -1}} },
 	}
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
