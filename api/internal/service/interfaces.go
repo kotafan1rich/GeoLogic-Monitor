@@ -31,7 +31,7 @@ type Geocoding interface {
 type InfraObj interface {
 	Upsert(ctx context.Context, externalID string, typeID uuid.UUID, lat, lon float64, address string, name *string) (*domain.InfraObject, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.InfraObject, error)
-	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error)
+	Near(ctx context.Context, geoPoint *domain.GeoPoint, radius float64) ([]*domain.InfraObject, error)
 }
 
 type InfraType interface {

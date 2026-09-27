@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 	"uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
@@ -17,7 +18,7 @@ type RatingRepository interface {
 }
 
 type Calculator interface {
-	Calculate(context.Context, domain.LocationFeatures) (*domain.CalculatedRating, error)
+	Calculate(context.Context, domain.LocationFeatures) (*domain.RatingAssessment, error)
 }
 
 type Service interface {
@@ -61,7 +62,7 @@ func (s *service) Calculate(
 		return nil, err
 	}
 
-	return calculatedRating, nil
+	return &domain.CalculatedRating{Value: calculatedRating.Rating, CalculatedAt: time.Now().UTC()}, nil
 }
 
 func (s *service) Create(

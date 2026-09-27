@@ -6,6 +6,7 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	domainerrs "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/service/calculate"
@@ -16,13 +17,13 @@ func TestCreateAndRecalculateAppendRatings(t *testing.T) {
 	repo := &monitoringRepository{}
 	s := newTestService(repo)
 	history := &ratingHistoryRepository{}
-	s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(), history)
+	s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(ratingConfig(t)), history)
 
 	point, err := s.Create(context.Background(), uuid.New(), uuid.New(), "name", "address", 59.93, 30.32)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(history.rows) != 1 || history.rows[0].Value != point.Value || point.Value != 5 {
+	if len(history.rows) != 1 || history.rows[0].Value != point.Value || point.Value != 0.1 {
 		t.Fatalf("first rating was not saved: %+v", history.rows)
 	}
 	repo.locations = []domain.MonitoringLocation{{TrackedLocation: domain.TrackedLocation{
@@ -52,7 +53,7 @@ func TestRecalculateAllContinuesAfterFailure(t *testing.T) {
 			repo := monitoringPoints()
 			s := newTestService(repo)
 			history := &ratingHistoryRepository{failID: repo.locations[0].ID, failure: failure}
-			s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(), history)
+			s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(ratingConfig(t)), history)
 			if !errors.Is(failure, domainerrs.ErrTrackedLocationNotFound) {
 				s.infraService = &failingOnceInfra{failure: failure}
 			}
@@ -72,7 +73,7 @@ func TestRecalculateAllStopsOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	history := &ratingHistoryRepository{}
-	s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(), history)
+	s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(ratingConfig(t)), history)
 	s.infraService = cancellingInfra{cancel: cancel}
 	if err := s.RecalculateAll(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v, want context.Canceled", err)
@@ -94,7 +95,7 @@ func TestCreateKeepsFirstRatingInTransaction(t *testing.T) {
 					t.Fatal("rating saved outside location transaction")
 				}
 			}}
-			s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(), history)
+			s.ratingService = ratingservice.NewService(testLogger(), calculate.NewFormulaCalculator(ratingConfig(t)), history)
 			_, err := s.Create(context.Background(), uuid.New(), uuid.New(), "name", "address", 59.93, 30.32)
 			if !errors.Is(err, failure) || tx.committed != (failure == nil) {
 				t.Fatalf("transaction result: err=%v, committed=%v", err, tx.committed)
@@ -152,13 +153,13 @@ type cancellingInfra struct{ cancel context.CancelFunc }
 
 type failingOnceInfra struct{ failure error }
 
-func (f *failingOnceInfra) Near(context.Context, *domain.GeoPoint) ([]*domain.InfraObject, error) {
+func (f *failingOnceInfra) Near(context.Context, *domain.GeoPoint, float64) ([]*domain.InfraObject, error) {
 	err := f.failure
 	f.failure = nil
 	return nil, err
 }
 
-func (c cancellingInfra) Near(context.Context, *domain.GeoPoint) ([]*domain.InfraObject, error) {
+func (c cancellingInfra) Near(context.Context, *domain.GeoPoint, float64) ([]*domain.InfraObject, error) {
 	c.cancel()
 	return nil, context.Canceled
 }
@@ -188,4 +189,13 @@ func (r *transactionLocationRepository) Create(ctx context.Context, location *do
 		r.t.Fatal("location saved outside transaction")
 	}
 	return r.fakeTrackedLocationRepository.Create(ctx, location)
+}
+
+func ratingConfig(t *testing.T) config.RatingFormula {
+	t.Helper()
+	cfg, err := config.LoadRatingFormula("../../../rating.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cfg
 }

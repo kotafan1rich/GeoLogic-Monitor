@@ -21,6 +21,7 @@ WORKDIR /app
 COPY --from=builder /app/api .
 COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/docs ./docs
+COPY --from=builder /app/rating.yml ./rating.yml
 
 EXPOSE 8080
 

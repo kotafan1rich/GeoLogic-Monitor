@@ -60,9 +60,9 @@ func (r *repository) GetByID(ctx context.Context, id uuid.UUID) (*domain.InfraOb
 	return dto.ToDomain(infraObjectModel), nil
 }
 
-func (r *repository) Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error) {
+func (r *repository) Near(ctx context.Context, geoPoint *domain.GeoPoint, radius float64) ([]*domain.InfraObject, error) {
 	location := basemodel.GeoPoint(*geoPoint)
-	rows, err := r.db.Query(ctx, query.Near, location)
+	rows, err := r.db.Query(ctx, query.Near, location, radius)
 	if err != nil {
 		return nil, err
 	}

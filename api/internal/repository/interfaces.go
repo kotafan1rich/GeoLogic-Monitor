@@ -26,7 +26,7 @@ type Event interface {
 type InfraObject interface {
 	Upsert(ctx context.Context, infraObject *domain.InfraObject) (*domain.InfraObject, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.InfraObject, error)
-	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error)
+	Near(ctx context.Context, geoPoint *domain.GeoPoint, radius float64) ([]*domain.InfraObject, error)
 }
 
 type InfraType interface {

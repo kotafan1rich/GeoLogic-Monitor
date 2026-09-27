@@ -16,7 +16,7 @@ import (
 )
 
 type InfraService interface {
-	Near(ctx context.Context, geoPoint *domain.GeoPoint) ([]*domain.InfraObject, error)
+	Near(ctx context.Context, geoPoint *domain.GeoPoint, radius float64) ([]*domain.InfraObject, error)
 }
 
 type BusinessTypeService interface {
@@ -54,6 +54,7 @@ type service struct {
 	infraService        InfraService
 	businessTypeService BusinessTypeService
 	ratingService       RatingService
+	ratingRadius        float64
 
 	txManager database.TxManager
 	log       *logger.Logger
@@ -65,6 +66,7 @@ func NewTrackedLocationService(
 	infraService InfraService,
 	businessTypeService BusinessTypeService,
 	ratingService RatingService,
+	ratingRadius float64,
 	txManager database.TxManager,
 	log *logger.Logger,
 ) *service {
@@ -74,6 +76,7 @@ func NewTrackedLocationService(
 		infraService:        infraService,
 		businessTypeService: businessTypeService,
 		ratingService:       ratingService,
+		ratingRadius:        ratingRadius,
 		txManager:           txManager,
 		log:                 log,
 	}
@@ -243,7 +246,11 @@ func (s *service) RecalculateAll(ctx context.Context) error {
 }
 
 func (s *service) calculateRating(ctx context.Context, location *domain.TrackedLocation) (*domain.CalculatedRating, error) {
-	infraNear, err := s.infraService.Near(ctx, &location.GeoPoint)
+	businessType, err := s.businessTypeService.GetByID(ctx, location.BusinessTypeID)
+	if err != nil {
+		return nil, err
+	}
+	infraNear, err := s.infraService.Near(ctx, &location.GeoPoint, s.ratingRadius)
 	if err != nil {
 		return nil, err
 	}
@@ -266,14 +273,9 @@ func (s *service) calculateRating(ctx context.Context, location *domain.TrackedL
 		return nil, errors.New("unexpected walking distance count")
 	}
 
-	businessType, err := s.businessTypeService.GetByID(ctx, location.BusinessTypeID)
-	if err != nil {
-		return nil, err
-	}
-
 	infraWithDistance := make([]*domain.InfraObjectDistance, 0, len(infraNear))
 	for i, distance := range distances {
-		if distance == nil || *distance > float64(infraNear[i].Type.MaxRadius) {
+		if distance == nil {
 			continue
 		}
 		infraWithDistance = append(infraWithDistance, &domain.InfraObjectDistance{

@@ -47,15 +47,15 @@
 
 ### `infra_types` — типы инфраструктуры
 
-Справочник категорий, весов и радиусов для расчёта рейтинга.
+Справочник категорий с legacy-полями веса и радиуса. Новая формула рейтинга берёт параметры из `api/rating.yml`.
 
 | Поле | Описание | NULL | По умолчанию |
 | --- | --- | --- | --- |
 | `id` | PRIMARY KEY; внутренний идентификатор. | Нет | `gen_random_uuid()` |
 | `slug` | UNIQUE; CHECK btrim(slug) <> ''. Стабильный ключ типа. | Нет | — |
 | `name` | CHECK btrim(name) <> ''; название категории. | Нет | — |
-| `weight` | CHECK > 0; вес категории в формуле рейтинга. | Нет | — |
-| `max_radius` | CHECK BETWEEN 1 AND 65535; максимальный радиус влияния в метрах. | Нет | — |
+| `weight` | CHECK > 0; legacy-вес справочника, не используется новой формулой рейтинга. | Нет | — |
+| `max_radius` | CHECK BETWEEN 1 AND 65535; legacy-радиус справочника в метрах, не используется новой формулой рейтинга. | Нет | — |
 | `created_at` | Время создания записи. | Нет | `now()` |
 | `updated_at` | Время последнего изменения; обновляется триггером. | Нет | `now()` |
 
@@ -163,10 +163,11 @@ TTL — 24 часа от фактического получения; повто
 ## Расчётные модели без таблиц
 
 - GeoPoint: lat, lon.
-- InfraTypeFeatures: TypeID, Slug, Weight, MaxRadiusMeters, ObjectCount, NearestMeters, MeanMeters, DistanceSum, Influence, Count100m, Count300m, Count500m, IsCompetitor.
-- LocationFeatures: BusinessTypeID, InfraTypes.
-- CalculatedRating: Value.
+- RatingObjectDistance: Type (slug), DistanceMeters (пешеходное расстояние OSRM).
+- LocationFeatures: BusinessTypeID, BusinessSlug, Objects, необязательные Profile и StreetFactor.
+- RatingAssessment: Rating, Confidence, Breakdown, CompetitionPenalty; результат чистой функции, не сохраняется целиком.
+- CalculatedRating: Value, CalculatedAt.
 - Route: distance_meters, duration_seconds.
 - Notification: получатель, точка, сигнал, маршрут, reasons, recommendations.
 
-Признаки рейтинга принадлежат API и существуют во время расчёта при создании точки и по расписанию; итоговое значение сохраняется в rating_history. Набор признаков сохранён из старого API, но расстояния уточняются OSRM. Их подготовка и использование описаны в [рейтинге](impact-engine.md); транспортные формы — в спецификациях.
+Признаки рейтинга принадлежат API и существуют во время расчёта при создании точки и по расписанию; итоговое значение и время сохраняются в rating_history. Расстояния поступают из OSRM, параметры формулы — из YAML. Их подготовка и использование описаны в [рейтинге](impact-engine.md); транспортные формы — в спецификациях.
