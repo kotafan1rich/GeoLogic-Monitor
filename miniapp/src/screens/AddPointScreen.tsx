@@ -114,21 +114,24 @@ export default function AddPointScreen({ draft, onChange, businessTypes, onRetry
         {businessTypes.status === 'error' && <div role="alert"><p>{businessTypes.message}</p><button className="button" type="button" onClick={onRetryTypes}>Повторить загрузку категорий</button></div>}
         {businessTypes.status === 'success' && businessTypes.data.length === 0 && <div className="card" role="status"><p>Категории пока недоступны. Добавление точки невозможно.</p><button className="button" type="button" onClick={onRetryTypes}>Обновить категории</button></div>}
         <label htmlFor="point-address">Адрес</label>
-        <input id="point-address" value={draft.addressQuery} required maxLength={500}
-          placeholder="Город, улица, дом" autoComplete="off" aria-describedby="location-hint"
-          onChange={(event) => {
-            cancelLocation();
-            setSuggestions(null);
-            onChange((current) => ({ ...current, addressQuery: event.target.value, selectedAddress: null }));
-          }} />
+        <div className="address-field">
+          <input id="point-address" value={draft.addressQuery} required maxLength={500}
+            placeholder="Город, улица, дом" autoComplete="off" aria-describedby="location-hint"
+            onChange={(event) => {
+              cancelLocation();
+              setSuggestions(null);
+              onChange((current) => ({ ...current, addressQuery: event.target.value, selectedAddress: null }));
+            }} />
+          {suggestions?.status === 'success' && suggestions.data.length > 0 && (
+            <ul className="address-suggestions" aria-label="Варианты адреса">
+              {suggestions.data.map((address, index) => <li key={index}><button type="button" onClick={() => chooseAddress(address)}>{address.address}</button></li>)}
+            </ul>)}
+        </div>
         <p className="muted small" id="location-hint">Выберите адрес из подсказок или поделитесь геолокацией. Поиск доступен для Санкт-Петербурга.</p>
         {suggestions?.status === 'loading' && <p role="status">Поиск адресов…</p>}
         {suggestions?.status === 'error' && <div role="alert"><p>{suggestions.message}</p><button className="button" type="button" onClick={() => setSearchRevision((value) => value + 1)}>Повторить поиск</button></div>}
-        {suggestions?.status === 'success' && (suggestions.data.length === 0
-          ? <p role="status">Адреса не найдены. Уточните запрос.</p>
-          : <ul className="address-suggestions" aria-label="Варианты адреса">
-            {suggestions.data.map((address, index) => <li key={index}><button type="button" className="button" onClick={() => chooseAddress(address)}>{address.address}</button></li>)}
-          </ul>)}
+        {suggestions?.status === 'success' && suggestions.data.length === 0
+          && <p role="status">Адреса не найдены. Уточните запрос.</p>}
         {draft.selectedAddress && <p className="muted small" role="status">Адрес выбран.</p>}
         {locationError && <p className="error-message" role="alert">{locationError}</p>}
         <div className="actions">
