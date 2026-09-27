@@ -1,15 +1,28 @@
 # Локальная разработка
 
-Проект запускается через Docker Compose; Taskfile предоставляет короткие команды для тех же операций. Детальные настройки находятся в документации соответствующих сервисов.
+Рекомендуемый способ запуска — Docker Compose из корня репозитория. Go, Node.js и Task нужны только для запуска компонентов или проверок напрямую на хосте.
 
 ## Требования
 
-- Docker с поддержкой Compose;
-- Go 1.27 для запуска Go-модулей без Docker;
-- Node.js, если Mini App запускается вне контейнера;
-- [Task](https://taskfile.dev/docs/installation) — необязательно.
+Для запуска в Docker:
 
-## Подготовка окружения
+- Docker Engine с Docker Compose v2;
+- свободные порты `80`, `443`, `5000`, `5432`, `8080`, `8083`, `8088` и `9092` (`8082` также нужен для Bot);
+- `curl` для команды проверки health (необязательно);
+- доступ в интернет для загрузки образов, карты OSRM и данных ingestion;
+- около 1 ГБ свободной оперативной памяти для первой подготовки OSRM.
+
+Дополнительно для разработки на хосте:
+
+- Go 1.27;
+- Node.js 22;
+- [Task](https://taskfile.dev/docs/installation) — необязательно;
+- [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) — только для публичного туннеля MAX Bot;
+- Bash и `openssl` — для генератора тестовых MAX Mini App initData.
+
+## 1. Подготовка окружения
+
+Из корня репозитория выполните:
 
 ```bash
 cp .env.template .env
@@ -18,11 +31,86 @@ cp ingestion/.env.template ingestion/.env
 cp bot/.env.template bot/.env
 ```
 
-Замените заглушки токенов и внешних ключей. Локальные `.env` не коммитятся.
+Локальные `.env` не коммитятся. Шаблоны уже содержат согласованные адреса контейнеров, имена баз данных, пароли и сервисные токены для локальной разработки.
 
-Корневой `.env` задаёт опубликованные порты и параметры общей инфраструктуры. Env-файлы приложений содержат их собственные подключения и секреты.
+Перед запуском учитывайте внешние интеграции:
 
-## Запуск всей системы
+- `DADATA_API_KEY` в `api/.env` нужен только для прямого и обратного геокодирования;
+- значение `MAX_BOT_TOKEN` из `api/.env` можно использовать с локальным генератором initData; реальный токен нужен для работы с MAX;
+- `bot` требует реальный `MAX_BOT_TOKEN`, публичный `WEBHOOK_URL` и `WEBHOOK_SECRET`;
+- `BOT_SERVICE_TOKEN` должен совпадать в `api/.env` и `bot/.env`;
+- `INGESTION_SERVICE_TOKEN` должен совпадать в `api/.env` и `ingestion/.env`.
+
+## 2. Запуск основного стека
+
+Для API, Mini App, загрузки данных и расчёта рейтинга Bot не требуется:
+
+```bash
+docker compose up --build -d postgres kafka osrm api ingestion miniapp caddy kafka-ui
+```
+
+Compose автоматически создаст сеть и volumes, дождётся готовности PostgreSQL и Kafka и применит миграции при старте API и ingestion.
+
+Первый запуск OSRM дольше обычного: образ скачивает карту Санкт-Петербурга и строит пешеходный граф. Следить за подготовкой можно командой:
+
+```bash
+docker compose logs -f osrm
+```
+
+Когда в журнале появится запуск `osrm-routed`, проверьте контейнеры и API:
+
+```bash
+docker compose ps
+curl --fail http://localhost:8080/health
+```
+
+Ожидаемый ответ API:
+
+```json
+{"status":"ok"}
+```
+
+Доступные интерфейсы:
+
+| Сервис | Адрес |
+| --- | --- |
+| Mini App через Caddy | <http://localhost/> |
+| Mini App напрямую | <http://localhost:8083/> |
+| Swagger UI | <http://localhost:8080/docs/> |
+| Kafka UI | <http://localhost:8088/> |
+| API health | <http://localhost:8080/health> |
+| OSRM | <http://localhost:5000/> |
+
+Если контейнер не запустился или стал `unhealthy`, сначала посмотрите его журнал:
+
+```bash
+docker compose logs --tail=200 api
+docker compose logs --tail=200 ingestion
+docker compose logs --tail=200 osrm
+```
+
+## 3. Запуск MAX Bot
+
+Bot является отдельным шагом, потому что MAX должен иметь доступ к публичному HTTPS webhook.
+
+1. Запишите реальные `MAX_BOT_TOKEN` и `WEBHOOK_SECRET` в `bot/.env`.
+2. Убедитесь, что `MAX_BOT_TOKEN` и `BOT_SERVICE_TOKEN` совпадают со значениями в `api/.env`.
+3. Откройте туннель к локальному порту Bot:
+
+```bash
+task bot:tunel
+# без Task: cloudflared tunnel --url http://localhost:8082
+```
+
+4. Добавьте к выданному HTTPS-адресу путь `/webhook` и запишите результат в `WEBHOOK_URL` файла `bot/.env`.
+5. Запустите Bot:
+
+```bash
+docker compose up --build -d bot
+docker compose logs -f bot
+```
+
+После настройки всех внешних значений весь стек можно поднимать одной командой:
 
 ```bash
 docker compose up --build -d
@@ -30,7 +118,9 @@ docker compose up --build -d
 task all:up
 ```
 
-Проверить состояние и журналы:
+## Управление сервисами
+
+Просмотр состояния и журналов:
 
 ```bash
 docker compose ps
@@ -42,44 +132,46 @@ task logs
 Остановка без удаления volumes:
 
 ```bash
+docker compose down
+# или
 task all:down
 ```
 
-## Запуск компонентов
+Запуск отдельных компонентов:
 
 ```bash
 task postgres:up
+task kafka:up
 task osrm:up
 task api:up
 task ingestion:up
-task kafka:up
 task bot:up
 ```
 
-Первичная подготовка графа OSRM может потребовать до 1 ГБ памяти и занимает больше времени обычного запуска. Подробности: [локальный OSRM](../osrm/README.md).
+## Запуск компонентов на хосте
 
-Настройка и диагностика сервисов описаны в документации разработки [API](../api/docs/development.md) и [Bot](../bot/docs/development.md).
+При запуске приложения вне Docker замените контейнерные адреса в его `.env`: PostgreSQL — на `localhost:5432`, Kafka — на `localhost:9092`, API — на `http://localhost:8080`, OSRM — на `http://localhost:5000`.
+
+Подробности находятся в документации разработки [API](../api/docs/development.md), [Bot](../bot/docs/development.md) и [OSRM](../osrm/README.md).
 
 ## Проверки
 
 Go-модули проверяются независимо:
 
 ```bash
-cd api && go test ./...
-cd ingestion && go test ./...
-cd bot && go test ./...
+(cd api && go test ./...)
+(cd ingestion && go test ./...)
+(cd bot && go test ./...)
 ```
 
 Mini App:
 
 ```bash
-cd miniapp
-npm ci
-npm run build
+(cd miniapp && npm ci && npm run build)
 ```
 
 Общего `go.mod` в корне намеренно нет. Команды Go нужно запускать из каталога соответствующего модуля.
 
 ## Состояние сквозного сценария
 
-API, Mini App, загрузочные jobs ingestion, webhook MAX и Kafka consumer bot реализованы. Producer уведомлений в ingestion пока отсутствует, поэтому полный путь «обнаружение изменения → Kafka → сообщение MAX» недоступен.
+API, Mini App, загрузочные jobs ingestion, webhook MAX и Kafka consumer Bot реализованы. Producer уведомлений в ingestion пока отсутствует, поэтому полный путь «обнаружение изменения → Kafka → сообщение MAX» недоступен.

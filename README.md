@@ -43,23 +43,54 @@ Go 1.27, `net/http`, PostgreSQL 18 и PostGIS 3.6, React 19, TypeScript, Vite, K
 
 ## Быстрый запуск
 
-Подготовьте env-файлы по шаблонам и запустите Compose:
+Нужны Docker и Docker Compose; `curl` используется только для проверки API. Все команды выполняются из корня репозитория.
+
+1. Создайте локальные env-файлы:
 
 ```bash
 cp .env.template .env
 cp api/.env.template api/.env
 cp ingestion/.env.template ingestion/.env
 cp bot/.env.template bot/.env
-docker compose up --build -d
 ```
 
-Короткая команда при установленном [Task](https://taskfile.dev/):
+Шаблоны уже согласованы для локальной сети Compose. Для запуска API и Mini App их можно использовать без дополнительных изменений. Реальные `DADATA_API_KEY` и `MAX_BOT_TOKEN` нужны только для соответствующих внешних интеграций.
+
+2. Запустите основной стек без MAX Bot:
 
 ```bash
-task all:up
+docker compose up --build -d postgres kafka osrm api ingestion miniapp caddy kafka-ui
 ```
 
-Подробности, требования и запуск отдельных компонентов находятся в [инструкции по локальной разработке](docs/local-development.md).
+Первая сборка OSRM скачивает карту Санкт-Петербурга и подготавливает граф, поэтому занимает больше времени последующих запусков.
+
+3. Проверьте состояние:
+
+```bash
+docker compose ps
+curl --fail http://localhost:8080/health
+```
+
+После запуска доступны:
+
+- Mini App: <http://localhost/>;
+- Swagger UI: <http://localhost:8080/docs/>;
+- Kafka UI: <http://localhost:8088/>;
+- API напрямую: <http://localhost:8080/>.
+
+4. Для запуска MAX Bot укажите в `bot/.env` настоящий `MAX_BOT_TOKEN`, публичный `WEBHOOK_URL` и `WEBHOOK_SECRET`. Значения `MAX_BOT_TOKEN` и `BOT_SERVICE_TOKEN` должны совпадать с `api/.env`. Затем запустите:
+
+```bash
+docker compose up --build -d bot
+```
+
+Остановить стек без удаления данных:
+
+```bash
+docker compose down
+```
+
+Подробная настройка, диагностика и запуск отдельных компонентов описаны в [инструкции по локальной разработке](docs/local-development.md).
 
 ## Проверка API
 
