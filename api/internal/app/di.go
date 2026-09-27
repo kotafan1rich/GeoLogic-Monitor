@@ -224,7 +224,7 @@ func (d *diContainer) RatingService(ctx context.Context) service.Rating {
 	if d.ratingService == nil {
 		d.ratingService = ratingservice.NewService(
 			d.Log(),
-			calculateservice.NewFormulaCalculator(),
+			calculateservice.NewFormulaCalculator(d.cfg.Rating.Formula),
 			d.RatingRepository(ctx),
 		)
 	}
@@ -278,6 +278,7 @@ func (d *diContainer) TrackedLocationService(ctx context.Context) service.Tracke
 			d.InfraService(ctx),
 			d.BusinessTypeService(ctx),
 			d.RatingService(ctx),
+			d.cfg.Rating.Formula.MaxRadius(),
 			d.TxManager(ctx),
 			d.Log(),
 		)

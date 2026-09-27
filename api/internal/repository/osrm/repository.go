@@ -2,6 +2,7 @@ package osrm
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/integrations/osrm"
@@ -11,6 +12,9 @@ import (
 type OSRMClient interface {
 	GetWalkingDistances(ctx context.Context, src *osrm.Coordinate, dst []*osrm.Coordinate) ([]*float64, error)
 }
+
+// One source plus at most 99 targets fits OSRM's 100-coordinate table limit.
+const maxWalkingDestinations = 99
 
 type repository struct {
 	osrmClient OSRMClient
@@ -31,13 +35,20 @@ func (r *repository) WalkingDistances(
 		return []*float64{}, nil
 	}
 
-	distances, err := r.osrmClient.GetWalkingDistances(
-		ctx,
-		dto.ToCoordinate(src),
-		dto.ToCoordinateSlice(dst),
-	)
-	if err != nil {
-		return nil, err
+	distances := make([]*float64, 0, len(dst))
+	for start := 0; start < len(dst); start += maxWalkingDestinations {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		end := min(start+maxWalkingDestinations, len(dst))
+		batch, err := r.osrmClient.GetWalkingDistances(ctx, dto.ToCoordinate(src), dto.ToCoordinateSlice(dst[start:end]))
+		if err != nil {
+			return nil, err
+		}
+		if len(batch) != end-start {
+			return nil, fmt.Errorf("unexpected OSRM batch distance count")
+		}
+		distances = append(distances, batch...)
 	}
 	return distances, nil
 }
