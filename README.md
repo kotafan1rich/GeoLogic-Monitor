@@ -1,89 +1,88 @@
 # GeoLogic Monitor
 
-Сервис в MAX для владельцев кофеен, кафе и небольших ресторанов Санкт-Петербурга: следит за изменениями вокруг торговой точки и отправляет уведомления о новых конкурентах и ближайших мероприятиях.
+GeoLogic Monitor помогает владельцам кофеен, кафе и небольших ресторанов Санкт-Петербурга оценивать окружение торговых точек и узнавать о важных изменениях рядом. Пользователь работает через MAX Mini App: добавляет точки, смотрит текущий рейтинг и его историю. Бот регистрирует чат и доставляет уведомления.
 
-Целевой MVP позволяет через MAX Mini App добавить несколько точек, посмотреть и удалить точку, увидеть текущий рейтинг и его историю за выбранный период (по умолчанию три месяца). API сохраняет рейтинг при создании точки, ведёт историю и автоматически пересчитывает рейтинги по расписанию. Бот должен отправлять уведомления; технический `/start` регистрирует чат и открывает Mini App.
+![Контейнерная схема GeoLogic Monitor](docs/diagrams/rendered/c4-containers.svg)
 
-Пользовательские и внутренние HTTP-методы API, авторизация Mini App по MAX initData, расчёт при создании точки, история рейтинга, плановый пересчёт и frontend Mini App реализованы.
+## Что умеет система
 
-## Архитектура и стек
+- добавлять, показывать и удалять точки пользователя;
+- находить адреса через DaData Suggest;
+- рассчитывать рейтинг окружения по инфраструктуре и пешеходным расстояниям;
+- хранить историю успешных расчётов и пересчитывать рейтинг по расписанию;
+- загружать инфраструктуру и городские события;
+- принимать webhook MAX и отправлять сообщения из Kafka.
 
-Три независимых Go-модуля: `api` хранит постоянные данные и рассчитывает рейтинг, `ingestion` загружает окружение, `bot` принимает webhook MAX и обрабатывает технический `/start`. Целевая цепочка уведомлений связывает ingestion и bot через Kafka; producer и consumer пока не реализованы. Mini App обращается напрямую к API.
+Сквозной сценарий уведомлений пока не завершён: Kafka consumer в `bot` реализован, producer уведомлений в `ingestion` отсутствует. Остальные возможности выше представлены в текущем коде.
 
-Go 1.27, стандартный net/http, pgx/pgxpool и ручной SQL, PostgreSQL 18 + PostGIS 3.6, OSRM с foot.lua, log/slog, Docker Compose и Taskfile; Mini App использует React, TypeScript и Vite. Для целевой Kafka-интеграции выбран franz-go.
+## Пользовательский сценарий
 
-## Текущее состояние
+1. Предприниматель запускает бота в MAX и открывает Mini App.
+2. Выбирает тип бизнеса и адрес новой точки.
+3. API находит объекты рядом, уточняет расстояния через OSRM и сохраняет первый рейтинг.
+4. Mini App показывает точку, текущую оценку и график истории.
+5. API обновляет рейтинги по расписанию, а ingestion собирает изменения окружения для уведомлений.
 
-В `api` реализованы миграции постоянных данных, методы OpenAPI, сервисная и Mini App-авторизация, геокодинг, расчёт рейтинга через OSRM, его история и плановый пересчёт. Bot реализует webhook MAX и `/start`, ingestion — загрузку данных по расписанию, frontend Mini App — работу с точками и рейтингом. Не завершена доставка уведомлений через Kafka.
+Подробное описание: [продукт и пользовательский сценарий](docs/product.md).
 
-Локальная инфраструктура OSRM подготовлена отдельно от Go-сервисов: контейнер автоматически строит пешеходный граф, проверяет его trial-запуском и сохраняет в Docker volume. Инструкции находятся в [README OSRM](osrm/README.md). Все приложения имеют исполняемые файлы или frontend-сборку и конфигурацию Compose; сквозной сценарий уведомлений остаётся недоступен до реализации Kafka producer/consumer.
+## Сервисы
 
-## Локальный запуск
+| Компонент | Ответственность | Документация |
+| --- | --- | --- |
+| `api` | Постоянные данные, HTTP-контракт, геокодинг, рейтинг и планировщик | [README API](api/README.md) |
+| `ingestion` | Загрузка инфраструктуры и событий, мониторинг изменений | Документация будет добавлена отдельно |
+| `bot` | Webhook MAX, `/start`, Kafka consumer и отправка уведомлений | [README Bot](bot/README.md) |
+| `miniapp` | Пользовательский интерфейс точек, рейтинга и истории | Документация будет добавлена отдельно |
+| `osrm` | Локальная пешеходная маршрутизация | [README OSRM](osrm/README.md) |
 
-Подробная настройка окружения и текущее состояние сервисов описаны в [инструкции по локальной разработке](docs/local-development.md).
+Сервисы независимы: `api`, `ingestion` и `bot` являются отдельными Go-модулями, а `miniapp` — приложением React/TypeScript. Постоянными данными владеет API; остальные сервисы обращаются к нему по HTTP.
 
-### Установка Task
+## Технологии
 
-Для запуска команд проекта нужен [Task](https://taskfile.dev/docs/installation). Установить его можно одним из способов:
+Go 1.27, `net/http`, PostgreSQL 18 и PostGIS 3.6, React 19, TypeScript, Vite, Kafka, franz-go, OSRM, Docker Compose и Taskfile.
 
-```bash
-# Linux через Snap
-sudo snap install task --classic
+## Быстрый запуск
 
-# macOS или Linux через Homebrew
-brew install go-task/tap/go-task
-
-# При установленном Go
-go install github.com/go-task/task/v3/cmd/task@latest
-
-# Windows через WinGet
-winget install Task.Task
-```
-
-Проверить установку и посмотреть доступные команды:
-
-```bash
-task --version
-task --list
-```
-
-Определённые в проекте команды Docker Compose:
+Подготовьте env-файлы по шаблонам и запустите Compose:
 
 ```bash
-task all:up                 # запустить всё
-task all:down               # остановить всё
-task api:up                 # запустить отдельный сервис
-task api:down               # остановить отдельный сервис
-task ingestion:up
-task ingestion:down
-task bot:up
-task bot:down
-task api-db:up
-task api-db:down
-task ingestion-db:up
-task ingestion-db:down
-task db:up                  # запустить обе базы данных
-task db:down                # остановить обе базы данных
-task osrm:up                # запустить OSRM
-task osrm:down              # остановить OSRM
-task logs                   # смотреть общие логи
+cp .env.template .env
+cp api/.env.template api/.env
+cp ingestion/.env.template ingestion/.env
+cp bot/.env.template bot/.env
+docker compose up --build -d
 ```
 
-Для первой сборки OSRM или после изменения его Dockerfile и entrypoint используйте:
+Короткая команда при установленном [Task](https://taskfile.dev/):
 
 ```bash
-docker compose up --build -d osrm
+task all:up
 ```
+
+Подробности, требования и запуск отдельных компонентов находятся в [инструкции по локальной разработке](docs/local-development.md).
+
+## Проверка API
+
+В корне репозитория находится [`DATA-API.yaml`](DATA-API.yaml) со сценарием проверки API.
+
+Для получения MAX Mini App initData используйте генератор `scripts/generate-max-init-data.sh`. Скрипт требует Bash и `openssl`, скрыто запрашивает токен MAX-бота и затем ID пользователя:
+
+```bash
+INIT_DATA=$(./scripts/generate-max-init-data.sh)
+```
+
+Скрипт выводит готовую строку для заголовка `X-Max-Init-Data`. Сгенерированные initData ограничены настройкой `MINIAPP_INIT_DATA_MAX_AGE` (по умолчанию один час), поэтому перед проверкой следует формировать новое значение. Токен и полученные initData не должны попадать в Git.
 
 ## Документация
 
-- [Правила работы с репозиторием](CONTRIBUTING.md)
+- [Архитектура системы](docs/architecture.md)
 - [Продукт и пользовательский сценарий](docs/product.md)
-- [Архитектура и структура каталогов](docs/architecture.md)
-- [Модель данных](docs/data-model.md)
+- [Обзор владения данными](docs/data-model.md)
 - [Рейтинг окружения](docs/impact-engine.md)
-- [OpenAPI](api/docs/openapi.yaml)
-- [AsyncAPI](docs/asyncapi/notifications.yaml)
+- [Документация API](api/README.md)
+- [Документация Bot](bot/README.md)
+- [HTTP OpenAPI](api/docs/openapi.yaml)
+- [Kafka AsyncAPI](docs/asyncapi/notifications.yaml)
 - [Локальная разработка](docs/local-development.md)
-- [Локальный OSRM](osrm/README.md)
-- [Диаграммы: PlantUML и SVG](docs/diagrams/README.md)
+- [Исходники и изображения диаграмм](docs/diagrams/README.md)
+- [Правила работы с репозиторием](CONTRIBUTING.md)

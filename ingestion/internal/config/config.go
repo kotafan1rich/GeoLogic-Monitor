@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Logger     LoggerConfig
 	Database   DatabaseConfig `yaml:"database"`
+	Producer   ProducerConfig `yaml:"producer"`
 	Scheduler  SchedulerConfig
 	Aggregator AggregatorConfig `yaml:"aggregator"`
 	GeoApi     GeoApiConfig     `yaml:"geo-api"`
@@ -28,18 +29,31 @@ type DatabaseConfig struct {
 	Postgresql PostgresqlConfig `yaml:"postgresql"`
 }
 
+type ProducerConfig struct {
+	Kafka KafkaConfig `yaml:"kafka"`
+}
+
 type PostgresqlConfig struct {
 	Host                string        `env:"POSTGRES_HOST" env-required:"true"`
 	Port                int           `env:"POSTGRES_PORT" env-required:"true"`
 	User                string        `env:"POSTGRES_USER" env-required:"true"`
 	Password            string        `env:"POSTGRES_PASSWORD" env-required:"true"`
-	Name                string        `env:"POSTGRES_NAME" env-required:"true"`
 	DB                  string        `env:"POSTGRES_DB" env-required:"true"`
 	SSLMode             string        `yaml:"ssl_mode"`
 	MinConns            int           `yaml:"min_conns"`
 	MaxConns            int           `yaml:"max_conns"`
 	MaxConnIdleLifetime time.Duration `yaml:"max_conn_idle_lifetime"`
 	MaxConnLifetime     time.Duration `yaml:"max_conn_lifetime"`
+}
+
+type KafkaConfig struct {
+	Addresses      []string      `env:"KAFKA_ADDRESSES" env-required:"true"`
+	FlushTimeout   time.Duration `yaml:"flush_timeout"`
+	AttemptTimeout time.Duration `yaml:"attempt_timeout"`
+	MaxRetries     uint          `yaml:"max_retries"`
+	BatchSize      int32         `yaml:"batch_size"`
+	BufferMaxMsg   int           `yaml:"buffer_max_msg"`
+	BufferMaxBytes int           `yaml:"buffer_max_bytes"`
 }
 
 func (c *PostgresqlConfig) DSN() string {

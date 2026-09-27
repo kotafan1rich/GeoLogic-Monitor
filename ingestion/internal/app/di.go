@@ -13,6 +13,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/infra"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/job"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/producer"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/scheduler"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
@@ -29,6 +30,7 @@ const (
 type diContainer struct {
 	log       *slog.Logger
 	db        *postgresql.DB
+	p         *producer.Producer
 	dsc       *digitalspb.Client
 	ds        *job.DigitalSpb
 	maps      *maps.Client
@@ -80,6 +82,32 @@ func (d *diContainer) DB(ctx context.Context) *postgresql.DB {
 		d.db = psql
 	}
 	return d.db
+}
+
+func (d *diContainer) Producer() *producer.Producer {
+	if d.p == nil {
+		cfg := config.Get()
+
+		p := producer.MustNew(
+			cfg.Producer.Kafka.Addresses,
+			d.Logger(),
+			cfg.Producer.Kafka.FlushTimeout,
+			cfg.Producer.Kafka.AttemptTimeout,
+			cfg.Producer.Kafka.MaxRetries,
+			cfg.Producer.Kafka.BatchSize,
+			cfg.Producer.Kafka.BufferMaxMsg,
+			cfg.Producer.Kafka.BufferMaxBytes,
+		)
+
+		closer.Add("kafka", func(context.Context) error {
+			return p.Close()
+		})
+
+		d.Logger().Info("kafka-producer initialized")
+
+		d.p = p
+	}
+	return d.p
 }
 
 func (d *diContainer) requester(

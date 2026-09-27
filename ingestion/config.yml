@@ -100,3 +100,12 @@ database:
     max_conns: 25
     max_conn_idle_lifetime: 5m
     max_conn_lifetime: 15m
+
+producer:
+  kafka:
+    flush_timeout: 15000ms
+    attempt_timeout: 5s
+    max_retries: 3
+    batch_size: 65536
+    buffer_max_msg: 1000
+    buffer_max_bytes: 10485760
