@@ -55,29 +55,29 @@ geo-api:
     - { slug: subway,             name: "Станция метро",          weight: 5,   max_radius: 800 }
     - { slug: railway_station,    name: "Вокзал",                 weight: 4,   max_radius: 700 }
     - { slug: mall,               name: "Торговый центр",         weight: 4,   max_radius: 600 }
-    - { slug: supermarket,        name: "Супермаркет",            weight: 3.5, max_radius: 400 }
+    - { slug: supermarket,        name: "Супермаркет",            weight: 3, max_radius: 400 }
     - { slug: fastfood,           name: "Фастфуд",                weight: 3,   max_radius: 300 }
-    - { slug: pvz,                name: "ПВЗ",                    weight: 2.5, max_radius: 250 }
-    - { slug: grocery,            name: "Продукты у дома",        weight: 2.5, max_radius: 200 }
-    - { slug: coffee,             name: "Кофейня",                weight: 2.5, max_radius: 200 }
-    - { slug: cafe,               name: "Кафе",                   weight: 2.5, max_radius: 250 }
-    - { slug: restaurant,         name: "Ресторан",               weight: 2.5, max_radius: 300 }
+    - { slug: pvz,                name: "ПВЗ",                    weight: 2, max_radius: 250 }
+    - { slug: grocery,            name: "Продукты у дома",        weight: 2, max_radius: 200 }
+    - { slug: coffee,             name: "Кофейня",                weight: 2, max_radius: 200 }
+    - { slug: cafe,               name: "Кафе",                   weight: 2, max_radius: 250 }
+    - { slug: restaurant,         name: "Ресторан",               weight: 2, max_radius: 300 }
     - { slug: bakery,             name: "Пекарня",                weight: 2,   max_radius: 200 }
-    - { slug: hotel,              name: "Гостиница",              weight: 2.5, max_radius: 400 }
-    - { slug: museum,             name: "Музей",                  weight: 2.5, max_radius: 500 }
-    - { slug: cinema,             name: "Кинотеатр",              weight: 2.5, max_radius: 400 }
+    - { slug: hotel,              name: "Гостиница",              weight: 2, max_radius: 400 }
+    - { slug: museum,             name: "Музей",                  weight: 2, max_radius: 500 }
+    - { slug: cinema,             name: "Кинотеатр",              weight: 2, max_radius: 400 }
     - { slug: theatre,            name: "Театр",                  weight: 2,   max_radius: 400 }
-    - { slug: exhibition_hall,    name: "Выставочный зал",        weight: 1.5, max_radius: 400 }
+    - { slug: exhibition_hall,    name: "Выставочный зал",        weight: 1, max_radius: 400 }
     - { slug: park,               name: "Парк",                   weight: 2,   max_radius: 500 }
-    - { slug: zoo,                name: "Зоопарк",                weight: 1.5, max_radius: 600 }
-    - { slug: sports_center,      name: "Спортивный центр",       weight: 2.5, max_radius: 500 }
-    - { slug: medical_center,     name: "Медцентр",               weight: 2.5, max_radius: 500 }
+    - { slug: zoo,                name: "Зоопарк",                weight: 1, max_radius: 600 }
+    - { slug: sports_center,      name: "Спортивный центр",       weight: 2, max_radius: 500 }
+    - { slug: medical_center,     name: "Медцентр",               weight: 2, max_radius: 500 }
     - { slug: education_center,   name: "Образовательный центр",  weight: 2,   max_radius: 400 }
     - { slug: pharmacy,           name: "Аптека",                 weight: 2,   max_radius: 250 }
     - { slug: beauty,             name: "Салон красоты",          weight: 2,   max_radius: 300 }
-    - { slug: alcohol,            name: "Алкомаркет",             weight: 1.5, max_radius: 250 }
-    - { slug: dental,             name: "Стоматология",           weight: 1.5, max_radius: 300 }
-    - { slug: game_center,        name: "Игровой центр",          weight: 1.5, max_radius: 300 }
+    - { slug: alcohol,            name: "Алкомаркет",             weight: 1, max_radius: 250 }
+    - { slug: dental,             name: "Стоматология",           weight: 1, max_radius: 300 }
+    - { slug: game_center,        name: "Игровой центр",          weight: 1, max_radius: 300 }
     - { slug: playground,         name: "Детская площадка",       weight: 1,   max_radius: 200 }
     - { slug: library,            name: "Библиотека",             weight: 1,   max_radius: 300 }
     - { slug: pet,                name: "Зоомагазин",             weight: 1,   max_radius: 300 }
@@ -88,10 +88,10 @@ geo-api:
     - { slug: copyshop,           name: "Копицентр",              weight: 1,   max_radius: 250 }
     - { slug: workshop,           name: "Мастерская",             weight: 1,   max_radius: 250 }
     - { slug: electronics_repair, name: "Ремонт техники",         weight: 1,   max_radius: 250 }
-    - { slug: car_service,        name: "Автосервис",             weight: 0.5, max_radius: 500 }
-    - { slug: car_wash,           name: "Автомойка",              weight: 0.5, max_radius: 500 }
-    - { slug: camp,               name: "Лагерь",                 weight: 0.25,   max_radius: 300 }
-    - { slug: other,              name: "Прочее",                 weight: 0.5, max_radius: 250 }
+    - { slug: car_service,        name: "Автосервис",             weight: 1, max_radius: 500 }
+    - { slug: car_wash,           name: "Автомойка",              weight: 1, max_radius: 500 }
+    - { slug: camp,               name: "Лагерь",                 weight: 0,   max_radius: 300 }
+    - { slug: other,              name: "Прочее",                 weight: 0, max_radius: 250 }
 
 database:
   postgresql:
