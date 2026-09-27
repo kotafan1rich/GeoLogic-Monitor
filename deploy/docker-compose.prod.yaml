@@ -134,9 +134,9 @@ services:
       KAFKA_LOG_RETENTION_MS: ${KAFKA_RETENTION_MS:-3600000}
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     healthcheck:
-      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null 2>&1" ]
+      test: [ "CMD-SHELL", "nc -z -w 2 127.0.0.1 19092" ]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 5
       start_period: 30s
     volumes:
