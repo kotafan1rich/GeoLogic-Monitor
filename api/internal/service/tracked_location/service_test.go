@@ -150,6 +150,7 @@ type fakeInfraService struct{}
 func (*fakeInfraService) Near(
 	context.Context,
 	*domain.GeoPoint,
+	float64,
 ) ([]*domain.InfraObject, error) {
 	return []*domain.InfraObject{}, nil
 }
@@ -160,7 +161,7 @@ func (*fakeBusinessTypeService) GetByID(
 	_ context.Context,
 	id uuid.UUID,
 ) (*domain.BusinessType, error) {
-	return &domain.BusinessType{ID: id, InfraTypeID: uuid.New()}, nil
+	return &domain.BusinessType{ID: id, InfraTypeID: uuid.New(), InfraType: domain.InfraType{Slug: "restaurant"}}, nil
 }
 
 type fakeRatingService struct{}
@@ -193,6 +194,7 @@ func newTestService(repo TrackedLocationRepository) *service {
 		&fakeInfraService{},
 		&fakeBusinessTypeService{},
 		&fakeRatingService{},
+		800,
 		fakeTxManager{},
 		testLogger(),
 	)

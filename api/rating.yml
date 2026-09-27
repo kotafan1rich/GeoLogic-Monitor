@@ -1,0 +1,96 @@
+# Distances are walking metres from OSRM; no detour multiplier.
+beta: 0.4
+gamma: 0.8
+scale: 10
+min: 0.1
+max: 9.9
+round_factor: 10
+breakdown_limit: 5
+street_factor_default: 1
+street_factor_min: 0.85
+street_factor_max: 1
+# Deployment assumption: all configured datasets are available.
+# Remove a slug if its dataset has not been loaded. Local absence is not unavailability.
+available_types:
+  - subway
+  - railway_station
+  - mall
+  - supermarket
+  - fastfood
+  - pvz
+  - grocery
+  - coffee
+  - cafe
+  - restaurant
+  - bakery
+  - hotel
+  - museum
+  - cinema
+  - theatre
+  - exhibition_hall
+  - park
+  - zoo
+  - sports_center
+  - medical_center
+  - education_center
+  - pharmacy
+  - beauty
+  - alcohol
+  - dental
+  - game_center
+  - playground
+  - library
+  - pet
+  - vet_clinic
+  - optician
+  - flowers
+  - laundry
+  - copyshop
+  - workshop
+  - electronics_repair
+  - car_service
+  - car_wash
+  - camp
+  - other
+profiles: {}
+infra_types:
+  - { slug: subway, w: 5, R: 800, k: 0.3 }
+  - { slug: railway_station, w: 4, R: 700, k: 0.3 }
+  - { slug: mall, w: 4, R: 600, k: 0.3 }
+  - { slug: supermarket, w: 3.5, R: 400, k: 0.4 }
+  - { slug: fastfood, w: 3, R: 300, k: 0.8 }
+  - { slug: pvz, w: 2.5, R: 250, k: 1.5 }
+  - { slug: grocery, w: 2.5, R: 200, k: 0.8 }
+  - { slug: coffee, w: 2.5, R: 200, k: 1.5 }
+  - { slug: cafe, w: 2.5, R: 250, k: 1.5 }
+  - { slug: restaurant, w: 2.5, R: 300, k: 1.5 }
+  - { slug: bakery, w: 2, R: 200, k: 0.8 }
+  - { slug: hotel, w: 2.5, R: 400, k: 0.4 }
+  - { slug: museum, w: 2.5, R: 500, k: 0.3 }
+  - { slug: cinema, w: 2.5, R: 400, k: 0.4 }
+  - { slug: theatre, w: 2, R: 400, k: 0.3 }
+  - { slug: exhibition_hall, w: 1.5, R: 400, k: 0.3 }
+  - { slug: park, w: 2, R: 500, k: 0.4 }
+  - { slug: zoo, w: 1.5, R: 600, k: 0.3 }
+  - { slug: sports_center, w: 2.5, R: 500, k: 0.4 }
+  - { slug: medical_center, w: 2.5, R: 500, k: 0.4 }
+  - { slug: education_center, w: 2, R: 400, k: 0.4 }
+  - { slug: pharmacy, w: 2, R: 250, k: 0.8 }
+  - { slug: beauty, w: 2, R: 300, k: 0.8 }
+  - { slug: alcohol, w: 1.5, R: 250, k: 0.8 }
+  - { slug: dental, w: 1.5, R: 300, k: 0.4 }
+  - { slug: game_center, w: 1.5, R: 300, k: 0.3 }
+  - { slug: playground, w: 1, R: 200, k: 0.8 }
+  - { slug: library, w: 1, R: 300, k: 0.3 }
+  - { slug: pet, w: 1, R: 300, k: 0.3 }
+  - { slug: vet_clinic, w: 1, R: 500, k: 0.3 }
+  - { slug: optician, w: 1, R: 300, k: 0.3 }
+  - { slug: flowers, w: 1, R: 250, k: 0.3 }
+  - { slug: laundry, w: 1, R: 250, k: 0.3 }
+  - { slug: copyshop, w: 1, R: 250, k: 0.3 }
+  - { slug: workshop, w: 1, R: 250, k: 0.3 }
+  - { slug: electronics_repair, w: 1, R: 250, k: 0.3 }
+  - { slug: car_service, w: 0.5, R: 500, k: 0.3 }
+  - { slug: car_wash, w: 0.5, R: 500, k: 0.3 }
+  - { slug: camp, w: 0, R: 300, k: 0.3 }
+  - { slug: other, w: 0.5, R: 250, k: 0.8 }

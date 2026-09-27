@@ -36,7 +36,7 @@ const (
 		WHERE ST_DWithin(
 			infra_objects.location::geography,
 			$1::geometry::geography,
-			infra_types.max_radius
+			$2
 		)
 		ORDER BY infra_objects.id
 	`

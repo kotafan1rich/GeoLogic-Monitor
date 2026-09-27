@@ -32,5 +32,9 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	cfg.Rating.Formula, err = LoadRatingFormula(cfg.Rating.ConfigPath)
+	if err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }
