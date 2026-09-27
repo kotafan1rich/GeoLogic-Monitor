@@ -10,7 +10,6 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-const mockMsg = "test"
 const service = "ingestion-service"
 
 type Producer struct {
