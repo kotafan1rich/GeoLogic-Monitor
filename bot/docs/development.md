@@ -81,7 +81,7 @@ task bot:up
 docker compose logs -f bot
 ```
 
-`task bot:up` собирает и запускает только контейнер Bot. Kafka не указана в его Compose `depends_on`, поэтому её нужно запускать отдельно для уведомлений.
+`task bot:up` запускает Bot через Compose. Если API или Kafka ещё не запущены, Compose также поднимет эти зависимости и дождётся их готовности.
 
 Остановка Bot не удаляет данные Kafka:
 
