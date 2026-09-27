@@ -80,6 +80,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     expose:
       - "8080"
     networks:
@@ -131,6 +133,12 @@ services:
       KAFKA_NUM_PARTITIONS: 1
       KAFKA_LOG_RETENTION_MS: ${KAFKA_RETENTION_MS:-3600000}
       KAFKA_LOG_DIRS: /var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null 2>&1" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
