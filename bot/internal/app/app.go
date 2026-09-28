@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/broker"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/bot/internal/middleware"
 )
@@ -17,6 +18,7 @@ type App struct {
 	cfg         *config.Config
 	diContainer *diContainer
 	httpServer  *http.Server
+	consumer    broker.Consumer
 }
 
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
@@ -35,6 +37,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(ctx context.Context) error{
 		a.initHTTPServer,
+		a.initConsumer,
 	}
 
 	for _, fn := range inits {
@@ -61,18 +64,38 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	return nil
 }
 
+func (a *App) initConsumer(ctx context.Context) error {
+	consumer, err := a.diContainer.NewBrokerConsumer()
+	if err != nil {
+		a.diContainer.Log().Error("failed to create Kafka consumer", "err", err)
+		return fmt.Errorf("failed to create Kafka consumer: %w", err)
+	}
+	a.consumer = consumer
+	return nil
+}
+
 func (a *App) gracefullShutdown() error {
 	log := a.diContainer.Log()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := a.httpServer.Shutdown(ctx); err != nil {
-		log.Error("HTTP server graceful shutdown failed", "err", err)
-		return fmt.Errorf("server shutdown failed: %w", err)
+	var resultErr error
+	if a.httpServer != nil {
+		if shutdownErr := a.httpServer.Shutdown(ctx); shutdownErr != nil {
+			log.Error("HTTP server graceful shutdown failed", "err", shutdownErr)
+			resultErr = fmt.Errorf("server shutdown failed: %w", shutdownErr)
+		}
 	}
 
-	return nil
+	if a.consumer != nil {
+		if shutdownErr := a.consumer.Close(); shutdownErr != nil {
+			log.Error("failed to close Kafka consumer", "err", shutdownErr)
+			resultErr = fmt.Errorf("consumer close failed: %w", shutdownErr)
+		}
+	}
+
+	return resultErr
 }
 
 func (a *App) Run(ctx context.Context) error {
@@ -121,20 +144,15 @@ func (a *App) Run(ctx context.Context) error {
 		log.Info("MAX webhook registered")
 	}()
 
-	consumer, err := a.diContainer.NewBrokerConsumer()
-	if err != nil {
-		log.Error("failed to create Kafka consumer", "err", err)
-	} else {
-		go func() {
-			err := consumer.Consume(
-				appCtx,
-				a.diContainer.NotificationHandler().Handle,
-			)
-			if err != nil {
-				log.Error("Kafka consumer stopped", "err", err)
-			}
-		}()
-	}
+	go func() {
+		err := a.consumer.Consume(
+			appCtx,
+			a.diContainer.NotificationHandler().Handle,
+		)
+		if err != nil {
+			log.Error("Kafka consumer stopped", "err", err)
+		}
+	}()
 
 	select {
 	case sig := <-quit:
@@ -145,12 +163,6 @@ func (a *App) Run(ctx context.Context) error {
 		)
 
 		cancel()
-
-		if consumer != nil {
-			if err := consumer.Close(); err != nil {
-				log.Error("failed to close Kafka consumer", "err", err)
-			}
-		}
 
 		if err := a.gracefullShutdown(); err != nil {
 			return err
