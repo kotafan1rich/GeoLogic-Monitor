@@ -64,6 +64,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     networks:
       - backend
 
@@ -82,6 +84,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     expose:
       - "8080"
     networks:
@@ -143,6 +147,33 @@ services:
       - kafka_data:/var/lib/kafka/data
     networks:
       - backend
+
+  kafka-init:
+    image: apache/kafka:4.3.0
+    networks:
+      - backend
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:19092 \
+          --create \
+          --if-not-exists \
+          --topic notifications \
+          --partitions 1 \
+          --replication-factor 1
+
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:19092 \
+          --create \
+          --if-not-exists \
+          --topic notifications.dlq \
+          --partitions 1 \
+          --replication-factor 1
 
   osrm:
     image: ${DOCKERHUB_OWNER}/geologic-monitor-osrm:${IMAGE_TAG}

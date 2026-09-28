@@ -66,9 +66,9 @@ tasks:
       - docker compose stop ingestion
 
   bot:up:
-    desc: "Собрать и запустить бота"
+    desc: "Собрать и запустить бота, Kafka и Kafka UI"
     cmds:
-      - docker compose up -d --build bot
+      - docker compose up -d --build kafka kafka-ui bot kafka-init
 
   bot:tunel:
     desc: "Запустить тунель для https"

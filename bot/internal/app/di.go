@@ -154,6 +154,7 @@ func (d *diContainer) Messenger() repository.Messenger {
 func (d *diContainer) NewBrokerConsumer() (broker.Consumer, error) {
 	if d.brokerConsumer == nil {
 		kafkaClient, err := kafka.New(
+			d.Log(),
 			d.cfg.Kafka.Brokers(),
 			d.cfg.Kafka.Topic,
 			d.cfg.Kafka.GroupID,
