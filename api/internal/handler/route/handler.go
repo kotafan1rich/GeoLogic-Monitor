@@ -10,6 +10,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/request"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/response"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/route/dto"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
 
 const maxDestinations = 99
@@ -69,4 +70,14 @@ func (h *handler) WalkingDistances(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, dto.ToResponse(distances))
+}
+
+func (h *handler) RegisterRoutes(mux *http.ServeMux, ingestionServiceToken string) {
+	mux.Handle(
+		"POST /internal/v1/routes/walking-distances",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(h.WalkingDistances),
+		),
+	)
 }

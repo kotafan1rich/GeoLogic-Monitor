@@ -15,6 +15,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/event/dto"
 	handlerrequest "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/request"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/response"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
 
 const dateLayout = "2006-01-02"
@@ -197,4 +198,23 @@ func parseFloat(value, name string) (float64, error) {
 		return 0, errors.New("invalid " + name)
 	}
 	return parsed, nil
+}
+
+func (h *handler) RegisterRoutes(mux *http.ServeMux, ingestionServiceToken string) {
+	eventRoutes := []struct {
+		pattern string
+		handler http.HandlerFunc
+	}{
+		{"PUT /internal/v1/events", h.Upsert},
+		{"GET /internal/v1/events", h.ListUnnotified},
+		{"GET /internal/v1/events/near", h.ListUnnotifiedNear},
+		{"GET /internal/v1/events/{id}", h.GetByID},
+		{"PUT /internal/v1/events/{id}/notified", h.MarkNotified},
+	}
+	for _, route := range eventRoutes {
+		mux.Handle(
+			route.pattern,
+			middleware.IngestionToken(ingestionServiceToken, route.handler),
+		)
+	}
 }
