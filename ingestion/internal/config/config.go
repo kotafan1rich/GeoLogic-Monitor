@@ -17,9 +17,10 @@ type Config struct {
 }
 
 type SchedulerConfig struct {
-	Infra       string `env:"SCHEDULER_INFRA_CRON"       env-default:"0 3 1 * *"`
-	Events      string `env:"SCHEDULER_EVENTS_CRON"      env-default:"0 4 * * 1"`
-	Competitors string `env:"SCHEDULER_COMPETITORS_CRON" env-default:"0 6 * * *"`
+	Infra              string `env:"SCHEDULER_INFRA_CRON"       env-default:"0 3 1 * *"`
+	Events             string `env:"SCHEDULER_EVENTS_CRON"      env-default:"0 4 * * 1"`
+	Competitors        string `env:"SCHEDULER_COMPETITORS_CRON" env-default:"0 6 * * *"`
+	EventNotifications string `env:"SCHEDULER_EVENT_NOTIFICATIONS_CRON" env-default:"0 7 * * *"`
 }
 
 type LoggerConfig struct {
@@ -105,11 +106,22 @@ type TwoGisConfig struct {
 }
 
 type MonitoringConfig struct {
-	OpenedWindow        time.Duration `yaml:"opened_window"        env-default:"2160h"`
+	FetchConcurrency int                         `yaml:"fetch_concurrency" env-default:"2"`
+	RouteConcurrency int                         `yaml:"route_concurrency" env-default:"4"`
+	Competitors      CompetitorsMonitoringConfig `yaml:"competitors"`
+	Events           EventsMonitoringConfig      `yaml:"events"`
+}
+
+type CompetitorsMonitoringConfig struct {
+	Window              time.Duration `yaml:"window"               env-default:"2160h"`
 	CheckpointBootstrap time.Duration `yaml:"checkpoint_bootstrap" env-default:"24h"`
-	CompetitorTTL       time.Duration `yaml:"competitor_ttl"       env-default:"24h"`
-	FetchConcurrency    int           `yaml:"fetch_concurrency"    env-default:"2"`
-	RouteConcurrency    int           `yaml:"route_concurrency"    env-default:"4"`
+	TTL                 time.Duration `yaml:"ttl"                  env-default:"24h"`
+}
+
+type EventsMonitoringConfig struct {
+	Window       time.Duration `yaml:"window"        env-default:"24h"`
+	SearchRadius int           `yaml:"search_radius" env-default:"1200"`
+	WalkRadius   int           `yaml:"walk_radius"   env-default:"800"`
 }
 
 type GeoApiConfig struct {
