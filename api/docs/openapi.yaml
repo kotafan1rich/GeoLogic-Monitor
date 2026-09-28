@@ -470,6 +470,21 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
   /internal/v1/business-types:
+    get:
+      operationId: listInternalBusinessTypes
+      summary: Типы бизнеса для ingestion, имя из infra_type.name
+      security: [{ IngestionToken: [] }]
+      responses:
+        "200":
+          description: Загруженный справочник
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BusinessType"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     put:
       operationId: upsertBusinessType
       summary: Upsert по infra_type_id; ссылка должна существовать
