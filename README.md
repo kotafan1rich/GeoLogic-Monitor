@@ -32,7 +32,7 @@ GeoLogic Monitor помогает владельцам кофеен, кафе и
 | `api` | Постоянные данные, HTTP-контракт, геокодинг, рейтинг и планировщик | [README API](api/README.md) |
 | `ingestion` | Загрузка инфраструктуры и событий, мониторинг изменений | Документация будет добавлена отдельно |
 | `bot` | Webhook MAX, `/start`, Kafka consumer и отправка уведомлений | [README Bot](bot/README.md) |
-| `miniapp` | Пользовательский интерфейс точек, рейтинга и истории | Документация будет добавлена отдельно |
+| `miniapp` | Пользовательский интерфейс точек, рейтинга и истории | [README Mini App](miniapp/README.md) |
 | `osrm` | Локальная пешеходная маршрутизация | [README OSRM](osrm/README.md) |
 
 Сервисы независимы: `api`, `ingestion` и `bot` являются отдельными Go-модулями, а `miniapp` — приложением React/TypeScript. Постоянными данными владеет API; остальные сервисы обращаются к нему по HTTP.
@@ -112,6 +112,7 @@ INIT_DATA=$(./scripts/generate-max-init-data.sh)
 - [Рейтинг окружения](docs/impact-engine.md)
 - [Документация API](api/README.md)
 - [Документация Bot](bot/README.md)
+- [Документация Mini App](miniapp/README.md)
 - [HTTP OpenAPI](api/docs/openapi.yaml)
 - [Kafka AsyncAPI](docs/asyncapi/notifications.yaml)
 - [Локальная разработка](docs/local-development.md)
