@@ -12,10 +12,10 @@
 ## Подготовка окружения
 
 ```bash
-cp bot/.env.template bot/.env
+cp bot/.env.example bot/.env
 ```
 
-Замените все значения-заглушки. Файл `bot/.env` не коммитится. `MAX_BOT_TOKEN` и `BOT_SERVICE_TOKEN` обязательны для загрузчика конфигурации; `WEBHOOK_URL` и `WEBHOOK_SECRET` должны быть непустыми для рабочего webhook, хотя код конфигурации отдельно это не проверяет.
+Замените все значения-заглушки. Файл `bot/.env` не коммитится. `MAX_BOT_TOKEN`, `BOT_SERVICE_TOKEN`, `WEBHOOK_URL` и `WEBHOOK_SECRET` заполняются рабочими значениями для запуска webhook.
 
 ### HTTP-сервер и API
 
@@ -28,7 +28,7 @@ cp bot/.env.template bot/.env
 | `API_BASE_URL` | `http://localhost:8080` | Базовый URL GeoLogic Monitor API; Compose переопределяет на `http://api:8080` |
 | `API_TIMEOUT` | `5s` | Таймаут исходящего запроса к API |
 
-HTTP-сервер публикует только `POST /webhook`; health endpoint у Bot отсутствует.
+HTTP-сервер намеренно публикует только `POST /webhook`; состояние процесса контролируется средствами Docker и журналами сервиса.
 
 ### MAX и сервисная авторизация
 

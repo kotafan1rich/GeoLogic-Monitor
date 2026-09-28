@@ -39,7 +39,7 @@ API_PROXY_TARGET=http://127.0.0.1:8080
 Подготовьте конфигурацию API и из корня репозитория выполните:
 
 ```bash
-cp api/.env.template api/.env
+cp api/.env.example api/.env
 docker compose up --build -d postgres osrm api miniapp caddy
 docker compose logs -f api miniapp caddy
 ```
@@ -65,7 +65,7 @@ npm run build
 - `npm run build` повторяет проверку TypeScript и создаёт production-файлы в `miniapp/dist`;
 - `npm run preview` локально раздаёт уже собранный каталог, но не настраивает proxy к API.
 
-Автоматических component- и end-to-end тестов пока нет. Для изменений пользовательского сценария дополнительно нужна ручная проверка внутри MAX с доступным API.
+Пользовательский сценарий проверяется вручную внутри MAX с доступным API по инструкции из [корневого README](../../README.md#как-тестировать).
 
 ## Структура
 

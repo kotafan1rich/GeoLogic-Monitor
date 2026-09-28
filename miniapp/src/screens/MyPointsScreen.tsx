@@ -19,14 +19,14 @@ function PointCard({ point, onSelect, onUnauthorized }: {
         <span className="point-name">{point.name}</span>
         <span className="muted">{point.address}</span>
         <span className="score-row">
-          <span>Smart Score {point.rating === null ? <span className="muted">пока недоступен</span>
+          <span>Smart Score {point.rating === null ? <span className="muted">—</span>
             : <><strong>{point.rating.toFixed(1)}</strong><span className="muted"> / 10</span></>}</span>
           {change !== null && <span className="change">{change} с предыдущего расчёта</span>}
           {state.status === 'loading' && <span className="muted small" role="status">Загрузка истории…</span>}
         </span>
       </button>
       {state.status === 'error' && <div className="small error-message" role="alert">
-        <p>История недоступна. {state.message}</p>
+        <p>Не удалось загрузить историю. {state.message}</p>
         <button className="back-button" type="button" onClick={retry}>Повторить загрузку истории</button>
       </div>}
     </li>
@@ -41,7 +41,7 @@ export default function MyPointsScreen({ points, notice, onSelect, onAdd, onRetr
       {points.status === 'loading' && <p role="status">Загрузка точек…</p>}
       {points.status === 'error' && <div className="card" role="alert"><p>{points.message}</p><button className="button" type="button" onClick={onRetry}>Повторить загрузку</button></div>}
       {points.status === 'success' && (points.data.length === 0
-        ? <p className="card">У вас пока нет точек. Добавьте первую.</p>
+        ? <p className="card">Добавьте первую точку.</p>
         : <ul className="point-list">{points.data.map((point) =>
           <PointCard key={point.id} point={point} onSelect={onSelect} onUnauthorized={onUnauthorized} />)}</ul>)}
       <button className="button button-primary" type="button" onClick={onAdd}>📍 Добавить точку</button>

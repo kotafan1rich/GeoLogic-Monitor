@@ -10,6 +10,10 @@ api:
   defaultHeaders:
     Accept: "application/json"
 
+testCredentials:
+  botServiceToken: "<BOT_SERVICE_TOKEN>"
+  maxInitData: "<MAX_INIT_DATA_FOR_USER_1234567>"
+
 checks:
   - id: "register-user"
     name: "Register test user"
@@ -19,6 +23,7 @@ checks:
     role: "admin"
     request:
       headers:
+        Authorization: "Bearer ${botServiceToken}"
         Content-Type: "application/json"
         X-Max-User-Id: "1234567"
       body:
@@ -47,6 +52,9 @@ checks:
     path: "/api/v1/business-types"
     role: "user"
     dependsOn: ["register-user"]
+    request:
+      headers:
+        X-Max-Init-Data: "${maxInitData}"
     expected:
       statusCodes: [200]
       contentType: "application/json"
@@ -78,6 +86,7 @@ checks:
     request:
       headers:
         Content-Type: "application/json"
+        X-Max-Init-Data: "${maxInitData}"
       body:
         name: "DATA-API test location"
         business_type_id: "${businessTypeId}"
@@ -135,6 +144,9 @@ checks:
     path: "/api/v1/tracked-locations"
     role: "user"
     dependsOn: ["create-tracked-location"]
+    request:
+      headers:
+        X-Max-Init-Data: "${maxInitData}"
     expected:
       statusCodes: [200]
       contentType: "application/json"
@@ -162,6 +174,8 @@ checks:
     role: "user"
     dependsOn: ["create-tracked-location"]
     request:
+      headers:
+        X-Max-Init-Data: "${maxInitData}"
       path:
         id: "${trackedLocationId}"
       query:
@@ -189,6 +203,8 @@ cleanup:
     path: "/api/v1/tracked-locations/{id}"
     role: "user"
     request:
+      headers:
+        X-Max-Init-Data: "${maxInitData}"
       path:
         id: "${trackedLocationId}"
     expected:

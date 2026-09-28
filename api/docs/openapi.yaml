@@ -53,7 +53,8 @@ paths:
       operationId: suggestAddresses
       summary: Найти варианты адреса в Санкт-Петербурге
       description: >
-        Поиск выполняется через DaData Suggest и ограничен Санкт-Петербургом.
+        API вызывает DaData POST /suggest/address с count=5, фильтром city=Санкт-Петербург
+        и restrict_value=true, затем ограничивает результат параметром limit.
         Пустой результат возвращается как пустой массив.
       parameters:
         - name: query
@@ -85,10 +86,11 @@ paths:
   /api/v1/geocoding/address:
     get:
       operationId: getAddressByCoordinates
-      summary: Получить адрес по координатам в Санкт-Петербурге
+      summary: Получить ближайший адрес по координатам
       description: >
-        Выполняет обратное геокодирование через DaData GeoLocate и возвращает
-        ближайший адрес с координатами найденного адреса.
+        API вызывает DaData POST /geolocate/address с count=1 и возвращает ближайший
+        адрес с координатами найденного адреса. Метод принимает полный диапазон WGS 84;
+        принадлежность результата Санкт-Петербургу отдельно не проверяется.
       parameters:
         - name: lat
           in: query
@@ -120,8 +122,9 @@ paths:
       operationId: suggestAddressesForIngestion
       summary: Найти варианты адреса для ingestion
       description: >
-        Внутренний вариант поиска адресов через DaData Suggest, ограниченный
-        Санкт-Петербургом. Пустой результат возвращается как пустой массив.
+        Внутренний вариант поиска адресов. API вызывает DaData POST /suggest/address
+        с count=5, фильтром city=Санкт-Петербург и restrict_value=true, затем применяет
+        параметр limit. Пустой результат возвращается как пустой массив.
       security:
         - IngestionToken: []
       parameters:
@@ -154,10 +157,11 @@ paths:
   /internal/v1/geocoding/address:
     get:
       operationId: getAddressByCoordinatesForIngestion
-      summary: Получить адрес по координатам для ingestion
+      summary: Получить ближайший адрес по координатам для ingestion
       description: >
-        Внутренний вариант обратного геокодирования через DaData GeoLocate для
-        получения ближайшего адреса в Санкт-Петербурге.
+        Внутренний вариант обратного геокодирования. API вызывает DaData
+        POST /geolocate/address с count=1. Метод принимает полный диапазон WGS 84;
+        принадлежность результата Санкт-Петербургу отдельно не проверяется.
       security:
         - IngestionToken: []
       parameters:
@@ -538,7 +542,7 @@ paths:
           $ref: "#/components/responses/InternalError"
     get:
       operationId: listUnnotifiedEvents
-      summary: Ещё не обработанные события заданного дня в Europe/Moscow
+      summary: События заданного дня, ожидающие публикации уведомлений
       security: [{ IngestionToken: [] }]
       parameters:
         - name: day
@@ -755,7 +759,7 @@ components:
         notified_at: { type: [string, "null"], format: date-time }
     InfraTypeInput:
       type: object
-      description: Значения примера тестовые, реальные веса и радиусы ещё предстоит согласовать.
+      description: Значения примера тестовые; рабочие веса и радиусы задаются конфигурацией ingestion и рейтинга.
       example: { slug: coffee_shop, name: Кофейня, weight: 2, max_radius: 1000 }
       required: [slug, name, weight, max_radius]
       properties:
@@ -928,7 +932,7 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
     ProviderUnavailable:
-      description: OSRM недоступен либо обязательный расчёт рейтинга не завершён
+      description: DaData или OSRM недоступны либо обязательный расчёт рейтинга завершился ошибкой
       content:
         application/json:
           schema:

@@ -112,7 +112,7 @@ export default function AddPointScreen({ draft, onChange, businessTypes, onRetry
         </select>
         {businessTypes.status === 'loading' && <p role="status">Загрузка категорий…</p>}
         {businessTypes.status === 'error' && <div role="alert"><p>{businessTypes.message}</p><button className="button" type="button" onClick={onRetryTypes}>Повторить загрузку категорий</button></div>}
-        {businessTypes.status === 'success' && businessTypes.data.length === 0 && <div className="card" role="status"><p>Категории пока недоступны. Добавление точки невозможно.</p><button className="button" type="button" onClick={onRetryTypes}>Обновить категории</button></div>}
+        {businessTypes.status === 'success' && businessTypes.data.length === 0 && <div className="card" role="status"><p>Обновите список категорий.</p><button className="button" type="button" onClick={onRetryTypes}>Обновить категории</button></div>}
         <label htmlFor="point-address">Адрес</label>
         <div className="address-field">
           <input id="point-address" value={draft.addressQuery} required maxLength={500}
