@@ -115,6 +115,13 @@ func RegisterRoutes(
 		),
 	)
 	mux.Handle(
+		"GET /internal/v1/business-types",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(businessTypeHandler.GetAll),
+		),
+	)
+	mux.Handle(
 		"GET /internal/v1/geocoding/suggestions",
 		middleware.IngestionToken(
 			ingestionServiceToken,

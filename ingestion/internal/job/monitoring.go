@@ -27,9 +27,6 @@ const (
 )
 
 const (
-	// defaultFetchConcurrency = 2
-	// defaultRouteConcurrency = 4
-
 	maxDestinations        = 99
 	walkingSpeedMPS        = 5.0 / 3.6
 	defaultCheckpointStart = 24 * time.Hour
@@ -104,26 +101,23 @@ type businessGroup struct {
 func (m *Monitoring) Competitors(ctx context.Context) error {
 	start := time.Now()
 
-	if !m.types.HasBusinessTypes() {
-		m.log.InfoContext(ctx, "competitors monitoring skipped: business types are not connected yet")
-
-		return nil
-	}
-
 	locations, err := m.geo.TrackedLocations(ctx)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrLoadLocations, err)
 	}
-
 	// Мок-данные
 	// locations, err := m.testTrackedLocations(ctx)
 	// if err != nil {
 	// 	return fmt.Errorf("%w: %v", ErrLoadLocations, err)
 	// }
 
-	groups := m.groupByBusinessType(ctx, locations)
+	groups, err := m.groupByBusinessType(ctx, locations)
+	if err != nil {
+		return err
+	}
+
 	if len(groups) == 0 {
-		m.log.InfoContext(ctx, "competitors monitoring skipped: no groups",
+		m.log.InfoContext(ctx, "competitors monitoring skipped, no groups",
 			slog.Int("locations", len(locations)),
 		)
 
@@ -175,13 +169,12 @@ func (m *Monitoring) Competitors(ctx context.Context) error {
 }
 
 func (m *Monitoring) Events(ctx context.Context) error {
-	// TODO: События для оповещения
 	return nil
 }
 
 func (m *Monitoring) groupByBusinessType(
 	ctx context.Context, locations []geoapi.TrackedLocation,
-) []*businessGroup {
+) ([]*businessGroup, error) {
 	var (
 		byID    = make(map[string]*businessGroup)
 		groups  []*businessGroup
@@ -191,17 +184,24 @@ func (m *Monitoring) groupByBusinessType(
 	for _, loc := range locations {
 		id := loc.BusinessTypeID.String()
 
-		g, ok := byID[id]
-		if !ok {
-			def, found := m.types.BusinessType(id)
-			if !found {
-				unknown++
-				continue
+		g, seen := byID[id]
+		if !seen {
+			def, found, err := m.types.BusinessType(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("%w [%s]: %v", ErrLoadBusinessTypes, id, err)
 			}
 
-			g = &businessGroup{id: id, def: def}
+			if found {
+				g = &businessGroup{id: id, def: def}
+				groups = append(groups, g)
+			}
+
 			byID[id] = g
-			groups = append(groups, g)
+		}
+
+		if g == nil {
+			unknown++
+			continue
 		}
 
 		g.locations = append(g.locations, loc)
@@ -213,7 +213,7 @@ func (m *Monitoring) groupByBusinessType(
 		)
 	}
 
-	return groups
+	return groups, nil
 }
 
 func (m *Monitoring) fetchCompetitors(
@@ -282,6 +282,16 @@ func (m *Monitoring) freshCompetitors(ctx context.Context, group *businessGroup,
 		}
 
 		fresh = append(fresh, item)
+
+		m.log.DebugContext(ctx, "fresh competitor",
+			slog.String("business_type", group.def.Slug),
+			slog.String("external_id", item.ID),
+			slog.String("name", item.Name),
+			slog.String("address", item.AddressName),
+			slog.Float64("lat", item.Point.Lat),
+			slog.Float64("lon", item.Point.Lon),
+			slog.Time("created_at", item.Dates.CreatedAt),
+		)
 	}
 
 	group.fresh, group.checkpoint = fresh, next
@@ -373,9 +383,16 @@ func (m *Monitoring) matchCompetitor(
 		return 0
 	}
 
-	var notified int
+	var (
+		notified int
+		nearest  *float64
+	)
 
 	for i, d := range distances {
+		if d != nil && (nearest == nil || *d < *nearest) {
+			nearest = d
+		}
+
 		if d == nil || *d > float64(group.def.MaxRadius) {
 			continue
 		}
@@ -390,6 +407,19 @@ func (m *Monitoring) matchCompetitor(
 		if sent {
 			notified++
 		}
+	}
+
+	if nearest == nil || *nearest > float64(group.def.MaxRadius) {
+		attrs := []any{
+			slog.String("business_type", group.def.Slug),
+			slog.String("external_id", item.ID),
+			slog.Int("max_radius_m", group.def.MaxRadius),
+		}
+		if nearest != nil {
+			attrs = append(attrs, slog.Float64("nearest_m", *nearest))
+		}
+
+		m.log.DebugContext(ctx, "competitor out of walking radius", attrs...)
 	}
 
 	return notified

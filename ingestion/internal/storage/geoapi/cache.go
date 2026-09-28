@@ -48,12 +48,6 @@ func (c *BusinessTypesCache) Set(id, slug string) {
 	c.ids[slug] = id
 }
 
-func (c *BusinessTypesCache) Len() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.types)
-}
-
 func (c *BusinessTypesCache) ID(slug string) (string, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
