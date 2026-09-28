@@ -104,21 +104,54 @@ func (r *TypeRegistry) SetBusinessType(id, slug string) {
 	r.business.Set(id, slug)
 }
 
-func (r *TypeRegistry) BusinessType(id string) (InfraTypeInput, bool) {
+func (r *TypeRegistry) BusinessType(ctx context.Context, id string) (InfraTypeInput, bool, error) {
+	const op = "geoapi.TypeRegistry.BusinessType"
+
 	slug, ok := r.business.Get(id)
 	if !ok {
-		return InfraTypeInput{}, false
+		if err := r.loadBusinessTypes(ctx); err != nil {
+			return InfraTypeInput{}, false, fmt.Errorf("%s: %w", op, err)
+		}
+
+		if slug, ok = r.business.Get(id); !ok {
+			return InfraTypeInput{}, false, nil
+		}
 	}
 
 	def, ok := r.defs[slug]
 
-	return def, ok
+	return def, ok, nil
 }
 
-func (r *TypeRegistry) HasBusinessTypes() bool {
-	return r.business.Len() > 0
+func (r *TypeRegistry) BusinessTypeID(ctx context.Context, slug string) (string, bool, error) {
+	const op = "geoapi.TypeRegistry.BusinessTypeID"
+
+	if id, ok := r.business.ID(slug); ok {
+		return id, true, nil
+	}
+
+	if err := r.loadBusinessTypes(ctx); err != nil {
+		return "", false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	id, ok := r.business.ID(slug)
+
+	return id, ok, nil
 }
 
-func (r *TypeRegistry) BusinessTypeID(slug string) (string, bool) {
-	return r.business.ID(slug)
+func (r *TypeRegistry) loadBusinessTypes(ctx context.Context) error {
+	types, err := r.client.BusinessTypes(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrGetBusinessTypes, err)
+	}
+
+	for _, bt := range types {
+		if bt.ID == "" || bt.InfraType.Slug == "" {
+			continue
+		}
+
+		r.business.Set(bt.ID, bt.InfraType.Slug)
+	}
+
+	return nil
 }

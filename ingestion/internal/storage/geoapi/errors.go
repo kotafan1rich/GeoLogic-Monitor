@@ -8,6 +8,7 @@ var (
 	ErrInvalidURL         = errors.New("URL is nil or malformed")
 	ErrInvalidClient      = errors.New("geo-api client is nil")
 	ErrPutInfraType       = errors.New("failed to put infra type")
+	ErrGetBusinessTypes   = errors.New("failed to get business types")
 	ErrEmptyInfraTypes    = errors.New("infra types list is empty")
 	ErrInvalidInfraType   = errors.New("infra type slug is empty")
 	ErrDuplicateInfraType = errors.New("duplicate infra type slug")
