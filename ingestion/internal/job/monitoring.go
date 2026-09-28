@@ -27,8 +27,8 @@ const (
 )
 
 const (
-	defaultFetchConcurrency = 2
-	defaultRouteConcurrency = 4
+	// defaultFetchConcurrency = 2
+	// defaultRouteConcurrency = 4
 
 	maxDestinations        = 99
 	walkingSpeedMPS        = 5.0 / 3.6
