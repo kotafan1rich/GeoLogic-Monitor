@@ -13,6 +13,7 @@ const (
 	recordsPerPage = 10
 	maxPages       = 5
 	successCode    = 200
+	notFoundCode   = 404
 
 	spbCityID = "5348647327760881"
 )
@@ -58,6 +59,13 @@ func (c *Client) getPlaces(ctx context.Context, query url.Values, out *Response)
 	err := c.do(ctx, placesEndpoint, query, out)
 	if err != nil {
 		return err
+	}
+
+	// 404 "Results not found" — по запросу ничего не открылось, это не ошибка.
+	if out.Meta.Code == notFoundCode {
+		out.Result = Result{}
+
+		return nil
 	}
 
 	if out.Meta.Code != successCode {

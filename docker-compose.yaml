@@ -49,6 +49,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
 
   bot:
     build: ./bot
@@ -65,6 +67,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
 
   postgres:
     build: ./docker/postgres
@@ -128,6 +132,33 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  kafka-init:
+    image: apache/kafka:4.3.0
+    networks:
+      - geo_logic_net
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:19092 \
+          --create \
+          --if-not-exists \
+          --topic notifications \
+          --partitions 1 \
+          --replication-factor 1
+
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:19092 \
+          --create \
+          --if-not-exists \
+          --topic notifications.dlq \
+          --partitions 1 \
+          --replication-factor 1
 
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:v1.3.0

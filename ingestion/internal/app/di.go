@@ -7,6 +7,7 @@ import (
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/digitalspb"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/maps"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/aggregator/twogis"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/closer"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/config"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/database/postgresql"
@@ -14,32 +15,41 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/job"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/logger"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/producer"
+	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/repository/postgresql/competitor"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/scheduler"
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/storage/geoapi"
 )
 
-const schedulerName = "ingestion"
+const (
+	ingestionScheduler  = "ingestion"
+	monitoringScheduler = "monitoring"
+)
 
 const (
 	digitalSpbClient      = "digitalspb"
 	mapsClient            = "maps-mail-ru"
+	twoGisClient          = "2gis"
 	geoAPIWriteClient     = "geo-api:write"
 	geoAPIGeocodingClient = "geo-api:geocoding"
 )
 
 type diContainer struct {
-	log       *slog.Logger
-	db        *postgresql.DB
-	p         *producer.Producer
-	dsc       *digitalspb.Client
-	ds        *job.DigitalSpb
-	maps      *maps.Client
-	m         *job.Maps
-	infraJob  *job.Job
-	eventsJob *job.Job
-	s         *scheduler.Scheduler
-	gc        *geoapi.Client
-	tr        *geoapi.TypeRegistry
+	log            *slog.Logger
+	db             *postgresql.DB
+	p              *producer.Producer
+	dsc            *digitalspb.Client
+	ds             *job.DigitalSpb
+	maps           *maps.Client
+	m              *job.Maps
+	tgc            *twogis.Client
+	cr             *competitor.CompetitorRepo
+	mon            *job.Monitoring
+	infraJob       *job.Job
+	eventsJob      *job.Job
+	competitorsJob *job.Job
+	schedulers     []*scheduler.Scheduler
+	gc             *geoapi.Client
+	tr             *geoapi.TypeRegistry
 }
 
 func newDIContainer() *diContainer {
@@ -167,6 +177,28 @@ func (d *diContainer) MapsClient() *maps.Client {
 	return d.maps
 }
 
+func (d *diContainer) TwoGisClient() *twogis.Client {
+	if d.tgc == nil {
+		cfg := config.Get()
+
+		req := d.requester(twoGisClient, cfg.Aggregator.TwoGis.HTTP, "", false)
+
+		d.tgc = twogis.MustNew(d.Logger(), req, cfg.Aggregator.TwoGis.BaseURL, cfg.Aggregator.TwoGis.APIKey)
+
+		d.Logger().Info("2gis client initialized")
+	}
+	return d.tgc
+}
+
+func (d *diContainer) CompetitorRepo(ctx context.Context) *competitor.CompetitorRepo {
+	if d.cr == nil {
+		d.cr = competitor.New(d.DB(ctx))
+
+		d.Logger().Info("competitor repository initialized")
+	}
+	return d.cr
+}
+
 func (d *diContainer) DigitalSpb() *job.DigitalSpb {
 	if d.ds == nil {
 		cfg := config.Get()
@@ -248,8 +280,66 @@ func (d *diContainer) EventsJob() *job.Job {
 	return d.eventsJob
 }
 
-func (d *diContainer) Jobs() []scheduler.Job {
-	return []scheduler.Job{d.InfraJob(), d.EventsJob()}
+func (d *diContainer) Monitoring(ctx context.Context) *job.Monitoring {
+	if d.mon == nil {
+		cfg := config.Get()
+
+		d.mon = job.NewMonitoring(
+			d.Logger(),
+			d.GeoApiClient(),
+			d.TwoGisClient(),
+			d.TypeRegistry(),
+			d.CompetitorRepo(ctx),
+			d.Producer(),
+			twogis.NewCheckpointsCache(),
+			cfg.Producer.Kafka.Topic,
+			cfg.Monitoring.OpenedWindow,
+			cfg.Monitoring.CheckpointBootstrap,
+			cfg.Monitoring.CompetitorTTL,
+			cfg.Monitoring.FetchConcurrency,
+			cfg.Monitoring.RouteConcurrency,
+		)
+
+		d.Logger().Info(
+			"monitoring initialized",
+			slog.String("topic", cfg.Producer.Kafka.Topic),
+			slog.Duration("opened_window", cfg.Monitoring.OpenedWindow),
+			slog.Duration("checkpoint_bootstrap", cfg.Monitoring.CheckpointBootstrap),
+			slog.Duration("competitor_ttl", cfg.Monitoring.CompetitorTTL),
+			slog.Int("fetch_concurrency", cfg.Monitoring.FetchConcurrency),
+			slog.Int("route_concurrency", cfg.Monitoring.RouteConcurrency),
+		)
+	}
+	return d.mon
+}
+
+func (d *diContainer) CompetitorsJob(ctx context.Context) *job.Job {
+	if d.competitorsJob == nil {
+		cfg := config.Get()
+
+		d.competitorsJob = job.New(
+			job.CompetitorsName,
+			cfg.Scheduler.Competitors,
+			d.Logger(),
+		).After(
+			d.Monitoring(ctx).Competitors,
+		)
+
+		d.logJob(d.competitorsJob)
+	}
+	return d.competitorsJob
+}
+
+func (d *diContainer) Schedulers(ctx context.Context) []*scheduler.Scheduler {
+	if d.schedulers == nil {
+		d.schedulers = []*scheduler.Scheduler{
+			d.scheduler(ingestionScheduler, d.InfraJob(), d.EventsJob()),
+			// TODO: сюда добавить job мониторинга событий по аналогии с CompetitorsJob:
+			// job.New(<имя>, cfg.Scheduler.<cron>, d.Logger()).After(d.Monitoring(ctx).Events)
+			d.scheduler(monitoringScheduler, d.CompetitorsJob(ctx)),
+		}
+	}
+	return d.schedulers
 }
 
 func (d *diContainer) logJob(j *job.Job) {
@@ -260,22 +350,20 @@ func (d *diContainer) logJob(j *job.Job) {
 	)
 }
 
-func (d *diContainer) Scheduler() *scheduler.Scheduler {
-	if d.s == nil {
-		s := scheduler.MustNew(schedulerName, d.Logger())
+func (d *diContainer) scheduler(name string, jobs ...scheduler.Job) *scheduler.Scheduler {
+	s := scheduler.MustNew(name, d.Logger(), jobs...)
 
-		d.Logger().Info(
-			"scheduler initialized",
-			slog.String("scheduler", s.Name()),
-		)
+	d.Logger().Info(
+		"scheduler initialized",
+		slog.String("scheduler", s.Name()),
+		slog.Int("jobs", len(jobs)),
+	)
 
-		closer.Add("scheduler:"+s.Name(), func(context.Context) error {
-			return s.Shutdown()
-		})
+	closer.Add("scheduler:"+s.Name(), func(context.Context) error {
+		return s.Shutdown()
+	})
 
-		d.s = s
-	}
-	return d.s
+	return s
 }
 
 func (d *diContainer) GeoApiClient() *geoapi.Client {
@@ -303,6 +391,8 @@ func (d *diContainer) TypeRegistry() *geoapi.TypeRegistry {
 				Name:      t.Name,
 				Weight:    t.Weight,
 				MaxRadius: t.MaxRadius,
+				Query:     t.Query,
+				Rubrics:   t.Rubrics,
 			})
 		}
 

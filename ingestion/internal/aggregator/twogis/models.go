@@ -1,5 +1,7 @@
 package twogis
 
+import "time"
+
 type (
 	Response struct {
 		Meta   Meta   `json:"meta"`
@@ -31,6 +33,11 @@ type (
 		Address     *Address `json:"address"`
 		Rubrics     []Rubric `json:"rubrics"`
 		Org         *Org     `json:"org"`
+		Dates       *Dates   `json:"dates"`
+	}
+
+	Dates struct {
+		CreatedAt time.Time `json:"created_at"`
 	}
 
 	Point struct {

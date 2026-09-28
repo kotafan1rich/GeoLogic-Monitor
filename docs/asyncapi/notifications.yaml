@@ -1,11 +1,11 @@
 asyncapi: 3.0.0
 info:
   title: GeoLogic Monitor Notifications
-  version: 0.4.0
+  version: 0.5.0
   description: >
-    Контракт ingestion → bot. Один topic, одна consumer group,
-    retention.ms=3600000, без outbox и DLQ. Рейтинг рассчитывается API только
-    при создании точки и в уведомления не входит.
+    Контракт ingestion → bot и DLQ для заданий, которые Bot не смог обработать
+    после исчерпания повторов. Рейтинг рассчитывается API только при создании
+    точки и в уведомления не входит.
 defaultContentType: application/json
 servers:
   local:
@@ -18,11 +18,24 @@ channels:
       - $ref: '#/servers/local'
     description: >
       Producer ingestion, consumer bot. Одна partition для демо.
-      Offset подтверждается после успешной отправки MAX. Retention Kafka удаляет
-      сегменты асинхронно и не гарантирует физическое удаление ровно через час.
+      Offset подтверждается после успешной обработки сообщения или его успешной
+      публикации в DLQ. Retention Kafka удаляет сегменты асинхронно и не гарантирует
+      физическое удаление ровно через час.
     messages:
       notification:
         $ref: '#/components/messages/Notification'
+  notificationsDlq:
+    address: notifications.dlq
+    servers:
+      - $ref: '#/servers/local'
+    description: >
+      Dead-letter topic. Bot публикует сюда исходную запись после исчерпания
+      попыток обработки и только после успешной публикации подтверждает offset
+      в notifications. Ошибка Kafka, публикации в DLQ или commit не является
+      DLQ-событием и останавливает consumer без подтверждения исходного offset.
+    messages:
+      deadLetterNotification:
+        $ref: '#/components/messages/DeadLetterNotification'
 operations:
   sendNotification:
     action: send
@@ -38,6 +51,13 @@ operations:
     summary: Bot читает с group.id=bot-notifications
     messages:
       - $ref: '#/channels/notifications/messages/notification'
+  sendDeadLetterNotification:
+    action: send
+    channel:
+      $ref: '#/channels/notificationsDlq'
+    summary: Bot переносит необработанное задание в DLQ
+    messages:
+      - $ref: '#/channels/notificationsDlq/messages/deadLetterNotification'
 components:
   messages:
     Notification:
@@ -82,7 +102,44 @@ components:
             assessment:
               reasons: [Завтра вечером, Пешая доступность]
               recommendations: [Проверить запас продукции]
+    DeadLetterNotification:
+      name: DeadLetterNotification
+      title: Необработанное задание на отправку сообщения MAX
+      summary: Исходные key и payload сохраняются без изменения
+      contentType: application/octet-stream
+      headers:
+        $ref: '#/components/schemas/DeadLetterHeaders'
+      payload:
+        type: string
+        format: binary
   schemas:
+    DeadLetterHeaders:
+      type: object
+      required:
+        - x-original-topic
+        - x-original-partition
+        - x-original-offset
+        - x-failed-at
+        - x-attempts
+        - x-error
+      properties:
+        x-original-topic:
+          type: string
+        x-original-partition:
+          type: string
+          pattern: '^[0-9]+$'
+        x-original-offset:
+          type: string
+          pattern: '^[0-9]+$'
+        x-failed-at:
+          type: string
+          format: date-time
+        x-attempts:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        x-error:
+          type: string
+          description: Текст последней ошибки обработки.
     Notification:
       type: object
       required: [type, max_chat_id, tracked_location, subject, route, assessment]

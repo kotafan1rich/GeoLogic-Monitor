@@ -74,11 +74,10 @@ func New(level LogLevel, format LogFormat, addSource bool, output io.Writer) *Lo
 	logger := slog.New(handler)
 
 	logger.Info(
-		"Created logger",
+		"logger initialized",
 		slog.String("level", string(level)),
 		slog.String("format", string(format)),
-		slog.Bool("addSource", addSource),
-		slog.Any("output", output),
+		slog.Bool("add_source", addSource),
 	)
 	return &Logger{
 		Logger: logger,

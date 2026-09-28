@@ -39,21 +39,28 @@ func (a *App) Run(ctx context.Context) error {
 
 	log.InfoContext(stopCtx, "application is starting")
 
-	for _, j := range a.di.Jobs() {
-		if err := a.di.Scheduler().Register(ctx, j); err != nil {
-			log.ErrorContext(
-				ctx,
-				"failed to register job",
-				slog.String("job", j.Name()),
-				slog.Any("error", err),
-			)
-			return fmt.Errorf("%s: %w", op, err)
+	schedulers := a.di.Schedulers(ctx)
+
+	for _, s := range schedulers {
+		for _, j := range s.Jobs() {
+			if err := s.Register(ctx, j); err != nil {
+				log.ErrorContext(
+					ctx,
+					"failed to register job",
+					slog.String("scheduler", s.Name()),
+					slog.String("job", j.Name()),
+					slog.Any("error", err),
+				)
+				return fmt.Errorf("%s: %w", op, err)
+			}
 		}
 	}
 
-	go func() { a.di.Scheduler().Start() }()
+	for _, s := range schedulers {
+		go s.Start()
+	}
 
-	log.InfoContext(stopCtx, "application started", slog.String("scheduler", a.di.Scheduler().Name()))
+	log.InfoContext(stopCtx, "application started", slog.Int("schedulers", len(schedulers)))
 
 	<-stopCtx.Done()
 
