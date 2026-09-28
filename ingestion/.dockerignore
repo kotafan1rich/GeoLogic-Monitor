@@ -1,0 +1,29 @@
+# Git history and configuration
+.git
+.gitignore
+
+# Go build artifacts and binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+out/
+*.out
+*.prof
+
+# Local dependencies and configuration
+vendor/
+.env
+.env.*
+*.local
+secrets/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sw?
+*~

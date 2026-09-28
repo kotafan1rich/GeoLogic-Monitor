@@ -58,7 +58,7 @@ export default function App() {
       if (controller.signal.aborted) return;
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
       const message = error instanceof ApiError && error.status === 404
-        ? 'Пользователь ещё не зарегистрирован. Регистрация через /start в боте должна быть настроена на стороне сервиса.'
+        ? 'Запустите бота командой /start и снова откройте Mini App.'
         : errorMessage(error);
       setPoints({ status: 'error', message });
     });
@@ -124,7 +124,7 @@ export default function App() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
       if (error instanceof ApiError && error.status === 404) {
-        setNotice('Точка больше недоступна.');
+        setNotice('Точка уже удалена.');
         showPoints();
       } else {
         setMutationError(errorMessage(error));
@@ -142,8 +142,8 @@ export default function App() {
   }
 
   const categoryName = (id: string) => businessTypes.status === 'success'
-    ? businessTypes.data.find((type) => type.id === id)?.infra_type.name ?? 'Категория недоступна'
-    : 'Категория недоступна';
+    ? businessTypes.data.find((type) => type.id === id)?.infra_type.name ?? 'Категория'
+    : 'Категория';
 
   return (
     <div className="app">
@@ -160,7 +160,7 @@ export default function App() {
             <h1 id="auth-title">Откройте GeoLogic через MAX</h1>
             <p className="card" role="status">{expired
               ? 'Сессия недействительна или истекла. Заново откройте Mini App через MAX.'
-              : 'Данные запуска MAX недоступны. Откройте мини-приложение из MAX.'}</p>
+              : 'Откройте мини-приложение из MAX, чтобы начать работу.'}</p>
           </section>
         ) : (
           <>
@@ -180,7 +180,7 @@ export default function App() {
           </>
         )}
       </main>
-      <footer className="footer">Уведомления в MAX — в планах</footer>
+      <footer className="footer">Уведомления о важных изменениях приходят в MAX</footer>
     </div>
   );
 }

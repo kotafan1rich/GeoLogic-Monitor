@@ -21,7 +21,7 @@ export default function PointDetailsScreen({ point, categoryName, busy, error, o
       <p className="category-tag">{categoryName}</p>
       <div className="card score-summary">
         <h2>Текущий Smart Score</h2>
-        {point.rating === null ? <p className="muted">Рейтинг пока недоступен</p>
+        {point.rating === null ? <p className="muted">Smart Score: —</p>
           : <p className="score-number">{point.rating.toFixed(1)}<span> / 10</span></p>}
         {point.rating_calculated_at && <p className="muted small">Последнее обновление: <time dateTime={point.rating_calculated_at}>{formatCalculationDate(point.rating_calculated_at)}</time> (МСК)</p>}
         {change !== null && <p className="small">{change} с предыдущего расчёта</p>}
@@ -39,7 +39,7 @@ export default function PointDetailsScreen({ point, categoryName, busy, error, o
               <dd>{entry.value.toFixed(1)}</dd>
             </div>)}
           </dl>}
-          <p className="muted small">История будет пополняться после следующих пересчётов.</p>
+          <p className="muted small">Каждый ежемесячный пересчёт добавляется в историю.</p>
         </>}
       </section>
       <section className="card" aria-labelledby="factors-title">

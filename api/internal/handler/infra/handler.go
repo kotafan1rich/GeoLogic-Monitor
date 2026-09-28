@@ -11,6 +11,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/infra/dto"
 	handlerrequest "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/request"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/response"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
 
 type InfraTypeService interface {
@@ -117,4 +118,21 @@ func (h *handler) GetObjectByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, dto.InfraObjectToResponse(*infraObject))
+}
+
+func (h *handler) RegisterRoutes(mux *http.ServeMux, ingestionServiceToken string) {
+	infraRoutes := []struct {
+		pattern string
+		handler http.HandlerFunc
+	}{
+		{"PUT /internal/v1/infra-types", h.UpsertType},
+		{"PUT /internal/v1/infra", h.UpsertObject},
+		{"GET /internal/v1/infra/{id}", h.GetObjectByID},
+	}
+	for _, route := range infraRoutes {
+		mux.Handle(
+			route.pattern,
+			middleware.IngestionToken(ingestionServiceToken, route.handler),
+		)
+	}
 }
