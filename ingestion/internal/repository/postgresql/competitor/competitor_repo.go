@@ -27,10 +27,12 @@ func (r *CompetitorRepo) Add(
 	location geo.GeoPoint,
 	openedAt time.Time,
 	ttl time.Duration,
-) error {
+) (bool, error) {
 	const op = "competitor.CompetitorRepo.Add"
 
-	_, err := r.db.Conn(ctx).Exec(
+	var notified bool
+
+	err := r.db.Conn(ctx).QueryRow(
 		ctx,
 		AddCompetitorQuery,
 		trackedLocationID,
@@ -41,12 +43,12 @@ func (r *CompetitorRepo) Add(
 		location,
 		openedAt,
 		time.Now().Add(ttl),
-	)
+	).Scan(&notified)
 	if err != nil {
-		return fmt.Errorf("%s: %w: %v", op, ErrInsertData, err)
+		return false, fmt.Errorf("%s: %w: %v", op, ErrInsertData, err)
 	}
 
-	return nil
+	return notified, nil
 }
 
 func (r *CompetitorRepo) UpdateStatus(

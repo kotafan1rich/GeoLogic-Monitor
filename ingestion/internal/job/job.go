@@ -55,7 +55,10 @@ func (j *Job) Run(ctx context.Context) {
 	ctx = logger.WithRunID(ctx, logger.NewRunID())
 	log := j.log.With(slog.String("job", j.name))
 
-	runDatasets(ctx, log, datasets)
+	if len(datasets) > 0 {
+		runDatasets(ctx, log, datasets)
+	}
+
 	runAfter(ctx, log, j.after)
 }
 

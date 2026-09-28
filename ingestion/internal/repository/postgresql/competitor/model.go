@@ -2,7 +2,8 @@ package competitor
 
 import (
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/ingestion/internal/repository/postgresql/geo"
 )

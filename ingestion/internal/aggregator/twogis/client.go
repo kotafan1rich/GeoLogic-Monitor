@@ -15,7 +15,7 @@ import (
 const (
 	// maxBodySize = infra.MaxBodySize
 
-	dateLayout = "2000-01-01"
+	dateLayout = time.DateOnly
 
 	fieldsList = "items.point,items.dates,items.rubrics"
 	sortOrder  = "creation_time"
