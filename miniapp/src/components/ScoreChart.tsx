@@ -2,7 +2,7 @@ import { formatCalculationDate } from '../rating';
 import type { RatingHistoryEntry } from '../types';
 
 export default function ScoreChart({ history }: { history: RatingHistoryEntry[] }) {
-  if (history.length === 0) return <p className="muted">За последние 3 месяца расчётов нет.</p>;
+  if (history.length === 0) return <p className="muted">История выбранного периода пуста.</p>;
   const first = Date.parse(history[0].calculated_at);
   const last = Date.parse(history[history.length - 1].calculated_at);
   const x = (entry: RatingHistoryEntry) => last === first ? 160

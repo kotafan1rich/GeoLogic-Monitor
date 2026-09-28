@@ -11,7 +11,7 @@
 ## Подготовка окружения
 
 ```bash
-cp api/.env.template api/.env
+cp api/.env.example api/.env
 ```
 
 Значения `change-me` подходят только как локальные заглушки. Файл `api/.env` не коммитится.
@@ -46,9 +46,9 @@ cp api/.env.template api/.env
 | --- | --- | --- |
 | `OSRM_BASE_URL` | `http://osrm:5000` | Адрес OSRM |
 | `OSRM_TIMEOUT` | `5s` | Таймаут OSRM |
-| `DADATA_BASE_URL` | URL DaData Suggest | Базовый URL геокодера |
-| `DADATA_API_KEY` | — | Ключ DaData |
-| `GEOCODER_TIMEOUT` | `5s` | Таймаут геокодера |
+| `DADATA_BASE_URL` | `https://suggestions.dadata.ru/suggestions/api/4_1/rs` | Базовый URL DaData Suggest и GeoLocate |
+| `DADATA_API_KEY` | — | Ключ для заголовка `Authorization: Token <key>` внешних запросов DaData |
+| `GEOCODER_TIMEOUT` | `5s` | Общий таймаут HTTP-клиента DaData |
 
 ### Безопасность и расписание
 
@@ -102,6 +102,17 @@ go test ./...
 ```
 
 Swagger UI: <http://localhost:8080/docs/>. `/health` проверяет только HTTP-процесс и намеренно не опрашивает PostgreSQL, DaData или OSRM.
+
+### Интеграция DaData
+
+Публичные и внутренние маршруты GeoLogic остаются GET-методами, описанными в OpenAPI. API преобразует их во внешние POST-запросы DaData:
+
+- `GET /api/v1/geocoding/suggestions` и внутренний аналог вызывают `${DADATA_BASE_URL}/suggest/address` с `count: 5`, `locations: [{"city":"Санкт-Петербург"}]` и `restrict_value: true`; параметр GeoLogic `limit` обрезает полученный список до 1–5 элементов;
+- `GET /api/v1/geocoding/address` и внутренний аналог вызывают `${DADATA_BASE_URL}/geolocate/address` с `lat`, `lon` и `count: 1`;
+- внешние запросы используют JSON и заголовок `Authorization: Token <DADATA_API_KEY>`;
+- GeoLogic возвращает только нормализованные поля `address`, `lat` и `lon`; ошибка сети, неуспешный статус DaData или пустой результат обратного геокодирования преобразуются в `503 provider_unavailable`.
+
+Подсказки принудительно ограничены Санкт-Петербургом. Обратное геокодирование принимает полный диапазон координат WGS 84 и отдельную проверку города не выполняет.
 
 ## Диагностика
 
