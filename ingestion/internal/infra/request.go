@@ -158,7 +158,7 @@ func (r *Requester) attempt(
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK ||
+	if resp.StatusCode != http.StatusOK &&
 		resp.StatusCode != http.StatusNoContent {
 		drain(resp.Body)
 
