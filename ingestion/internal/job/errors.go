@@ -7,6 +7,7 @@ var (
 	ErrStoreFailed         = errors.New("failed to store data")
 	ErrConnectBusiness     = errors.New("failed to connect business type with infra")
 	ErrLoadLocations       = errors.New("failed to load tracked locations")
+	ErrLoadBusinessTypes   = errors.New("failed to load business types")
 	ErrFetchCompetitors    = errors.New("failed to fetch competitors")
 	ErrRouteCompetitor     = errors.New("failed to calculate walking distances")
 	ErrDistancesMismatch   = errors.New("distances count mismatch")
