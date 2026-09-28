@@ -6,11 +6,13 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/errs/app"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/geocoding/dto"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/response"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
 
 const defaultLimit = 5
@@ -86,4 +88,38 @@ func parseFloat(value, name string) (float64, error) {
 		return 0, errors.New("invalid " + name)
 	}
 	return parsed, nil
+}
+
+func (h *handler) RegisterRoutes(
+	mux *http.ServeMux,
+	ingestionServiceToken, maxBotToken string,
+	miniAppInitDataMaxAge time.Duration,
+) {
+	userRoutes := []struct {
+		pattern string
+		handler http.HandlerFunc
+	}{
+		{"GET /api/v1/geocoding/suggestions", h.Suggest},
+		{"GET /api/v1/geocoding/address", h.Address},
+	}
+	for _, route := range userRoutes {
+		mux.Handle(
+			route.pattern,
+			middleware.MiniAppInitData(maxBotToken, miniAppInitDataMaxAge, route.handler),
+		)
+	}
+
+	internalRoutes := []struct {
+		pattern string
+		handler http.HandlerFunc
+	}{
+		{"GET /internal/v1/geocoding/suggestions", h.Suggest},
+		{"GET /internal/v1/geocoding/address", h.Address},
+	}
+	for _, route := range internalRoutes {
+		mux.Handle(
+			route.pattern,
+			middleware.IngestionToken(ingestionServiceToken, route.handler),
+		)
+	}
 }

@@ -16,3 +16,7 @@ func New() *handler {
 func (h *handler) Health(w http.ResponseWriter, _ *http.Request) {
 	response.WriteJSON(w, http.StatusOK, dto.HealthResponse{Status: "ok"})
 }
+
+func (h *handler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /health", h.Health)
+}

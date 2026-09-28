@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 	"uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
@@ -11,6 +12,7 @@ import (
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/business_type/dto"
 	handlerrequest "github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/request"
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/handler/response"
+	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/middleware"
 )
 
 type BusinessTypeService interface {
@@ -54,4 +56,33 @@ func (h *handler) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WriteJSON(w, http.StatusOK, dto.ToResponseList(businessTypes))
+}
+
+func (h *handler) RegisterRoutes(
+	mux *http.ServeMux,
+	ingestionServiceToken, maxBotToken string,
+	miniAppInitDataMaxAge time.Duration,
+) {
+	mux.Handle(
+		"GET /api/v1/business-types",
+		middleware.MiniAppInitData(
+			maxBotToken,
+			miniAppInitDataMaxAge,
+			http.HandlerFunc(h.GetAll),
+		),
+	)
+	mux.Handle(
+		"PUT /internal/v1/business-types",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(h.Upsert),
+		),
+	)
+	mux.Handle(
+		"GET /internal/v1/business-types",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(h.GetAll),
+		),
+	)
 }

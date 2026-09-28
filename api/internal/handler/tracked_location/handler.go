@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 	"uuid"
 
 	"github.com/kotafan1rich/GeoLogic-Monitor/api/internal/domain"
@@ -179,4 +180,34 @@ func (h *handler) currentUser(w http.ResponseWriter, r *http.Request) (*domain.U
 		return nil, false
 	}
 	return user, true
+}
+
+func (h *handler) RegisterRoutes(
+	mux *http.ServeMux,
+	ingestionServiceToken, maxBotToken string,
+	miniAppInitDataMaxAge time.Duration,
+) {
+	mux.Handle(
+		"GET /internal/v1/tracked-locations",
+		middleware.IngestionToken(
+			ingestionServiceToken,
+			http.HandlerFunc(h.GetAllForMonitoring),
+		),
+	)
+
+	userRoutes := []struct {
+		pattern string
+		handler http.HandlerFunc
+	}{
+		{"POST /api/v1/tracked-locations", h.Create},
+		{"GET /api/v1/tracked-locations", h.GetMine},
+		{"GET /api/v1/tracked-locations/{id}/rating-history", h.GetRatingHistory},
+		{"DELETE /api/v1/tracked-locations/{id}", h.DeleteMine},
+	}
+	for _, route := range userRoutes {
+		mux.Handle(
+			route.pattern,
+			middleware.MiniAppInitData(maxBotToken, miniAppInitDataMaxAge, route.handler),
+		)
+	}
 }
