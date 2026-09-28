@@ -47,6 +47,7 @@ type diContainer struct {
 	infraJob       *job.Job
 	eventsJob      *job.Job
 	competitorsJob *job.Job
+	eventNotifyJob *job.Job
 	schedulers     []*scheduler.Scheduler
 	gc             *geoapi.Client
 	tr             *geoapi.TypeRegistry
@@ -293,21 +294,27 @@ func (d *diContainer) Monitoring(ctx context.Context) *job.Monitoring {
 			d.Producer(),
 			twogis.NewCheckpointsCache(),
 			cfg.Producer.Kafka.Topic,
-			cfg.Monitoring.OpenedWindow,
-			cfg.Monitoring.CheckpointBootstrap,
-			cfg.Monitoring.CompetitorTTL,
+			cfg.Monitoring.Competitors.Window,
+			cfg.Monitoring.Competitors.CheckpointBootstrap,
+			cfg.Monitoring.Competitors.TTL,
 			cfg.Monitoring.FetchConcurrency,
 			cfg.Monitoring.RouteConcurrency,
+			cfg.Monitoring.Events.Window,
+			cfg.Monitoring.Events.SearchRadius,
+			cfg.Monitoring.Events.WalkRadius,
 		)
 
 		d.Logger().Info(
 			"monitoring initialized",
 			slog.String("topic", cfg.Producer.Kafka.Topic),
-			slog.Duration("opened_window", cfg.Monitoring.OpenedWindow),
-			slog.Duration("checkpoint_bootstrap", cfg.Monitoring.CheckpointBootstrap),
-			slog.Duration("competitor_ttl", cfg.Monitoring.CompetitorTTL),
+			slog.Duration("competitors_window", cfg.Monitoring.Competitors.Window),
+			slog.Duration("checkpoint_bootstrap", cfg.Monitoring.Competitors.CheckpointBootstrap),
+			slog.Duration("competitor_ttl", cfg.Monitoring.Competitors.TTL),
 			slog.Int("fetch_concurrency", cfg.Monitoring.FetchConcurrency),
 			slog.Int("route_concurrency", cfg.Monitoring.RouteConcurrency),
+			slog.Duration("events_window", cfg.Monitoring.Events.Window),
+			slog.Int("events_search_radius", cfg.Monitoring.Events.SearchRadius),
+			slog.Int("events_walk_radius", cfg.Monitoring.Events.WalkRadius),
 		)
 	}
 	return d.mon
@@ -330,13 +337,28 @@ func (d *diContainer) CompetitorsJob(ctx context.Context) *job.Job {
 	return d.competitorsJob
 }
 
+func (d *diContainer) EventNotificationsJob(ctx context.Context) *job.Job {
+	if d.eventNotifyJob == nil {
+		cfg := config.Get()
+
+		d.eventNotifyJob = job.New(
+			job.EventNotificationsName,
+			cfg.Scheduler.EventNotifications,
+			d.Logger(),
+		).After(
+			d.Monitoring(ctx).Events,
+		)
+
+		d.logJob(d.eventNotifyJob)
+	}
+	return d.eventNotifyJob
+}
+
 func (d *diContainer) Schedulers(ctx context.Context) []*scheduler.Scheduler {
 	if d.schedulers == nil {
 		d.schedulers = []*scheduler.Scheduler{
 			d.scheduler(ingestionScheduler, d.InfraJob(), d.EventsJob()),
-			// TODO: сюда добавить job мониторинга событий по аналогии с CompetitorsJob:
-			// job.New(<имя>, cfg.Scheduler.<cron>, d.Logger()).After(d.Monitoring(ctx).Events)
-			d.scheduler(monitoringScheduler, d.CompetitorsJob(ctx)),
+			d.scheduler(monitoringScheduler, d.CompetitorsJob(ctx), d.EventNotificationsJob(ctx)),
 		}
 	}
 	return d.schedulers
