@@ -20,9 +20,10 @@ func (c *Client) PutInfraType(ctx context.Context, obj InfraTypeInput) (InfraTyp
 }
 
 type TypeRegistry struct {
-	client *Client
-	defs   map[string]InfraTypeInput
-	cache  *TypesCache
+	client   *Client
+	defs     map[string]InfraTypeInput
+	cache    *TypesCache
+	business *BusinessTypesCache
 }
 
 func NewTypeRegistry(c *Client, defs []InfraTypeInput) (*TypeRegistry, error) {
@@ -51,9 +52,10 @@ func NewTypeRegistry(c *Client, defs []InfraTypeInput) (*TypeRegistry, error) {
 	}
 
 	return &TypeRegistry{
-		client: c,
-		defs:   bySlug,
-		cache:  NewTypesCache(),
+		client:   c,
+		defs:     bySlug,
+		cache:    NewTypesCache(),
+		business: NewBusinessTypesCache(),
 	}, nil
 }
 
@@ -92,4 +94,31 @@ func (r *TypeRegistry) TypeID(ctx context.Context, slug string) (string, error) 
 	r.cache.Set(slug, id)
 
 	return string(id), nil
+}
+
+func (r *TypeRegistry) SetBusinessType(id, slug string) {
+	if id == "" {
+		return
+	}
+
+	r.business.Set(id, slug)
+}
+
+func (r *TypeRegistry) BusinessType(id string) (InfraTypeInput, bool) {
+	slug, ok := r.business.Get(id)
+	if !ok {
+		return InfraTypeInput{}, false
+	}
+
+	def, ok := r.defs[slug]
+
+	return def, ok
+}
+
+func (r *TypeRegistry) HasBusinessTypes() bool {
+	return r.business.Len() > 0
+}
+
+func (r *TypeRegistry) BusinessTypeID(slug string) (string, bool) {
+	return r.business.ID(slug)
 }

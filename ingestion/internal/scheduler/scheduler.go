@@ -18,9 +18,10 @@ type Scheduler struct {
 	name  string
 	log   *slog.Logger
 	inner gocron.Scheduler
+	jobs  []Job
 }
 
-func New(name string, log *slog.Logger) (*Scheduler, error) {
+func New(name string, log *slog.Logger, jobs ...Job) (*Scheduler, error) {
 	if log == nil {
 		return nil, ErrInvalidLogger
 	}
@@ -30,13 +31,13 @@ func New(name string, log *slog.Logger) (*Scheduler, error) {
 		return nil, ErrInitCronScheduler
 	}
 
-	return &Scheduler{name: name, log: log, inner: s}, nil
+	return &Scheduler{name: name, log: log, inner: s, jobs: jobs}, nil
 }
 
-func MustNew(name string, log *slog.Logger) *Scheduler {
+func MustNew(name string, log *slog.Logger, jobs ...Job) *Scheduler {
 	const op = "scheduler.MustNew"
 
-	s, err := New(name, log)
+	s, err := New(name, log, jobs...)
 	if err != nil {
 		panic(fmt.Sprintf("%s: failed to init scheduler: %v", op, err))
 	}
@@ -92,4 +93,8 @@ func (s *Scheduler) Shutdown() error {
 
 func (s *Scheduler) Name() string {
 	return s.name
+}
+
+func (s *Scheduler) Jobs() []Job {
+	return s.jobs
 }

@@ -1,6 +1,10 @@
 package geoapi
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type (
 	AddressComponent struct {
@@ -9,11 +13,18 @@ type (
 		Lon     float64 `json:"lon"`
 	}
 
+	GeoPoint struct {
+		Lat float64 `json:"lat"`
+		Lon float64 `json:"lon"`
+	}
+
 	InfraTypeInput struct {
-		Slug      string `json:"slug"`
-		Name      string `json:"name"`
-		Weight    int    `json:"weight"`
-		MaxRadius int    `json:"max_radius"`
+		Slug      string   `json:"slug"`
+		Name      string   `json:"name"`
+		Weight    int      `json:"weight"`
+		MaxRadius int      `json:"max_radius"`
+		Query     string   `json:"-"`
+		Rubrics   []string `json:"-"`
 	}
 
 	InfraType struct {
@@ -71,5 +82,24 @@ type (
 		ID          string    `json:"id"`
 		InfraTypeID string    `json:"infra_type_id"`
 		InfraType   InfraType `json:"infra_type"`
+	}
+
+	TrackedLocation struct {
+		ID             uuid.UUID `json:"id"`
+		Name           string    `json:"name"`
+		BusinessTypeID uuid.UUID `json:"business_type_id"`
+		Address        string    `json:"address"`
+		Lat            float64   `json:"lat"`
+		Lon            float64   `json:"lon"`
+		MaxChatID      int64     `json:"max_chat_id"`
+	}
+
+	WalkingDistancesRequest struct {
+		Source       GeoPoint   `json:"source"`
+		Destinations []GeoPoint `json:"destinations"`
+	}
+
+	WalkingDistancesResponse struct {
+		Distances []*float64 `json:"distances"`
 	}
 )

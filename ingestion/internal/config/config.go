@@ -13,11 +13,13 @@ type Config struct {
 	Scheduler  SchedulerConfig
 	Aggregator AggregatorConfig `yaml:"aggregator"`
 	GeoApi     GeoApiConfig     `yaml:"geo-api"`
+	Monitoring MonitoringConfig `yaml:"monitoring"`
 }
 
 type SchedulerConfig struct {
-	Infra  string `env:"SCHEDULER_INFRA_CRON"  env-default:"0 3 1 * *"`
-	Events string `env:"SCHEDULER_EVENTS_CRON" env-default:"0 4 * * 1"`
+	Infra       string `env:"SCHEDULER_INFRA_CRON"       env-default:"0 3 1 * *"`
+	Events      string `env:"SCHEDULER_EVENTS_CRON"      env-default:"0 4 * * 1"`
+	Competitors string `env:"SCHEDULER_COMPETITORS_CRON" env-default:"0 6 * * *"`
 }
 
 type LoggerConfig struct {
@@ -48,6 +50,7 @@ type PostgresqlConfig struct {
 
 type KafkaConfig struct {
 	Addresses      []string      `env:"KAFKA_ADDRESSES" env-required:"true"`
+	Topic          string        `yaml:"topic" env-default:"notifications"`
 	FlushTimeout   time.Duration `yaml:"flush_timeout"`
 	AttemptTimeout time.Duration `yaml:"attempt_timeout"`
 	MaxRetries     uint          `yaml:"max_retries"`
@@ -81,6 +84,7 @@ type HTTPClientConfig struct {
 type AggregatorConfig struct {
 	DigitalSpb DigitalSpbConfig `yaml:"digitalspb"`
 	Maps       MapsConfig       `yaml:"maps"`
+	TwoGis     TwoGisConfig     `yaml:"twogis"`
 }
 
 type DigitalSpbConfig struct {
@@ -94,6 +98,20 @@ type MapsConfig struct {
 	BaseURL string           `yaml:"base_url"`
 }
 
+type TwoGisConfig struct {
+	HTTP    HTTPClientConfig `yaml:"http"`
+	BaseURL string           `yaml:"base_url" env-default:"https://catalog.api.2gis.com/"`
+	APIKey  string           `env:"TWOGIS_API_KEY" env-required:"true"`
+}
+
+type MonitoringConfig struct {
+	OpenedWindow        time.Duration `yaml:"opened_window"        env-default:"2160h"`
+	CheckpointBootstrap time.Duration `yaml:"checkpoint_bootstrap" env-default:"24h"`
+	CompetitorTTL       time.Duration `yaml:"competitor_ttl"       env-default:"24h"`
+	FetchConcurrency    int           `yaml:"fetch_concurrency"    env-default:"2"`
+	RouteConcurrency    int           `yaml:"route_concurrency"    env-default:"4"`
+}
+
 type GeoApiConfig struct {
 	URL              string           `env:"GEO_API_URL" env-default:"http://api:8080/"`
 	AuthToken        string           `env:"INGESTION_SERVICE_TOKEN" env-required:"true"`
@@ -104,10 +122,12 @@ type GeoApiConfig struct {
 }
 
 type InfraType struct {
-	Slug      string `yaml:"slug"`
-	Name      string `yaml:"name"`
-	Weight    int    `yaml:"weight"`
-	MaxRadius int    `yaml:"max_radius"`
+	Slug      string   `yaml:"slug"`
+	Name      string   `yaml:"name"`
+	Weight    int      `yaml:"weight"`
+	MaxRadius int      `yaml:"max_radius"`
+	Query     string   `yaml:"query"`
+	Rubrics   []string `yaml:"rubrics"`
 }
 
 var config *Config

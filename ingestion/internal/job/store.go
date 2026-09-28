@@ -37,6 +37,7 @@ type Writer interface {
 
 type TypeResolver interface {
 	TypeID(ctx context.Context, slug string) (string, error)
+	SetBusinessType(id, slug string)
 }
 
 type store struct {
@@ -196,11 +197,14 @@ func (s *store) connectBusiness(ctx context.Context, slugs []string) error {
 				return nil
 			}
 
-			if _, err := s.writer.ConnectWithInfra(ctx, typeID); err != nil {
+			bt, err := s.writer.ConnectWithInfra(ctx, typeID)
+			if err != nil {
 				collector.Add(fmt.Errorf("%w [%s]: %v", ErrConnectBusiness, slug, err))
 
 				return nil
 			}
+
+			s.types.SetBusinessType(bt.ID, slug)
 
 			connected.Add(1)
 

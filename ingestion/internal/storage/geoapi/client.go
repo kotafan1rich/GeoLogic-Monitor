@@ -51,6 +51,10 @@ func (c *Client) get(ctx context.Context, endpoint string, query url.Values, out
 	return c.geocode.JSON(ctx, http.MethodGet, infra.Target(c.baseURL, endpoint, query), nil, out)
 }
 
+func (c *Client) post(ctx context.Context, endpoint string, query url.Values, body, out any) error {
+	return c.geocode.JSON(ctx, http.MethodPost, infra.Target(c.baseURL, endpoint, query), body, out)
+}
+
 func validateURL(u *url.URL) bool {
 	return u != nil && u.Host != "" && u.Scheme != ""
 }

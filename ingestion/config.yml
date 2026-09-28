@@ -28,6 +28,18 @@ aggregator:
         rps: 0
         burst: 0
     base_url: "https://maps.mail.ru/osm/tools/overpass/api/"
+  twogis:
+    http:
+      max_idle_conns: 2
+      max_idle_conns_per_host: 2
+      max_conns_per_host: 2
+      request_timeout: 30s
+      attempt_timeout: 10s
+      max_retries: 3
+      rate_limit:
+        rps: 1
+        burst: 1
+    base_url: "https://catalog.api.2gis.com/"
 
 geo-api:
   write:
@@ -55,14 +67,14 @@ geo-api:
     - { slug: subway,             name: "Станция метро",          weight: 5,   max_radius: 800 }
     - { slug: railway_station,    name: "Вокзал",                 weight: 4,   max_radius: 700 }
     - { slug: mall,               name: "Торговый центр",         weight: 4,   max_radius: 600 }
-    - { slug: supermarket,        name: "Супермаркет",            weight: 3, max_radius: 400 }
-    - { slug: fastfood,           name: "Фастфуд",                weight: 3,   max_radius: 300 }
-    - { slug: pvz,                name: "ПВЗ",                    weight: 2, max_radius: 250 }
+    - { slug: supermarket,        name: "Супермаркет",            weight: 3, max_radius: 400, rubrics: ["супермаркет", "гипермаркет"] }
+    - { slug: fastfood,           name: "Фастфуд",                weight: 3,   max_radius: 300, query: "Быстрое питание", rubrics: ["быстрое питание"] }
+    - { slug: pvz,                name: "ПВЗ",                    weight: 2, max_radius: 250, query: "Пункт выдачи заказов", rubrics: ["пункты выдачи", "постамат"] }
     - { slug: grocery,            name: "Продукты у дома",        weight: 2, max_radius: 200 }
-    - { slug: coffee,             name: "Кофейня",                weight: 2, max_radius: 200 }
-    - { slug: cafe,               name: "Кафе",                   weight: 2, max_radius: 250 }
-    - { slug: restaurant,         name: "Ресторан",               weight: 2, max_radius: 300 }
-    - { slug: bakery,             name: "Пекарня",                weight: 2,   max_radius: 200 }
+    - { slug: coffee,             name: "Кофейня",                weight: 2, max_radius: 200, rubrics: ["кофейн", "кофе с собой", "точки кофе"] }
+    - { slug: cafe,               name: "Кафе",                   weight: 2, max_radius: 250, rubrics: ["кафе", "столов"] }
+    - { slug: restaurant,         name: "Ресторан",               weight: 2, max_radius: 300, rubrics: ["ресторан", "бары", "пабы"] }
+    - { slug: bakery,             name: "Пекарня",                weight: 2,   max_radius: 200, rubrics: ["пекарн", "кондитерск", "выпечк", "хлебобулоч"] }
     - { slug: hotel,              name: "Гостиница",              weight: 2, max_radius: 400 }
     - { slug: museum,             name: "Музей",                  weight: 2, max_radius: 500 }
     - { slug: cinema,             name: "Кинотеатр",              weight: 2, max_radius: 400 }
@@ -74,7 +86,7 @@ geo-api:
     - { slug: medical_center,     name: "Медцентр",               weight: 2, max_radius: 500 }
     - { slug: education_center,   name: "Образовательный центр",  weight: 2,   max_radius: 400 }
     - { slug: pharmacy,           name: "Аптека",                 weight: 2,   max_radius: 250 }
-    - { slug: beauty,             name: "Салон красоты",          weight: 2,   max_radius: 300 }
+    - { slug: beauty,             name: "Салон красоты",          weight: 2,   max_radius: 300, rubrics: ["салон красоты", "парикмахерск", "ногтев", "барбершоп", "маникюр", "косметолог"] }
     - { slug: alcohol,            name: "Алкомаркет",             weight: 1, max_radius: 250 }
     - { slug: dental,             name: "Стоматология",           weight: 1, max_radius: 300 }
     - { slug: game_center,        name: "Игровой центр",          weight: 1, max_radius: 300 }
@@ -83,15 +95,15 @@ geo-api:
     - { slug: pet,                name: "Зоомагазин",             weight: 1,   max_radius: 300 }
     - { slug: vet_clinic,         name: "Ветклиника",             weight: 1,   max_radius: 500 }
     - { slug: optician,           name: "Оптика",                 weight: 1,   max_radius: 300 }
-    - { slug: flowers,            name: "Цветы",                  weight: 1,   max_radius: 250 }
-    - { slug: laundry,            name: "Прачечная / химчистка",  weight: 1,   max_radius: 250 }
-    - { slug: copyshop,           name: "Копицентр",              weight: 1,   max_radius: 250 }
-    - { slug: workshop,           name: "Мастерская",             weight: 1,   max_radius: 250 }
-    - { slug: electronics_repair, name: "Ремонт техники",         weight: 1,   max_radius: 250 }
-    - { slug: car_service,        name: "Автосервис",             weight: 1, max_radius: 500 }
-    - { slug: car_wash,           name: "Автомойка",              weight: 1, max_radius: 500 }
-    - { slug: camp,               name: "Лагерь",                 weight: 0,   max_radius: 300 }
-    - { slug: other,              name: "Прочее",                 weight: 0, max_radius: 250 }
+    - { slug: flowers,            name: "Цветы",                  weight: 1,   max_radius: 250, rubrics: ["цветы", "цветов"] }
+    - { slug: laundry,            name: "Прачечная / химчистка",  weight: 1,   max_radius: 250, query: "Химчистка", rubrics: ["химчистк", "прачечн"] }
+    - { slug: copyshop,           name: "Копицентр",              weight: 1,   max_radius: 250, rubrics: ["копировальн", "полиграф", "фотоуслуг"] }
+    - { slug: workshop,           name: "Мастерская",             weight: 1,   max_radius: 250, query: "Ремонт обуви и одежды", rubrics: ["ремонт обуви", "ремонт одежды", "ателье", "изготовление ключей", "ремонт часов"] }
+    - { slug: electronics_repair, name: "Ремонт техники",         weight: 1,   max_radius: 250, rubrics: ["ремонт телефон", "ремонт компьютер", "ремонт бытовой техники", "ремонт цифровой техники"] }
+    - { slug: car_service,        name: "Автосервис",             weight: 1, max_radius: 500, rubrics: ["автосервис", "шиномонтаж"] }
+    - { slug: car_wash,           name: "Автомойка",              weight: 1, max_radius: 500, rubrics: ["автомойк"] }
+    - { slug: camp,               name: "Лагерь",                 weight: 1,   max_radius: 300 }
+    - { slug: other,              name: "Прочее",                 weight: 1, max_radius: 250 }
 
 database:
   postgresql:
@@ -103,9 +115,17 @@ database:
 
 producer:
   kafka:
+    topic: notifications
     flush_timeout: 15000ms
     attempt_timeout: 5s
     max_retries: 3
     batch_size: 65536
     buffer_max_msg: 1000
     buffer_max_bytes: 10485760
+
+monitoring:
+  opened_window: 2160h
+  checkpoint_bootstrap: 2160h
+  competitor_ttl: 24h
+  fetch_concurrency: 2
+  route_concurrency: 4
