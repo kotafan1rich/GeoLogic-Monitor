@@ -33,6 +33,6 @@ go.work.sum
 .vscode/
 
 # OSRM
-osrm/data/
+# osrm/data/
 
 exports/
