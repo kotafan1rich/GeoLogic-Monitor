@@ -72,18 +72,19 @@ entity events {
 }
 }
 package "Ingestion DB" {
-entity competitor_cache {
+entity competitors {
  * tracked_location_id : uuid <<PK,external ID>>
- * external_id : text <<PK>>
+ * external_id : varchar(255) <<PK>>
  --
- * type_id : uuid <<external ID>>
- * name, address : text
+ * competitor_name : varchar(255)
+ * type_id : varchar(255) <<external ID>>
+ * competitor_address : varchar(255)
  * location : geometry(Point,4326)
- * opened_at : date
- notified_at : timestamptz
- * expires_at : timestamptz
- * created_at : timestamptz
- * updated_at : timestamptz
+ * opened_at : timestamp
+ notified_at : timestamp
+ * expires_at : timestamp
+ * created_at : timestamp
+ * updated_at : timestamp
 }
 }
 users ||--o{ tracked_locations
@@ -96,8 +97,8 @@ end note
 infra_types ||--o{ infra_objects
 infra_types ||--o| business_types
 business_types ||--o{ tracked_locations
-tracked_locations .. competitor_cache : ID only, no FK
-infra_types .. competitor_cache : ID only, no FK
+tracked_locations .. competitors : ID only, no FK
+infra_types .. competitors : ID only, no FK
 note bottom of events
  notified_at после публикации для всех точек.
  created_at и updated_at хранятся только в БД

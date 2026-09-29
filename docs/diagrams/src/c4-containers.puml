@@ -11,7 +11,7 @@ package "GeoLogic" {
  rectangle "api\nnet/http + рейтинг + планировщик" as api
  rectangle "ingestion\nзагрузка + мониторинг" as worker
  database "API PostgreSQL + PostGIS\nпостоянные данные" as apidb
- database "Ingestion PostgreSQL + PostGIS\ncompetitor_cache" as ingestiondb
+ database "Ingestion PostgreSQL + PostGIS\ncompetitors" as ingestiondb
  queue "Kafka\nnotifications" as kafka
  rectangle "OSRM\nOSM / foot.lua" as osrm
 }
@@ -30,7 +30,7 @@ api --> geo
 api --> osrm : рейтинг / пешие расстояния для ingestion
 worker --> ingestiondb : только свой кэш
 worker --> sources
-worker --> gis : открытия за вчера
+worker --> gis : открытия после checkpoint\nв пределах окна мониторинга
 worker --> kafka : produce
 kafka --> bot : group bot-notifications
 @enduml
