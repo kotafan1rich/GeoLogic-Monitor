@@ -329,6 +329,7 @@ func (d *diContainer) CompetitorsJob(ctx context.Context) *job.Job {
 			cfg.Scheduler.Competitors,
 			d.Logger(),
 		).After(
+			d.Monitoring(ctx).ClearCache,
 			d.Monitoring(ctx).Competitors,
 		)
 

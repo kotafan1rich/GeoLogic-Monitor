@@ -127,9 +127,9 @@ monitoring:
   fetch_concurrency: 2
   route_concurrency: 4
   competitors:
-    window: 2160h
-    checkpoint_bootstrap: 2160h
-    ttl: 24h
+    window: 72h
+    checkpoint_bootstrap: 24h
+    ttl: 100h
   events:
     window: 24h
     search_radius: 1200
