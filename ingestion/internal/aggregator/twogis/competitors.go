@@ -11,7 +11,7 @@ import (
 const (
 	placesEndpoint = "3.0/items"
 	recordsPerPage = 10
-	maxPages       = 5
+	maxPages       = 2
 	successCode    = 200
 	notFoundCode   = 404
 
@@ -61,7 +61,6 @@ func (c *Client) getPlaces(ctx context.Context, query url.Values, out *Response)
 		return err
 	}
 
-	// 404 "Results not found" — по запросу ничего не открылось, это не ошибка.
 	if out.Meta.Code == notFoundCode {
 		out.Result = Result{}
 
