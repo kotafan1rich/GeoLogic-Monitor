@@ -57,7 +57,8 @@ cp ingestion/.env.example ingestion/.env
 | `TWOGIS_API_KEY` | Ключ 2ГИС Catalog API |
 | `SCHEDULER_INFRA_CRON` | Расписание обновления инфраструктуры |
 | `SCHEDULER_EVENTS_CRON` | Расписание обновления событий |
-| `SCHEDULER_COMPETITORS_CRON` | Расписание мониторинга изменений |
+| `SCHEDULER_COMPETITORS_CRON` | Расписание мониторинга новых конкурентов |
+| `SCHEDULER_EVENT_NOTIFICATIONS_CRON` | Расписание публикации уведомлений о событиях |
 | `LOG_LEVEL`, `LOG_FORMAT` | Параметры журналирования |
 
 Адреса источников, ограничения HTTP-клиентов, категории, веса, радиусы и параметры Kafka находятся в [`config.yml`](config.yml).

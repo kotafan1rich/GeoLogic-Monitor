@@ -46,9 +46,9 @@ tasks:
       - cd bot && "{{.GOLANGCI_LINT}}" fmt --config ../.golangci.yaml ./...
 
   api:up:
-    desc: "Собрать и запустить API"
+    desc: "Собрать и запустить API с OSRM"
     cmds:
-      - docker compose up -d --build api
+      - docker compose up -d --build osrm api
 
   api:down:
     desc: "Остановить API"
