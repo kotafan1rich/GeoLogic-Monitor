@@ -25,10 +25,10 @@
 Из корня репозитория выполните:
 
 ```bash
-cp .env.template .env
-cp api/.env.template api/.env
-cp ingestion/.env.template ingestion/.env
-cp bot/.env.template bot/.env
+cp .env.example .env
+cp api/.env.example api/.env
+cp ingestion/.env.example ingestion/.env
+cp bot/.env.example bot/.env
 ```
 
 Локальные `.env` не коммитятся. Шаблоны уже содержат согласованные адреса контейнеров, имена баз данных, пароли и сервисные токены для локальной разработки.
@@ -170,8 +170,8 @@ Mini App:
 (cd miniapp && npm ci && npm run build)
 ```
 
-Общего `go.mod` в корне намеренно нет. Команды Go нужно запускать из каталога соответствующего модуля.
+Каждый Go-модуль содержит собственный `go.mod`; команды Go запускаются из каталога соответствующего модуля.
 
-## Состояние сквозного сценария
+## Сквозной сценарий уведомлений
 
-API, Mini App, загрузочные jobs ingestion, webhook MAX и Kafka consumer Bot реализованы. Producer уведомлений в ingestion пока отсутствует, поэтому полный путь «обнаружение изменения → Kafka → сообщение MAX» недоступен.
+Ingestion обнаруживает новых прямых конкурентов и ближайшие события, рассчитывает расстояние через API и публикует задания в Kafka. Bot читает topic `notifications` и доставляет сообщения в зарегистрированный личный чат MAX. Порядок пользовательской проверки и ожидаемые результаты приведены в [корневом README](../README.md#как-тестировать).

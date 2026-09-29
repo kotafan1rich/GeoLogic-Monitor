@@ -55,3 +55,13 @@ func (h *handler) Upsert(w http.ResponseWriter, r *http.Request) {
 
 	response.WriteJSON(w, http.StatusOK, dto.ToResponse(*user))
 }
+
+func (h *handler) RegisterRoutes(mux *http.ServeMux, botServiceToken string) {
+	mux.Handle(
+		"PUT /api/v1/users/me",
+		middleware.BotToken(
+			botServiceToken,
+			middleware.MaxUserID(http.HandlerFunc(h.Upsert)),
+		),
+	)
+}

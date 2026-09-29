@@ -8,6 +8,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -22,8 +23,9 @@ import (
 )
 
 const (
-	MonitoringName  = "monitoring"
-	CompetitorsName = "competitors"
+	MonitoringName         = "monitoring"
+	CompetitorsName        = "competitors"
+	EventNotificationsName = "event_notifications"
 )
 
 const (
@@ -33,6 +35,9 @@ const (
 
 	reasonSameCategory = "Та же категория бизнеса"
 	reasonWalkable     = "Пешая доступность"
+
+	eventDefaultTitle      = "Мероприятие"
+	recommendEventSupplies = "Проверить запас продукции"
 )
 
 type Monitoring struct {
@@ -49,7 +54,13 @@ type Monitoring struct {
 	ttl         time.Duration
 	fetchLimit  int
 	routeLimit  int
+
+	eventsWindow       time.Duration
+	eventsSearchRadius int
+	eventsWalkRadius   int
 }
+
+var moscow = time.FixedZone("MSK", 3*60*60)
 
 func NewMonitoring(
 	log *slog.Logger,
@@ -65,6 +76,9 @@ func NewMonitoring(
 	ttl time.Duration,
 	fetchLimit int,
 	routeLimit int,
+	eventsWindow time.Duration,
+	eventsSearchRadius int,
+	eventsWalkRadius int,
 ) *Monitoring {
 	if bootstrap <= 0 {
 		bootstrap = defaultCheckpointStart
@@ -84,6 +98,10 @@ func NewMonitoring(
 		ttl:         ttl,
 		fetchLimit:  fetchLimit,
 		routeLimit:  routeLimit,
+
+		eventsWindow:       eventsWindow,
+		eventsSearchRadius: eventsSearchRadius,
+		eventsWalkRadius:   eventsWalkRadius,
 	}
 }
 
@@ -105,11 +123,6 @@ func (m *Monitoring) Competitors(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrLoadLocations, err)
 	}
-	// Мок-данные
-	// locations, err := m.testTrackedLocations(ctx)
-	// if err != nil {
-	// 	return fmt.Errorf("%w: %v", ErrLoadLocations, err)
-	// }
 
 	groups, err := m.groupByBusinessType(ctx, locations)
 	if err != nil {
@@ -169,7 +182,179 @@ func (m *Monitoring) Competitors(ctx context.Context) error {
 }
 
 func (m *Monitoring) Events(ctx context.Context) error {
+	start := time.Now()
+
+	locations, err := m.geo.TrackedLocations(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrLoadLocations, err)
+	}
+
+	now := time.Now().In(moscow)
+	day := now.Add(m.eventsWindow)
+	reasons := []string{eventDayReason(now, day), reasonWalkable}
+
+	var (
+		g         errgroup.Group
+		collector = errs.NewCollector(errs.DefaultSampleSize)
+		found     atomic.Int64
+		notified  atomic.Int64
+
+		mu        sync.Mutex
+		published = make(map[string]struct{})
+		failed    = make(map[string]struct{})
+	)
+
+	g.SetLimit(m.routeLimit)
+
+	for _, loc := range locations {
+		g.Go(func() error {
+			events, err := m.geo.UnnotifiedEventsNear(ctx, loc.Lat, loc.Lon, m.eventsSearchRadius, day)
+			if err != nil {
+				collector.Add(fmt.Errorf("%w [%s]: %v", ErrLoadEvents, loc.ID, err))
+				return nil
+			}
+
+			if len(events) == 0 {
+				return nil
+			}
+
+			found.Add(int64(len(events)))
+
+			dests := make([]geoapi.GeoPoint, 0, len(events))
+			for _, event := range events {
+				dests = append(dests, geoapi.GeoPoint{Lat: event.Lat, Lon: event.Lon})
+			}
+
+			distances, err := m.walkingDistances(ctx, geoapi.GeoPoint{Lat: loc.Lat, Lon: loc.Lon}, dests)
+			if err != nil {
+				collector.Add(fmt.Errorf("%w [%s]: %v", ErrRouteEvents, loc.ID, err))
+				return nil
+			}
+
+			for i, event := range events {
+				d := distances[i]
+				if d == nil || *d > float64(m.eventsWalkRadius) {
+					continue
+				}
+
+				n := newNotification(producer.TypeEventUpcoming, loc, eventSubject(event), *d, reasons)
+				n.Assessment.Recommendations = []string{recommendEventSupplies}
+
+				if err := m.publish(ctx, n); err != nil {
+					collector.Add(fmt.Errorf("[%s:%s]: %w", loc.ID, event.ID, err))
+
+					mu.Lock()
+					failed[event.ID] = struct{}{}
+					mu.Unlock()
+
+					continue
+				}
+
+				notified.Add(1)
+
+				mu.Lock()
+				published[event.ID] = struct{}{}
+				mu.Unlock()
+
+				m.log.InfoContext(ctx, "event notification published",
+					slog.String("tracked_location_id", loc.ID.String()),
+					slog.String("event_id", event.ID),
+					slog.String("external_id", event.ExternalID),
+					slog.Float64("distance_m", *d),
+					slog.String("topic", m.topic),
+				)
+			}
+
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+
+	marked := m.markEventsNotified(ctx, published, failed, collector)
+
+	attrs := []any{
+		slog.Int("locations", len(locations)),
+		slog.String("day", day.Format(time.DateOnly)),
+		slog.Int("events_found", int(found.Load())),
+		slog.Int("notified", int(notified.Load())),
+		slog.Int("events_marked", marked),
+		slog.Int("failed", collector.Total()),
+		slog.Duration("duration", time.Since(start)),
+	}
+
+	if n := collector.Total(); n > 0 {
+		m.log.ErrorContext(ctx, "events monitoring finished with errors", append(attrs, collector.Attr())...)
+
+		return fmt.Errorf("%w: %d error(s)", ErrMonitoringFailed, n)
+	}
+
+	m.log.InfoContext(ctx, "events monitoring finished", attrs...)
+
 	return nil
+}
+
+func (m *Monitoring) markEventsNotified(
+	ctx context.Context,
+	published, failed map[string]struct{},
+	collector *errs.Collector,
+) int {
+	var (
+		g      errgroup.Group
+		marked atomic.Int64
+	)
+
+	g.SetLimit(m.routeLimit)
+
+	for id := range published {
+		if _, ok := failed[id]; ok {
+			continue
+		}
+
+		g.Go(func() error {
+			if err := m.geo.MarkEventNotified(ctx, id); err != nil {
+				collector.Add(fmt.Errorf("%w [%s]: %v", ErrMarkEventNotified, id, err))
+				return nil
+			}
+
+			marked.Add(1)
+
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+
+	return int(marked.Load())
+}
+
+func eventSubject(event geoapi.Event) producer.Subject {
+	title := eventDefaultTitle
+	if event.Info != nil && strings.TrimSpace(*event.Info) != "" {
+		title = *event.Info
+	}
+
+	date := event.Date
+
+	return producer.Subject{
+		ExternalID: event.ExternalID,
+		Title:      title,
+		Date:       &date,
+	}
+}
+
+func eventDayReason(now, day time.Time) string {
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, moscow)
+	target := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, moscow)
+
+	switch days := int(target.Sub(today).Hours() / 24); days {
+	case 0:
+		return "Сегодня"
+	case 1:
+		return "Завтра"
+	default:
+		return fmt.Sprintf("Через %d дн.", days)
+	}
 }
 
 func (m *Monitoring) groupByBusinessType(
