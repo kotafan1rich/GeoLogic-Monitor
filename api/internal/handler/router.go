@@ -54,7 +54,7 @@ func RegisterRoutes(
 ) {
 	healthHandler.RegisterRoutes(mux)
 	userHandler.RegisterRoutes(mux, botServiceToken)
-	geocodingHandler.RegisterRoutes(mux, maxBotToken, ingestionServiceToken, miniAppInitDataMaxAge)
+	geocodingHandler.RegisterRoutes(mux, ingestionServiceToken, maxBotToken, miniAppInitDataMaxAge)
 	trackedLocationHandler.RegisterRoutes(mux, ingestionServiceToken, maxBotToken, miniAppInitDataMaxAge)
 	businessTypeHandler.RegisterRoutes(mux, ingestionServiceToken, maxBotToken, miniAppInitDataMaxAge)
 	infraHandler.RegisterRoutes(mux, ingestionServiceToken)
