@@ -181,6 +181,16 @@ func (m *Monitoring) Competitors(ctx context.Context) error {
 	return nil
 }
 
+func (m *Monitoring) ClearCache(ctx context.Context) error {
+	if err := m.repo.ClearCache(ctx); err != nil {
+		return err
+	}
+
+	m.log.DebugContext(ctx, "competitors cache cleared")
+
+	return nil
+}
+
 func (m *Monitoring) Events(ctx context.Context) error {
 	start := time.Now()
 
