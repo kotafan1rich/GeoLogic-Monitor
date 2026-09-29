@@ -72,3 +72,14 @@ func (r *CompetitorRepo) UpdateStatus(
 
 	return nil
 }
+
+func (r *CompetitorRepo) ClearCache(ctx context.Context) error {
+	const op = "competitor.CompetitorRepo.ClearCache"
+
+	_, err := r.db.Conn(ctx).Exec(ctx, ClearCacheQuery)
+	if err != nil {
+		return fmt.Errorf("%s: %w: %v", op, ErrClearCache, err)
+	}
+
+	return nil
+}

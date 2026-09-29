@@ -23,4 +23,9 @@ const (
 			AND external_id = $2
 			AND notified_at IS NULL
 	`
+
+	ClearCacheQuery = `
+		DELETE FROM competitors
+		WHERE expires_at < NOW()
+	`
 )
